@@ -1,6 +1,8 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import type { ShellState } from "@/hooks/useShellState";
 
 export type PageKey = "dashboard" | "all" | "favs" | "recent" | "manage";
@@ -70,11 +72,33 @@ const NAV_ITEMS: { key: PageKey; name: string; href: string; icon: React.ReactNo
 ];
 
 export default function Sidebar({ state, variant = "desktop", active, solid = false }: SidebarProps) {
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [profileImageFailed, setProfileImageFailed] = useState(false);
   const { showLabels, sidebarWidth, closeMobileDrawer, toggleSidebar, profileMenuOpen, toggleProfileMenu, closeProfileMenu, goLogout } = state;
   const navJustify = showLabels ? "flex-start" : "center";
   const brandJustify = showLabels ? "flex-start" : "center";
   const toggleAlign = showLabels ? "flex-end" : "center";
   const chromeBg = solid ? "rgba(255,255,255,0.05)" : "transparent";
+
+  useEffect(() => {
+    let activeRequest = true;
+
+    async function loadProfileImage() {
+      const response = await fetch("/api/auth/session");
+      if (!response.ok) return;
+
+      const session = (await response.json()) as { user?: { image?: string | null } };
+      if (activeRequest && session.user?.image) {
+        setProfileImage(session.user.image);
+      }
+    }
+
+    void loadProfileImage();
+
+    return () => {
+      activeRequest = false;
+    };
+  }, []);
 
   return (
     <div
@@ -178,7 +202,20 @@ export default function Sidebar({ state, variant = "desktop", active, solid = fa
           onClick={toggleProfileMenu}
           style={{ borderRadius: 16, padding: "10px 12px", background: solid ? "rgba(255,255,255,0.045)" : "transparent", border: "1px solid rgba(186,230,253,0.17)", display: "flex", alignItems: "center", gap: 10, justifyContent: navJustify, cursor: "pointer" }}
         >
-          <div style={{ width: 32, height: 32, borderRadius: "50%", flexShrink: 0, background: "linear-gradient(135deg,#3B82F6,#635BFF)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600, fontSize: 13, color: "#fff" }}>P</div>
+          <div style={{ width: 32, height: 32, borderRadius: "50%", overflow: "hidden", flexShrink: 0, background: "linear-gradient(135deg,#3B82F6,#635BFF)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 600, fontSize: 13, color: "#fff" }}>
+            {profileImage && !profileImageFailed ? (
+              <Image
+                src={profileImage}
+                alt="Google profile photo"
+                width={32}
+                height={32}
+                onError={() => setProfileImageFailed(true)}
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+              />
+            ) : (
+              "P"
+            )}
+          </div>
           {showLabels && (
             <>
               <div style={{ flex: 1, minWidth: 0 }}>
