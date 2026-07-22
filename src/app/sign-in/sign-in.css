@@ -1,0 +1,8 @@
+@media (max-width: 860px) {
+  .signin-visual {
+    display: none !important;
+  }
+  .signin-form-col {
+    width: 100% !important;
+  }
+}

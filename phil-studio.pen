@@ -1,0 +1,15 @@
+{
+  "version": "2.14",
+  "children": [
+    {
+      "type": "rectangle",
+      "id": "k3qxn",
+      "x": 169,
+      "y": 459,
+      "fill": "#CCCCCC",
+      "width": 301,
+      "height": 160
+    }
+  ],
+  "fileToken": "3fe63934-c2df-4b6a-98fa-33633337d24b"
+}
