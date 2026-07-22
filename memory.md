@@ -10,7 +10,7 @@
 ## Current Project State
 
 - Status: Personal-use digital workspace defined with eighteen confirmed MVP features.
-- Last updated: 2026-07-21
+- Last updated: 2026-07-22
 
 ## Workflow State
 
@@ -1207,6 +1207,17 @@
 - Consequences: Local and deployed environments require `AUTH_SECRET`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `AUTH_OWNER_EMAIL`, and the correct `AUTH_URL`. Google OAuth clients must register the exact Auth.js callback URI. The standalone sign-in page supports Google only; fake email/password and account-creation controls are removed.
 - Evidence/Links: `src/auth.ts`, `src/proxy.ts`, `src/app/api/auth/[...nextauth]/route.ts`, `src/lib/auth/actions.ts`, `.env.example`; successful lint and production build on 2026-07-21.
 
+### D-107: Preserve the complete visual state as layout 1
+
+- Status: Active
+- Date: 2026-07-22
+- Context: After selecting the new blue/Indigo Warp palette, increasing deep-blue presence across the left-middle and lower regions, and adding the React Bits Splash Cursor, the Owner requested a complete rollback point before further display experiments.
+- Decision/Finding: Treat the Git commit with subject `initial layout 1` and tag `layout-1` as the complete Layout 1 baseline. It includes `SkillBackground5.tsx` (SHA-256 `80AB42101FC0437E141242317729C1703C296D32DEA5121CA5B0809A70E5C8C3`), the React Bits `SplashCursor.jsx` integration (SHA-256 `51BCFDB67FA98077675882F8FE7D8C183C145A5607D5573416D789CC12DDC21E`), `WorkspaceSplashCursor.jsx` settings (SHA-256 `951C81AABDCB1DADA4BFF63F2E84C12E7CD227DAFF2CFA2AB7910C941B4D34CA`), shadcn registry configuration, and the Dashboard plus secondary-page component references.
+- Why: Layout 1 must restore the entire approved display state rather than only a named background component.
+- Alternatives: Reuse V0/V1/V2/V3, save only the background palette, or rely on screenshots without a Git checkpoint.
+- Consequences: When the Owner requests `return to layout 1` or `rollback to layout 1`, restore the complete tracked project state represented by Git tag `layout-1`. Do not interpret this as a background-only rollback. Later changes remain separate unless the Owner explicitly redefines the baseline.
+- Evidence/Links: `src/components/dashboard/SkillBackground5.tsx`, `src/components/SplashCursor.jsx`, `src/components/dashboard/WorkspaceSplashCursor.jsx`, `components.json`, `src/app/dashboard/page.tsx`, and `src/components/dashboard/SecondaryPageShell.tsx`.
+
 ## Superseded Decisions
 
 None.
@@ -1488,3 +1499,4 @@ None.
 - 2026-07-21: Named and fingerprinted `SkillBackground2.tsx` as the V3 background baseline (SHA256 `73284AF1F9861F6921EDA6BC2A35F4CF62FF8C0F6A1CE7D4E21CE95739B799F6`); future `return to V3` requests restore dashboard and secondary-page background imports to this component without changing V1, V2, or unrelated UI (`D-104`).
 - 2026-07-21: Named and fingerprinted the current `SkillBackground3.tsx` background as V0 (SHA256 `7440E68A7298D5E1A08A2538256348E29F79917446ECF7DD1FE626D3AF29C1C6`) because it is the Owner's preferred background color state; future `return to V0` requests restore dashboard and secondary-page background imports to this exact component state without changing card styling or unrelated UI (`D-105`).
 - 2026-07-21: Replaced the forgeable mock session with Auth.js Google OAuth, encrypted JWT sessions, protected-route Proxy checks, and a server-enforced Owner email allowlist; kept all secrets and the exact Owner email out of project memory and source (`D-106`).
+- 2026-07-22: Preserved the complete current display state as Layout 1, anchored by commit subject `initial layout 1` and Git tag `layout-1`; future Layout 1 rollback requests restore the full tracked state rather than only a background (`D-107`).

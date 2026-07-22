@@ -3,7 +3,8 @@
 import type { ReactNode } from "react";
 import type { ShellState } from "@/hooks/useShellState";
 import type { PageKey } from "./Sidebar";
-import SkillBackground3 from "./SkillBackground3";
+import SkillBackground5 from "./SkillBackground5";
+import WorkspaceSplashCursor from "./WorkspaceSplashCursor";
 import Sidebar from "./Sidebar";
 import MobileDrawer from "./MobileDrawer";
 import Topbar from "./Topbar";
@@ -38,7 +39,8 @@ export default function SecondaryPageShell({
         background: "#03120E",
       }}
     >
-      <SkillBackground3 />
+      <SkillBackground5 />
+      <WorkspaceSplashCursor />
 
       {state.mobileOpen && <MobileDrawer state={state} active={active} solid />}
 

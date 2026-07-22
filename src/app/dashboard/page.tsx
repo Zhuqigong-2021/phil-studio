@@ -2,7 +2,8 @@
 
 import "./dashboard.css";
 import { useDashboardState } from "@/hooks/useDashboardState";
-import SkillBackground3 from "@/components/dashboard/SkillBackground3";
+import SkillBackground5 from "@/components/dashboard/SkillBackground5";
+import WorkspaceSplashCursor from "@/components/dashboard/WorkspaceSplashCursor";
 import Sidebar from "@/components/dashboard/Sidebar";
 import MobileDrawer from "@/components/dashboard/MobileDrawer";
 import Topbar from "@/components/dashboard/Topbar";
@@ -35,7 +36,8 @@ export default function DashboardPage() {
         background: "#03120E",
       }}
     >
-      <SkillBackground3 />
+      <SkillBackground5 />
+      <WorkspaceSplashCursor />
 
       {mobileOpen && <MobileDrawer state={state} active="dashboard" />}
 
