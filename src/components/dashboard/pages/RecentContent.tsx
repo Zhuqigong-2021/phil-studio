@@ -2,6 +2,7 @@
 
 import { ExternalLinkIcon } from "../icons";
 import type { RecentPageState } from "@/hooks/useRecentPageState";
+import { openTool, openToolFromKeyboard } from "@/lib/dashboard/open-tool";
 
 export default function RecentContent({ state }: { state: RecentPageState }) {
   const { recentTools, hasRecent, noRecent, clearRecent } = state;
@@ -35,7 +36,7 @@ export default function RecentContent({ state }: { state: RecentPageState }) {
       {hasRecent && (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {recentTools.map((tool) => (
-            <div key={tool.id} className="nested-card-hover" style={{ height: 64, flexShrink: 0, display: "flex", alignItems: "center", gap: 12, padding: "0 16px", borderRadius: 14, background: "rgba(15,26,60,.10)", backdropFilter: "blur(1px) saturate(175%) brightness(1.25) contrast(1.06)", WebkitBackdropFilter: "blur(1px) saturate(175%) brightness(1.25) contrast(1.06)", border: "1px solid rgba(125,190,255,.10)", boxSizing: "border-box" }}>
+            <div key={tool.id} className="nested-card-hover" role={tool.url ? "link" : undefined} tabIndex={tool.url ? 0 : undefined} onClick={() => openTool(tool.id, tool.url)} onKeyDown={(event) => openToolFromKeyboard(event, tool.id, tool.url)} style={{ height: 64, flexShrink: 0, display: "flex", alignItems: "center", gap: 12, padding: "0 16px", borderRadius: 14, background: "rgba(15,26,60,.10)", backdropFilter: "blur(1px) saturate(175%) brightness(1.25) contrast(1.06)", WebkitBackdropFilter: "blur(1px) saturate(175%) brightness(1.25) contrast(1.06)", border: "1px solid rgba(125,190,255,.10)", boxSizing: "border-box" }}>
               <div style={{ width: 40, height: 40, borderRadius: 12, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, background: tool.accentSoft, border: `1px solid ${tool.accentBorder}`, color: tool.color }}>
                 {tool.mono}
               </div>

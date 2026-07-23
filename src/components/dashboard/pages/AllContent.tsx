@@ -2,6 +2,7 @@
 
 import { ExternalLinkIcon, StarIcon } from "../icons";
 import type { AllPageState } from "@/hooks/useAllPageState";
+import { openTool, openToolFromKeyboard } from "@/lib/dashboard/open-tool";
 
 export default function AllContent({ state }: { state: AllPageState }) {
   const { tagsList, allTools, toggleFav, view, setView, toolCount } = state;
@@ -50,7 +51,7 @@ export default function AllContent({ state }: { state: AllPageState }) {
       {view === "list" ? (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))", gridAutoRows: 64, gap: 10 }}>
           {allTools.map((tool) => (
-            <div key={tool.id} className="nested-card-hover" style={{ height: 64, display: "flex", alignItems: "center", gap: 12, padding: "0 16px", borderRadius: 14, background: "rgba(15,26,60,.10)", backdropFilter: "blur(1px) saturate(175%) brightness(1.25) contrast(1.06)", WebkitBackdropFilter: "blur(1px) saturate(175%) brightness(1.25) contrast(1.06)", border: "1px solid rgba(125,190,255,.10)", boxSizing: "border-box" }}>
+            <div key={tool.id} className="nested-card-hover" role={tool.url ? "link" : undefined} tabIndex={tool.url ? 0 : undefined} onClick={() => openTool(tool.id, tool.url)} onKeyDown={(event) => openToolFromKeyboard(event, tool.id, tool.url)} style={{ height: 64, display: "flex", alignItems: "center", gap: 12, padding: "0 16px", borderRadius: 14, background: "rgba(15,26,60,.10)", backdropFilter: "blur(1px) saturate(175%) brightness(1.25) contrast(1.06)", WebkitBackdropFilter: "blur(1px) saturate(175%) brightness(1.25) contrast(1.06)", border: "1px solid rgba(125,190,255,.10)", boxSizing: "border-box" }}>
               <div style={{ width: 40, height: 40, borderRadius: 12, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, background: tool.accentSoft, border: `1px solid ${tool.accentBorder}`, color: tool.color }}>
                 {tool.mono}
               </div>
@@ -58,7 +59,7 @@ export default function AllContent({ state }: { state: AllPageState }) {
                 <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{tool.name}</div>
                 <div style={{ fontSize: 11, color: "#A9B2C3", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{tool.tagStr}</div>
               </div>
-              <button onClick={() => toggleFav(tool.id)} aria-label="Toggle favorite" style={{ width: 36, height: 36, flexShrink: 0, border: "none", background: "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
+              <button onClick={(event) => { event.stopPropagation(); toggleFav(tool.id); }} aria-label="Toggle favorite" style={{ width: 36, height: 36, flexShrink: 0, border: "none", background: "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
                 <StarIcon filled={tool.favorite} />
               </button>
               <ExternalLinkIcon size={15} />
@@ -68,7 +69,7 @@ export default function AllContent({ state }: { state: AllPageState }) {
       ) : (
         <div className="all-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(200px,1fr))", gap: 14 }}>
           {allTools.map((tool) => (
-            <div key={tool.id} className="nested-card-hover" style={{ minHeight: 168, borderRadius: 16, padding: 16, boxSizing: "border-box", background: "rgba(15,26,60,.10)", backdropFilter: "blur(1px) saturate(175%) brightness(1.25) contrast(1.06)", WebkitBackdropFilter: "blur(1px) saturate(175%) brightness(1.25) contrast(1.06)", border: "1px solid rgba(125,190,255,.10)", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+            <div key={tool.id} className="nested-card-hover" role={tool.url ? "link" : undefined} tabIndex={tool.url ? 0 : undefined} onClick={() => openTool(tool.id, tool.url)} onKeyDown={(event) => openToolFromKeyboard(event, tool.id, tool.url)} style={{ minHeight: 168, borderRadius: 16, padding: 16, boxSizing: "border-box", background: "rgba(15,26,60,.10)", backdropFilter: "blur(1px) saturate(175%) brightness(1.25) contrast(1.06)", WebkitBackdropFilter: "blur(1px) saturate(175%) brightness(1.25) contrast(1.06)", border: "1px solid rgba(125,190,255,.10)", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
               <div style={{ width: 40, height: 40, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, background: tool.accentSoft, border: `1px solid ${tool.accentBorder}`, color: tool.color }}>
                 {tool.mono}
               </div>
@@ -77,7 +78,7 @@ export default function AllContent({ state }: { state: AllPageState }) {
                 <div style={{ fontSize: 11, color: "#A9B2C3", marginTop: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{tool.tagStr}</div>
               </div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 14 }}>
-                <button onClick={() => toggleFav(tool.id)} aria-label="Toggle favorite" style={{ width: 24, height: 24, border: "none", background: "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
+                <button onClick={(event) => { event.stopPropagation(); toggleFav(tool.id); }} aria-label="Toggle favorite" style={{ width: 24, height: 24, border: "none", background: "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
                   <StarIcon filled={tool.favorite} size={15} />
                 </button>
                 <ExternalLinkIcon size={14} />

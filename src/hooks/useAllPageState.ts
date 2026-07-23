@@ -5,6 +5,7 @@ import { TAGS, TOOLS_RAW, decorate } from "@/lib/dashboard/mock-data";
 import type { ViewMode } from "@/lib/dashboard/types";
 import { buildCommandResults, buildToolResults, useShellState } from "./useShellState";
 import type { TagChip } from "./useDashboardState";
+import { openTool } from "@/lib/dashboard/open-tool";
 
 export function useAllPageState() {
   const shell = useShellState();
@@ -48,7 +49,7 @@ export function useAllPageState() {
   const toolResults = useMemo(
     () =>
       buildToolResults(tools, q, (t) => {
-        window.open(t.url ?? `https://${t.id}.example.com`, "_blank");
+        openTool(t.id, t.url);
         closePalette();
       }),
     [tools, q, closePalette],

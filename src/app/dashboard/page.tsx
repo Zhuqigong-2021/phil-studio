@@ -9,13 +9,13 @@ import MobileDrawer from "@/components/dashboard/MobileDrawer";
 import Topbar from "@/components/dashboard/Topbar";
 import WelcomeCard from "@/components/dashboard/WelcomeCard";
 import ToolsColumn from "@/components/dashboard/ToolsColumn";
-import PanelSlotColumn from "@/components/dashboard/panels/PanelSlotColumn";
+import DashboardRightRail from "@/components/dashboard/panels/DashboardRightRail";
 import CommandPalette from "@/components/dashboard/CommandPalette";
 import AddToolModal from "@/components/dashboard/AddToolModal";
 
 export default function DashboardPage() {
   const state = useDashboardState();
-  const { mobileOpen, slotAPanels, slotBPanels, slotAEmpty, slotBEmpty, gridCols, openAddTool } = state;
+  const { mobileOpen, openAddTool } = state;
 
   return (
     <div
@@ -43,43 +43,13 @@ export default function DashboardPage() {
 
       <Sidebar state={state} variant="desktop" active="dashboard" />
 
-      <div style={{ position: "relative", zIndex: 1, flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 20, overflow: "visible", minHeight: 0 }}>
-        <Topbar state={state} />
-
-        <div
-          className="dash-grid noscroll"
-          style={{
-            flex: 1,
-            minHeight: 0,
-            overflow: "visible",
-            display: "grid",
-            gridTemplateColumns: gridCols,
-            gridTemplateRows: "auto minmax(0,1fr)",
-            gap: 20,
-            transition: "grid-template-columns .18s ease",
-          }}
-        >
+      <div className="dashboard-layout noscroll">
+        <main className="dashboard-main-column">
+          <Topbar state={state} />
           <WelcomeCard onAddTool={openAddTool} />
           <ToolsColumn state={state} />
-          <PanelSlotColumn
-            slotKey="A"
-            className="col-access"
-            gridColumn="2"
-            gridRow="2"
-            panels={slotAPanels}
-            empty={slotAEmpty}
-            state={state}
-          />
-          <PanelSlotColumn
-            slotKey="B"
-            className="col-widgets"
-            gridColumn="3"
-            gridRow="1 / 3"
-            panels={slotBPanels}
-            empty={slotBEmpty}
-            state={state}
-          />
-        </div>
+        </main>
+        <DashboardRightRail state={state} />
       </div>
 
       <CommandPalette state={state} />

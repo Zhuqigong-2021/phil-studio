@@ -40,7 +40,7 @@ const NAV_ITEMS: { key: PageKey; name: string; href: string; icon: React.ReactNo
   },
   {
     key: "favs",
-    name: "Favs",
+    name: "Favorites",
     href: "/favs",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">

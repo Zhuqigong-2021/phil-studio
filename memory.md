@@ -10,7 +10,7 @@
 ## Current Project State
 
 - Status: Personal-use digital workspace defined with eighteen confirmed MVP features.
-- Last updated: 2026-07-22
+- Last updated: 2026-07-23
 
 ## Workflow State
 
@@ -1165,7 +1165,7 @@
 
 ### D-102: Preserve the current WebGL background as V1
 
-- Status: Active
+- Status: Superseded by `D-108`
 - Date: 2026-07-21
 - Context: The Owner explicitly named the current animated WebGL background `V1` and wants the phrase `return the background to V1` to restore this exact background state in future work.
 - Decision/Finding: Treat the 2026-07-21 contents of `src/components/dashboard/SilkBackground.tsx` as the WebGL background V1 baseline. V1 uses SHA-256 `09DC38BC5E9B2DBC71E3312AC1E3E518C457F7665B296B266E5A34221D66CCD0`; palette entries `#0B0A2E` repeated three times, `#312E81` repeated three times, `#4F46E5`, and `#818CF8`; scene time multiplier `0.35`; shape values `(1.28, 0.47, 0.5, 0.0)`; surface values `(2.4, 0.98, 0.0, 1.0)`; finish values `(0.0, 0.0, 0.0, 0.01)`; transform seed `707.0`; no space offset; and cursor configuration `(0.0, 2.0, 0.65, 0.46)`. Preserve the current resize debounce, WebGL context-loss recovery, isolated stacking context, and GPU-layer safeguards as part of V1 implementation stability.
@@ -1176,7 +1176,7 @@
 
 ### D-103: Preserve the current Warp background as V2
 
-- Status: Active
+- Status: Superseded by `D-108`
 - Date: 2026-07-21
 - Context: After comparing several experimental backgrounds, the Owner approved the current Warp water effect with the V1 palette as a second named restoration baseline.
 - Decision/Finding: Treat `src/components/dashboard/SkillBackround1.tsx` with SHA-256 `C61DE7DEA12C72FA2DBD223606616080905FBAADD294012B976B67E5D099D5A4` as background V2. V2 uses `@paper-design/shaders-react` `Warp` with proportion `0.45`, softness `1`, distortion `0.25`, swirl `0.8`, ten swirl iterations, `checks` shape, shape scale `0.1`, scale `1`, rotation `0`, speed `1`, and colors `#0B0A2E`, `#312E81`, `#4F46E5`, and `#818CF8`.
@@ -1187,7 +1187,7 @@
 
 ### D-105: Preserve the preferred Warp background as V0
 
-- Status: Active
+- Status: Superseded by `D-108`
 - Date: 2026-07-21
 - Context: After iterative Warp palette, highlight, visibility, and localized contrast tuning, the Owner identified the current background color state as the preferred restoration baseline and named it V0.
 - Decision/Finding: Treat `src/components/dashboard/SkillBackground3.tsx` with SHA-256 `7440E68A7298D5E1A08A2538256348E29F79917446ECF7DD1FE626D3AF29C1C6` as background V0.
@@ -1218,9 +1218,25 @@
 - Consequences: When the Owner requests `return to layout 1` or `rollback to layout 1`, restore the complete tracked project state represented by Git tag `layout-1`. Do not interpret this as a background-only rollback. Later changes remain separate unless the Owner explicitly redefines the baseline.
 - Evidence/Links: `src/components/dashboard/SkillBackground5.tsx`, `src/components/SplashCursor.jsx`, `src/components/dashboard/WorkspaceSplashCursor.jsx`, `components.json`, `src/app/dashboard/page.tsx`, and `src/components/dashboard/SecondaryPageShell.tsx`.
 
+### D-108: Normalize the five background-only restoration versions
+
+- Status: Active
+- Date: 2026-07-23
+- Context: The Owner wants one simple and sequential `V1` through `V5` background vocabulary based on the five background component files currently retained in the project. Earlier experimental names included `V0`, an obsolete `SkillBackround1.tsx` V2, and a different V3 mapping, which would make future rollback instructions ambiguous.
+- Decision/Finding: The only active background-version mapping is:
+  - `V1` = `src/components/dashboard/SilkBackground.tsx` (SHA-256 `09DC38BC5E9B2DBC71E3312AC1E3E518C457F7665B296B266E5A34221D66CCD0`)
+  - `V2` = `src/components/dashboard/SkillBackground2.tsx` (SHA-256 `73284AF1F9861F6921EDA6BC2A35F4CF62FF8C0F6A1CE7D4E21CE95739B799F6`)
+  - `V3` = `src/components/dashboard/SkillBackground3.tsx` (SHA-256 `7440E68A7298D5E1A08A2538256348E29F79917446ECF7DD1FE626D3AF29C1C6`)
+  - `V4` = `src/components/dashboard/SkillBackground4.tsx` (SHA-256 `6C9DEF5BCAA01C5D3D8E69E6D282218F0F8C6BFD49A619D34C36DEBD50A08595`)
+  - `V5` = `src/components/dashboard/SkillBackground5.tsx` (SHA-256 `DB4E22746FD09176C7D46FC9C52A740ACA28F0551091D6E224856F498E1BC39C`) and is the current active background.
+- Why: Sequential names make restoration requests predictable while preserving each accepted visual implementation independently.
+- Alternatives: Retain the historical V0/V1/V2/V3 vocabulary, rename or duplicate the component files, or treat a background request as a complete layout rollback.
+- Consequences: When the Owner says `回滚到 V1`, `回滚到 V2`, `回滚到 V3`, `回滚到 V4`, or `回滚到 V5`, change only the Dashboard and secondary-page background component import/render target to the corresponding file. Do not use Git reset and do not revert or modify Cards, Sidebar, layout, content, authentication, Splash Cursor, responsive behavior, animations outside the selected background component, or any other project changes. Background-version rollback and `Layout 1` rollback remain different operations: `Layout 1` continues to mean the complete tagged layout under `D-107`.
+- Evidence/Links: The five component files listed above; `src/app/dashboard/page.tsx`; `src/components/dashboard/SecondaryPageShell.tsx`; explicit Owner instruction on 2026-07-23.
+
 ## Superseded Decisions
 
-None.
+- `D-102` through `D-105` used the earlier experimental background vocabulary. Their historical component fingerprints remain useful evidence, but all old V0/V1/V2/V3 naming and restoration semantics are superseded by the sequential mapping in `D-108`.
 
 ## Rejected Alternatives
 
@@ -1500,3 +1516,4 @@ None.
 - 2026-07-21: Named and fingerprinted the current `SkillBackground3.tsx` background as V0 (SHA256 `7440E68A7298D5E1A08A2538256348E29F79917446ECF7DD1FE626D3AF29C1C6`) because it is the Owner's preferred background color state; future `return to V0` requests restore dashboard and secondary-page background imports to this exact component state without changing card styling or unrelated UI (`D-105`).
 - 2026-07-21: Replaced the forgeable mock session with Auth.js Google OAuth, encrypted JWT sessions, protected-route Proxy checks, and a server-enforced Owner email allowlist; kept all secrets and the exact Owner email out of project memory and source (`D-106`).
 - 2026-07-22: Preserved the complete current display state as Layout 1, anchored by commit subject `initial layout 1` and Git tag `layout-1`; future Layout 1 rollback requests restore the full tracked state rather than only a background (`D-107`).
+- 2026-07-23: Replaced the earlier experimental V0/V1/V2/V3 background vocabulary with the canonical five-file mapping `V1 = SilkBackground`, `V2 = SkillBackground2`, `V3 = SkillBackground3`, `V4 = SkillBackground4`, and `V5 = SkillBackground5`; confirmed V5 as current and made every V1-V5 rollback background-only (`D-108`).

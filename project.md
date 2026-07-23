@@ -2,11 +2,11 @@
 
 ## Document Status
 
-- Status: Product specification reopened for draggable auxiliary panels and dynamic Dashboard columns; active feature scope is `F-001` through `F-020`.
+- Status: Product specification reopened for the Dashboard layout-density revision; active feature scope is `F-001` through `F-020`.
 - Product Mode: Personal Use
 - Current Stage: Design Definition (UI Freeze reopened for style revision)
-- Last Updated: 2026-07-20
-- Product Freeze: Reopened on 2026-07-20 for `4.18-draft`; prior complex visual recipes remain cancelled, Cards retain the limited blue-Indigo veil/highlight trial, and the desktop Sidebar shell is explicitly colorless and transparent.
+- Last Updated: 2026-07-22
+- Product Freeze: Reopened on 2026-07-22 for `4.19-draft`; the active visual theme remains unchanged while the Dashboard adopts a denser main-column plus fixed right-rail layout.
 - Previous Frozen Version: `4.1-freeze` (historical feature-scope baseline).
 
 ## Vision
@@ -888,7 +888,7 @@ No additional feature enters this MVP sequence unless Product Freeze is explicit
 
 - Status: Reopened; renewed authorization pending.
 - Previous Frozen Version: `4.1-freeze`.
-- Current Draft: `4.18-draft`.
+- Current Draft: `4.19-draft`.
 - Version: `4.1-freeze`.
 - Date: 2026-07-18.
 - Frozen Scope: `F-001` through `F-018`, their User Stories, Functional Requirements, Acceptance Criteria, Non-Goals, success metrics, NFRs, initial inventory mapping, Roadmap, and Backlog decisions.
@@ -920,10 +920,44 @@ No additional feature enters this MVP sequence unless Product Freeze is explicit
 - Open: 私有云数据库供应商是什么？数据区域优先加拿大，不可用时使用美国。
 - Resolved: 工具清单、收藏和其他中心网站数据使用 Owner-only 私有云数据库；具体平台与区域进入 Development Definition。
 
+## Dashboard Layout Revision (`4.19-draft`)
+
+### Scope boundary
+
+- This revision changes only Dashboard structure, Welcome placement, the right-side information rail, Quick Access/Recent presentation, To-Do placement, All-area density, Navbar alignment, visible item counts, and overall page density.
+- It does not change the approved WebGL background, Splash Cursor, glass material, color system, Sidebar appearance, authentication, tool data, or the layout of All, Favs, Recent, and Manage destination pages.
+- The reference layout is used as an information-architecture guide. Date & Time and Montréal Weather replace the former Calendar Card; a new notification feature remains out of scope.
+
+### Requirements
+
+- `FR-180`: On wide desktop, Dashboard must use one flexible Main column and one fixed right information rail of approximately `300–340px`, with a compact `14–16px` inter-column gap.
+- `FR-181`: Search/Navbar, Welcome, filters, Favs, and All must remain inside the Main column. Welcome must not span across the right information rail.
+- `FR-182`: The right information rail must present Date & Time first, Montréal Weather second, one combined Quick Access/Recent tabbed Card third, and To-Do last. The rail may scroll independently when viewport height is insufficient.
+- `FR-183`: Quick Access and Recent must share one parent Card and switch in place through visible tabs without navigation or data loss.
+- `FR-184`: Favorites, All, Quick Access, Recent, and To-Do must expose concise item counts. To-Do uses completed/total progress.
+- `FR-185`: All List View must use a compact two-column row layout on supported desktop widths and collapse to one column on phone widths. Grid View remains available.
+- `FR-186`: Dashboard spacing and component heights may be reduced to improve scan density, but existing content, actions, glass styling, theme colors, hover effects, and accessibility behavior must remain intact.
+- `FR-187`: The existing Navbar controls remain Search, theme control, and Settings. Date & Time and Weather belong only to the right rail; this revision must not add a Notification control.
+- `FR-188`: Date & Time must update from the browser clock in the `America/Toronto` zone and derive the current zone abbreviation dynamically. Montréal Weather must retrieve current temperature, WMO condition, daylight state, and daily high/low values from a live forecast service, refresh periodically and on window focus, and show a matching weather icon.
+
+### Acceptance criteria
+
+- `AC-157`: At wide desktop width, Date & Time aligns with the top of the Main-column Navbar while Welcome and Tools occupy only the Main column; Welcome stretches to the same Main-column width as the All Card below.
+- `AC-158`: The right rail order is Date & Time, Weather, Quick Access/Recent, then To-Do, with no second auxiliary column or draggable column grip visible.
+- `AC-159`: Selecting Quick Access or Recent changes only the combined Card body and preserves keyboard-accessible tab semantics.
+- `AC-160`: Favs and All headings show the currently rendered tool count; To-Do shows completed tasks over total tasks.
+- `AC-161`: All List View renders two stable columns without text/action collisions on desktop and one column below the mobile breakpoint.
+- `AC-162`: At widths below `900px`, Dashboard stacks Main content and the right rail without horizontal overflow; the existing mobile menu and compact Welcome rules remain functional.
+- `AC-163`: No background component, theme token, Sidebar visual, authentication behavior, or non-Dashboard page is changed by this revision.
+- `AC-164`: Dashboard To-Do presents four flat task rows, shows one completed task by default, uses rounded-square checkboxes, and places each period label beneath its task title rather than rendering standalone period headings.
+- `AC-165`: The time advances without page reload, the zone switches correctly between EST and EDT, and Weather replaces its loading state with current Montréal values and a condition-appropriate icon; a failed request shows a concise unavailable state without breaking the right rail.
+- `AC-166`: On desktop, the All Card consumes the remaining Main-column height and its bottom edge aligns with the expanded Sidebar bottom edge; overflowing tools scroll only inside the All Card.
+
 ## Version History
 
 | Version | Date | Change |
 |---|---|---|
+| 4.19-draft | 2026-07-22 | Replaced the Dashboard's two draggable auxiliary columns with one fixed right rail; confined Welcome to Main; combined Quick Access and Recent into tabs; compacted All and page spacing; added visible counts; retained the existing visual theme and feature scope. |
 | 0.1-draft | 2026-07-18 | 创建产品草案；加入已确认的 `F-001`、关联故事、需求与验收标准。 |
 | 0.2-draft | 2026-07-18 | 接受 `F-002`；加入网站内工具管理、隐藏恢复和输入校验范围。 |
 | 0.3-draft | 2026-07-18 | 拒绝 `P-003`；明确排除备份、导入和导出。 |

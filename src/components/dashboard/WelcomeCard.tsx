@@ -3,11 +3,10 @@ export default function WelcomeCard({ onAddTool }: { onAddTool: () => void }) {
     <div
       className="welcome-card glass-shine-card"
       style={{
-        gridColumn: "1 / 3",
-        gridRow: 1,
-        alignSelf: "start",
+        alignSelf: "stretch",
+        width: "100%",
         borderRadius: 20,
-        padding: "22px 32px",
+        padding: "18px 28px",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",

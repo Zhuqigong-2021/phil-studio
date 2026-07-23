@@ -2,11 +2,11 @@
 
 ## Design Status and UI Freeze
 
-- Status: Design Definition reopened; structural decisions remain active through `DD-060`, `DD-061` cancels old visual recipes, `DD-062` defines the limited blue-Indigo Card veil/highlight trial, and `DD-063` makes the desktop Sidebar shell colorless and transparent while leaving large backgrounds unspecified.
+- Status: Design Definition reopened; structural decisions remain active through `DD-064`, with the existing visual theme preserved and the Dashboard layout-density revision in progress.
 - UI Freeze: Reopened on 2026-07-19.
 - Previous Frozen Version: `5.8-freeze` (historical baseline; no longer the active UI authority).
-- Current Draft Version: `5.33-draft`.
-- Last Updated: 2026-07-20.
+- Current Draft Version: `5.34-draft`.
+- Last Updated: 2026-07-22.
 - Confirmed scope: active product features `F-001` through `F-020` mapped to the documented screens, components, responsive rules, visual tokens, motion, loading, and accessibility states; historical Freeze remains `F-001` through `F-018`.
 - Design Quality Gate: `PASS` for the current Product-to-Design mapping; final Owner review and a new UI Freeze remain required.
 - Change boundary: Layout, sizing, interaction, responsive, content, state, and accessibility rules remain active. `DD-061` continues to cancel older gradients/material recipes; `DD-062` is the only current Card-color exception; `DD-063` defines only the transparent desktop Sidebar shell. Neither decision defines the Dashboard/page background itself.
@@ -1577,10 +1577,25 @@
 - Review the direct-drag handle placement and two/three-column transitions defined by `DD-054` in the next generated design.
 - Owner review of the blue-Indigo Card veil trial and Claude Design output; then review the future exported HTML before explicit re-authorization of `Freeze UI`.
 
+### DD-064: Dashboard Main Column and Fixed Right Rail
+
+- Scope: Dashboard only. Preserve the current WebGL structure, Splash Cursor, glass materials, colors, typography hierarchy, Sidebar, hover effects, and component behavior unless specified below. The upper-right background highlight is the sole background exception: it uses a clearer blue-Indigo screen blend with less white/gray opacity so the underlying water texture remains visible around the right rail.
+- Wide desktop layout uses `Sidebar | Main | Right rail`. Main is flexible with `minmax(0, 1fr)`; Right rail is `300–340px`; the gap is `16px`. Remove the second auxiliary column and all Dashboard column drag grips.
+- Main-column order is Navbar, Welcome, filters/Favs, then All. Navbar aligns to Main width; no Notification, Date & Time, or Weather control is introduced.
+- Welcome is Main-only and must stretch to the full Main-column width so its outer edges align with the All Card below. It uses `110px` preferred height, `18px 28px` padding, and retains the existing title, responsive subtitle, Add Tool action, material, and motion.
+- Right-rail order is Date & Time, Montréal Weather, combined Quick Access/Recent, then To-Do. The rail uses a `10px` vertical gap and must keep `overflow: visible` on desktop so Card shadows fade naturally instead of terminating as hard rectangular outlines. At constrained viewport heights and on Mobile, the established outer page scrolling behavior owns overflow rather than turning the rail itself into a clipping scrollport.
+- Date & Time and Weather are separate compact Cards matching the existing glass material. Date & Time updates locally and shows the current Toronto/Montréal time zone, dynamically derived EST/EDT abbreviation, date, city, and `Today` badge. Weather loads live Montréal temperature, WMO condition, daylight state, high, and low values; it uses the matching Weather Icons glyph with a restrained cool glow and refreshes every ten minutes plus on window focus.
+- Quick Access/Recent uses one `214px` parent Card. Two equal tabs use `30px` controls; the active tab retains the current Indigo family and the body scrolls complete `42px` rows. Counts appear in both tab labels.
+- To-Do remains the final right-rail Card and shows `(completed/total)` beside the title plus a proportional progress bar. It uses one flat task list with rounded-square checkboxes; each task shows its period (`Today`, `Tomorrow`, or `This Week`) as a muted subtitle instead of a separate group heading.
+- The Dashboard section label is `Favorites`, shows its rendered count, and uses `74px` cards. Category tags use wider horizontal padding and spacing so the group occupies a deliberate full-length row rather than a dense short cluster. All shows its filtered count, uses `14px 16px` parent padding, and fills the remaining desktop Main-column height so its bottom edge aligns with the expanded Sidebar; List View uses two `50px` row columns with `6px` gaps and scrolls internally when needed. Grid View remains unchanged.
+- Density is achieved only by shorter cards and smaller structural gaps. Do not reduce readable type sizes, action targets, contrast, or existing focus behavior.
+- Below `900px`, Main and Right rail stack in one column, All List View becomes one column, and the existing Mobile Navbar/Drawer and short Welcome subtitle remain unchanged. No horizontal page overflow is allowed.
+
 ## Version History
 
 | Version | Date | Change |
 |---|---|---|
+| 5.34-draft | 2026-07-22 | Defined the Dashboard-only Main plus fixed right-rail layout, Main-only Welcome, Calendar/Quick-Recent/To-Do rail order, compact two-column All list, visible counts, and denser spacing while preserving the existing visual system. |
 | 0.1-draft | 2026-07-18 | Captured standalone sign-in, direct post-auth Dashboard transition, two-region Dashboard shell, and expanded/collapsed Sidebar states. |
 | 0.2-draft | 2026-07-18 | Confirmed Sidebar destinations and Dashboard home order; separated category tags, collection views, search function, and open action. |
 | 0.3-draft | 2026-07-18 | Renamed `Home` to `Dashboard` and moved `Settings` plus `Log out` into the Google Owner account menu at the bottom of the Sidebar. |

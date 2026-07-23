@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { TOOLS_RAW, decorate } from "@/lib/dashboard/mock-data";
 import { buildCommandResults, buildToolResults, useShellState } from "./useShellState";
+import { openTool } from "@/lib/dashboard/open-tool";
 
 export function useFavsPageState() {
   const shell = useShellState();
@@ -32,7 +33,7 @@ export function useFavsPageState() {
   const toolResults = useMemo(
     () =>
       buildToolResults(tools, q, (t) => {
-        window.open(t.url ?? `https://${t.id}.example.com`, "_blank");
+        openTool(t.id, t.url);
         closePalette();
       }),
     [tools, q, closePalette],

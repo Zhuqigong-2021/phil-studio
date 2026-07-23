@@ -1,8 +1,9 @@
 import { ExternalLinkIcon } from "../icons";
 import type { DashboardState } from "@/hooks/useDashboardState";
+import { openTool, openToolFromKeyboard } from "@/lib/dashboard/open-tool";
 
 export default function RecentPanel({ state }: { state: DashboardState }) {
-  const { recentTools } = state;
+  const { recentTools, clearRecentTools } = state;
   return (
     <div
       className="glass-shine-card"
@@ -24,14 +25,20 @@ export default function RecentPanel({ state }: { state: DashboardState }) {
     >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ fontSize: 15, fontWeight: 650 }}>Recent</div>
-        <span style={{ fontSize: 11, color: "#A9B2C3", cursor: "pointer" }}>Clear</span>
+        <button
+          type="button"
+          onClick={clearRecentTools}
+          style={{ padding: 0, border: 0, background: "transparent", fontSize: 11, color: "#A9B2C3", cursor: "pointer" }}
+        >
+          Clear
+        </button>
       </div>
       <div style={{ fontSize: 11, color: "#A9B2C3", marginTop: 2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
         Jump back into tools you opened.
       </div>
       <div className="noscroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden", marginTop: 18, display: "flex", flexDirection: "column", gap: 8, scrollSnapType: "y mandatory" }}>
         {recentTools.map((tool) => (
-          <div key={tool.id} className="nested-card-hover" style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 9, padding: 9, borderRadius: 11, background: "linear-gradient(165deg, rgba(165,180,255,.05) 0%, rgba(99,102,241,.03) 45%, rgba(255,255,255,.02) 100%)", border: "1px solid rgba(255,255,255,.06)", scrollSnapAlign: "start" }}>
+          <div key={tool.id} className="nested-card-hover" role={tool.url ? "link" : undefined} tabIndex={tool.url ? 0 : undefined} onClick={() => openTool(tool.id, tool.url)} onKeyDown={(event) => openToolFromKeyboard(event, tool.id, tool.url)} style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 9, padding: 9, borderRadius: 11, background: "linear-gradient(165deg, rgba(165,180,255,.05) 0%, rgba(99,102,241,.03) 45%, rgba(255,255,255,.02) 100%)", border: "1px solid rgba(255,255,255,.06)", scrollSnapAlign: "start" }}>
             <div style={{ width: 26, height: 26, borderRadius: 8, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, background: tool.accentSoft, border: `1px solid ${tool.accentBorder}`, color: tool.color }}>
               {tool.mono}
             </div>

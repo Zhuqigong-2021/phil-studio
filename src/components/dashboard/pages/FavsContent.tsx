@@ -2,6 +2,7 @@
 
 import { ExternalLinkIcon } from "../icons";
 import type { FavsPageState } from "@/hooks/useFavsPageState";
+import { openTool, openToolFromKeyboard } from "@/lib/dashboard/open-tool";
 
 export default function FavsContent({ state }: { state: FavsPageState }) {
   const { favTools, toggleFav, favCount, hasFavs } = state;
@@ -35,7 +36,7 @@ export default function FavsContent({ state }: { state: FavsPageState }) {
       {hasFavs ? (
         <div className="all-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(200px,1fr))", gap: 14 }}>
           {favTools.map((tool) => (
-            <div key={tool.id} className="nested-card-hover" style={{ minHeight: 168, borderRadius: 16, padding: 16, boxSizing: "border-box", background: "rgba(15,26,60,.10)", backdropFilter: "blur(1px) saturate(175%) brightness(1.25) contrast(1.06)", WebkitBackdropFilter: "blur(1px) saturate(175%) brightness(1.25) contrast(1.06)", border: "1px solid rgba(125,190,255,.10)", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+            <div key={tool.id} className="nested-card-hover" role={tool.url ? "link" : undefined} tabIndex={tool.url ? 0 : undefined} onClick={() => openTool(tool.id, tool.url)} onKeyDown={(event) => openToolFromKeyboard(event, tool.id, tool.url)} style={{ minHeight: 168, borderRadius: 16, padding: 16, boxSizing: "border-box", background: "rgba(15,26,60,.10)", backdropFilter: "blur(1px) saturate(175%) brightness(1.25) contrast(1.06)", WebkitBackdropFilter: "blur(1px) saturate(175%) brightness(1.25) contrast(1.06)", border: "1px solid rgba(125,190,255,.10)", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
               <div style={{ width: 40, height: 40, borderRadius: 12, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, background: tool.accentSoft, border: `1px solid ${tool.accentBorder}`, color: tool.color }}>
                 {tool.mono}
               </div>
@@ -44,7 +45,7 @@ export default function FavsContent({ state }: { state: FavsPageState }) {
                 <div style={{ fontSize: 11, color: "#A9B2C3", marginTop: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{tool.tagStr}</div>
               </div>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 14 }}>
-                <button onClick={() => toggleFav(tool.id)} aria-label="Toggle favorite" style={{ width: 24, height: 24, border: "none", background: "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
+                <button onClick={(event) => { event.stopPropagation(); toggleFav(tool.id); }} aria-label="Toggle favorite" style={{ width: 24, height: 24, border: "none", background: "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0 }}>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="#67E8F9" stroke="#67E8F9" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z" /></svg>
                 </button>
                 <ExternalLinkIcon size={14} />

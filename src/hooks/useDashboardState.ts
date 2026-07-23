@@ -3,15 +3,18 @@
 import { useCallback, useMemo, useState } from "react";
 import {
   QA_IDS,
-  RECENT,
   TAGS,
-  TODO_RAW,
   TOOLS_RAW,
   WEEKDAYS,
   decorate,
 } from "@/lib/dashboard/mock-data";
 import type { DecoratedTool, PanelId, ViewMode } from "@/lib/dashboard/types";
 import { buildCommandResults, buildToolResults, useShellState } from "./useShellState";
+import { useRecentTools } from "./useRecentTools";
+import { formatRecentTime } from "@/lib/dashboard/recent-tools";
+import { openTool } from "@/lib/dashboard/open-tool";
+import { useDailyTasks } from "./useDailyTasks";
+import { formatTaskTime } from "@/lib/dashboard/daily-tasks";
 
 const FAV_BASE = "linear-gradient(165deg, rgba(165,180,255,.05) 0%, rgba(99,102,241,.035) 45%, rgba(15,26,60,.14) 100%)";
 
@@ -36,11 +39,12 @@ export interface PanelData {
 
 export function useDashboardState() {
   const shell = useShellState();
+  const { recentTools: storedRecentTools, clearRecentTools } = useRecentTools();
+  const { tasks: storedTasks, addTask, toggleTask } = useDailyTasks();
   const { router, closePalette, query, openAddTool } = shell;
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [view, setView] = useState<ViewMode>("list");
   const [favOverrides, setFavOverrides] = useState<Record<string, boolean>>({});
-  const [doneTasks, setDoneTasks] = useState<Record<string, boolean>>({});
   const [slots, setSlots] = useState<{ slotA: PanelId[]; slotB: PanelId[] }>({
     slotA: ["qa", "recent"],
     slotB: ["calendar", "todo"],
@@ -143,10 +147,6 @@ export function useDashboardState() {
     });
   }, []);
 
-  const toggleTask = useCallback((key: string) => {
-    setDoneTasks((prev) => ({ ...prev, [key]: !prev[key] }));
-  }, []);
-
   const tools: DecoratedTool[] = useMemo(() => {
     return TOOLS_RAW.map(decorate).map((t) => {
       const favorite = favOverrides[t.id] !== undefined ? favOverrides[t.id] : t.favorite;
@@ -169,11 +169,17 @@ export function useDashboardState() {
     [tools],
   );
 
-  const qaTools = useMemo(() => QA_IDS.map((id) => byId[id]).filter(Boolean), [byId]);
+  const qaTools = useMemo(() => {
+    const ids = [...storedRecentTools.map((entry) => entry.id), ...QA_IDS];
+    return [...new Set(ids)].map((id) => byId[id]).filter(Boolean).slice(0, QA_IDS.length);
+  }, [byId, storedRecentTools]);
 
   const recentTools = useMemo(
-    () => RECENT.map((r) => ({ ...byId[r.id], time: r.time })).filter((t) => t.id),
-    [byId],
+    () =>
+      storedRecentTools
+        .map((entry) => ({ ...byId[entry.id], time: formatRecentTime(entry.openedAt) }))
+        .filter((tool) => tool.id),
+    [byId, storedRecentTools],
   );
 
   const tagsList: TagChip[] = useMemo(() => {
@@ -185,30 +191,15 @@ export function useDashboardState() {
     }));
   }, [activeTag]);
 
-  const todoGroups = useMemo(() => {
-    let counter = 0;
-    return TODO_RAW.map((g) => ({
-      label: g.label,
-      labelColor: g.labelColor,
-      count: g.tasks.length,
-      tasks: g.tasks.map((t) => {
-        const key = `${g.label}-${counter++}`;
-        const done = !!doneTasks[key];
-        return {
-          key,
-          title: t.title,
-          time: t.time,
-          dot: t.dot,
-          done,
-          checkBorder: done ? t.dot : "rgba(255,255,255,.35)",
-          checkBg: done ? t.dot : "transparent",
-          strike: done ? "line-through" : "none",
-          textColor: done ? "#7C8698" : "#F2F6FF",
-          toggle: () => toggleTask(key),
-        };
-      }),
-    }));
-  }, [doneTasks, toggleTask]);
+  const todoTasks = useMemo(
+    () =>
+      storedTasks.map((task) => ({
+        ...task,
+        time: formatTaskTime(task.createdAt),
+        toggle: () => toggleTask(task.id),
+      })),
+    [storedTasks, toggleTask],
+  );
 
   const buildPanel = useCallback(
     (id: PanelId): PanelData => ({
@@ -233,7 +224,7 @@ export function useDashboardState() {
   const toolResults = useMemo(
     () =>
       buildToolResults(tools, q, (t) => {
-        window.open(t.url ?? `https://${t.id}.example.com`, "_blank");
+        openTool(t.id, t.url);
         closePalette();
       }),
     [tools, q, closePalette],
@@ -264,8 +255,10 @@ export function useDashboardState() {
     // side panels
     qaTools,
     recentTools,
+    clearRecentTools,
     weekdays: WEEKDAYS,
-    todoGroups,
+    todoTasks,
+    addTask,
     slotA,
     slotB,
     slotAPanels,

@@ -43,7 +43,7 @@ export interface ShellState {
 export const NAV_COMMANDS: { name: string; href: string }[] = [
   { name: "Dashboard", href: "/dashboard" },
   { name: "All", href: "/all" },
-  { name: "Favs", href: "/favs" },
+  { name: "Favorites", href: "/favs" },
   { name: "Recent", href: "/recent" },
   { name: "Manage", href: "/manage" },
 ];
@@ -86,7 +86,7 @@ export function useShellState() {
   const closeAddTool = useCallback(() => setAddToolOpen(false), []);
 
   const showLabels = !collapsed || mobileOpen;
-  const sidebarWidth = collapsed ? 72 : 220;
+  const sidebarWidth = collapsed ? 72 : 240;
 
   return {
     router,

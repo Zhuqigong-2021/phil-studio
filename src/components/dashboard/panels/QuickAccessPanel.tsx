@@ -1,5 +1,6 @@
 import { ExternalLinkIcon } from "../icons";
 import type { DashboardState } from "@/hooks/useDashboardState";
+import { openTool, openToolFromKeyboard } from "@/lib/dashboard/open-tool";
 
 export default function QuickAccessPanel({ state }: { state: DashboardState }) {
   const { qaTools } = state;
@@ -28,7 +29,7 @@ export default function QuickAccessPanel({ state }: { state: DashboardState }) {
       </div>
       <div className="noscroll" style={{ height: 160, flexShrink: 0, overflowY: "auto", overflowX: "hidden", marginTop: 10, display: "flex", flexDirection: "column", gap: 8, scrollSnapType: "y mandatory" }}>
         {qaTools.map((tool) => (
-          <div key={tool.id} className="nested-card-hover" style={{ height: 48, flexShrink: 0, boxSizing: "border-box", display: "flex", alignItems: "center", gap: 9, padding: "0 9px", borderRadius: 11, background: "linear-gradient(165deg, rgba(165,180,255,.05) 0%, rgba(99,102,241,.03) 45%, rgba(255,255,255,.02) 100%)", border: "1px solid rgba(255,255,255,.06)", scrollSnapAlign: "start" }}>
+          <div key={tool.id} className="nested-card-hover" role={tool.url ? "link" : undefined} tabIndex={tool.url ? 0 : undefined} onClick={() => openTool(tool.id, tool.url)} onKeyDown={(event) => openToolFromKeyboard(event, tool.id, tool.url)} style={{ height: 48, flexShrink: 0, boxSizing: "border-box", display: "flex", alignItems: "center", gap: 9, padding: "0 9px", borderRadius: 11, background: "linear-gradient(165deg, rgba(165,180,255,.05) 0%, rgba(99,102,241,.03) 45%, rgba(255,255,255,.02) 100%)", border: "1px solid rgba(255,255,255,.06)", scrollSnapAlign: "start" }}>
             <div style={{ width: 26, height: 26, borderRadius: 8, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, background: tool.accentSoft, border: `1px solid ${tool.accentBorder}`, color: tool.color }}>
               {tool.mono}
             </div>

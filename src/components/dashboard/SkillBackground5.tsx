@@ -52,7 +52,7 @@ export default function SkillBackground5() {
           position: "absolute",
           inset: 0,
           background:
-            "radial-gradient(ellipse 82% 72% at 100% 0%, rgba(219,230,255,.56) 0%, rgba(184,204,255,.4) 34%, rgba(145,173,250,.2) 64%, transparent 88%)",
+            "radial-gradient(ellipse 82% 72% at 100% 0%, rgba(186,199,255,.42) 0%, rgba(139,156,255,.3) 34%, rgba(99,102,241,.14) 64%, transparent 88%)",
           mixBlendMode: "screen",
         }}
       />

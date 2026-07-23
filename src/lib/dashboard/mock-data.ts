@@ -28,15 +28,15 @@ export const ACCENT_RGB: Record<Accent, string> = {
 };
 
 export const TOOLS_RAW: Tool[] = [
-  { id: "ap", name: "Arts Portfolio", mono: "AP", accent: "violet", tags: ["Design", "Work"], favorite: true, sourceType: "internal", url: "artsportfolio.app", checkStatus: "Working", checkColor: "#4ADE80" },
-  { id: "cv", name: "Online CV", mono: "CV", accent: "blue", tags: ["Work"], favorite: false, sourceType: "internal", url: "cv.philstudio.app", checkStatus: "Working", checkColor: "#4ADE80" },
-  { id: "ps", name: "Online PS", mono: "PS", accent: "pink", tags: ["Design", "Productivity"], favorite: true, sourceType: "internal", url: "ps.philstudio.app", checkStatus: "Working", checkColor: "#4ADE80" },
-  { id: "pdf", name: "Online PDF Editor", mono: "PD", accent: "orange", tags: ["Productivity", "Work"], favorite: false, sourceType: "internal", url: "pdf.philstudio.app", checkStatus: "Check", checkColor: "#F59E0B" },
-  { id: "am", name: "Animation Maker", mono: "AM", accent: "cyan", tags: ["Design"], favorite: false, sourceType: "internal", url: "animate.philstudio.app", checkStatus: "Working", checkColor: "#4ADE80" },
-  { id: "mm", name: "Mindmap", mono: "MM", accent: "teal", tags: ["Productivity", "Learn"], favorite: false, sourceType: "internal", url: "mindmap.philstudio.app", checkStatus: "Working", checkColor: "#4ADE80" },
-  { id: "sm", name: "StudyMate", mono: "SM", accent: "teal", tags: ["ServiceNow", "Learn"], favorite: true, sourceType: "internal", url: "studymate.philstudio.app", checkStatus: "Unknown", checkColor: "#7C8698" },
-  { id: "no", name: "Notion", mono: "N", accent: "pink", tags: ["Productivity", "Work"], favorite: true, sourceType: "external", url: "notion.so", checkStatus: "Working", checkColor: "#4ADE80" },
-  { id: "ai", name: "AI Agent Learning Notes", mono: "AI", accent: "violet", tags: ["AI", "Learn"], favorite: false, sourceType: "internal", url: "ainotes.philstudio.app", checkStatus: "Working", checkColor: "#4ADE80" },
+  { id: "ap", name: "Arts Portfolio", mono: "AP", accent: "violet", tags: ["Design", "Work"], favorite: true, sourceType: "internal", url: "https://phil-art-vercel-deploy.vercel.app/", checkStatus: "Working", checkColor: "#4ADE80" },
+  { id: "cv", name: "Online CV", mono: "CV", accent: "blue", tags: ["Work"], favorite: false, sourceType: "internal", url: "https://philzhu-work-onlinecv.vercel.app/", checkStatus: "Working", checkColor: "#4ADE80" },
+  { id: "ps", name: "Online PS", mono: "PS", accent: "pink", tags: ["Design", "Productivity"], favorite: true, sourceType: "internal", url: "https://photoshop-web-ten.vercel.app/", checkStatus: "Working", checkColor: "#4ADE80" },
+  { id: "pdf", name: "Online PDF Editor", mono: "PD", accent: "orange", tags: ["Productivity", "Work"], favorite: false, sourceType: "internal", url: "https://pdf-editor-two-tau.vercel.app/", checkStatus: "Working", checkColor: "#4ADE80" },
+  { id: "am", name: "Animation Maker", mono: "AM", accent: "cyan", tags: ["Design"], favorite: false, sourceType: "internal", url: "https://videoscribe-html.vercel.app/", checkStatus: "Working", checkColor: "#4ADE80" },
+  { id: "mm", name: "Mindmap", mono: "MM", accent: "teal", tags: ["Productivity", "Learn"], favorite: false, sourceType: "internal", url: "https://mindstudio-tool.vercel.app/", checkStatus: "Working", checkColor: "#4ADE80" },
+  { id: "sm", name: "StudyMate", mono: "SM", accent: "teal", tags: ["ServiceNow", "Learn"], favorite: true, sourceType: "internal", url: "https://study-mate-for-exam.vercel.app/", checkStatus: "Working", checkColor: "#4ADE80" },
+  { id: "no", name: "Notion", mono: "N", accent: "pink", tags: ["Productivity", "Work"], favorite: true, sourceType: "external", url: "https://app.notion.com/", checkStatus: "Working", checkColor: "#4ADE80" },
+  { id: "ai", name: "AI Agent Learning Notes", mono: "AI", accent: "violet", tags: ["AI", "Learn"], favorite: false, sourceType: "internal", checkStatus: "Unknown", checkColor: "#7C8698" },
 ];
 
 export const TAGS = [
@@ -115,7 +115,6 @@ export const TODO_RAW: TodoGroup[] = [
     tasks: [
       { title: "Prepare portfolio case study", time: "Jul 22", dot: "#F59E0B" },
       { title: "Fix bug in PDF Editor", time: "Jul 25", dot: "#3B82F6" },
-      { title: "Plan August roadmap", time: "Jul 31", dot: "#3B82F6" },
     ],
   },
 ];

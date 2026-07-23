@@ -1,7 +1,22 @@
+"use client";
+
+import { useState, type FormEvent } from "react";
 import type { DashboardState } from "@/hooks/useDashboardState";
 
 export default function TodoWidget({ state }: { state: DashboardState }) {
-  const { todoGroups } = state;
+  const { todoTasks: tasks, addTask } = state;
+  const [isAdding, setIsAdding] = useState(false);
+  const [title, setTitle] = useState("");
+  const completedCount = tasks.filter((task) => task.done).length;
+  const progress = tasks.length ? (completedCount / tasks.length) * 100 : 0;
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!addTask(title)) return;
+    setTitle("");
+    setIsAdding(false);
+  };
+
   return (
     <div
       className="glass-shine-card"
@@ -22,36 +37,79 @@ export default function TodoWidget({ state }: { state: DashboardState }) {
       }}
     >
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
-        <div style={{ fontSize: 16, fontWeight: 650 }}>To-Do</div>
-        <button style={{ height: 28, padding: "0 10px", borderRadius: 10, background: "rgba(255,255,255,.08)", border: "1px solid rgba(125,190,255,.22)", color: "#F2F6FF", fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", gap: 5, cursor: "pointer" }}>
+        <div style={{ fontSize: 16, fontWeight: 650 }}>To-Do <span style={{ color: "#A9B2C3", fontSize: 11, fontWeight: 600 }}>({completedCount}/{tasks.length})</span></div>
+        <button
+          type="button"
+          onClick={() => setIsAdding(true)}
+          style={{ height: 28, padding: "0 10px", borderRadius: 10, background: "rgba(255,255,255,.08)", border: "1px solid rgba(125,190,255,.22)", color: "#F2F6FF", fontSize: 11, fontWeight: 600, display: "flex", alignItems: "center", gap: 5, cursor: "pointer" }}
+        >
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#F2F6FF" strokeWidth="2" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
           Add Task
         </button>
       </div>
-      <div className="noscroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden", marginTop: 10, display: "flex", flexDirection: "column", gap: 12, scrollSnapType: "y mandatory" }}>
-        {todoGroups.map((group) => (
-          <div key={group.label} style={{ flexShrink: 0 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: group.labelColor, marginBottom: 6 }}>
-              {group.label} <span style={{ color: "#7C8698", fontWeight: 600 }}>{group.count}</span>
+      <div style={{ height: 3, flexShrink: 0, borderRadius: 999, background: "rgba(255,255,255,.05)", marginTop: 10, overflow: "hidden" }}>
+        <div style={{ width: `${progress}%`, height: "100%", borderRadius: "inherit", background: "#6366F1", transition: "width 180ms ease" }} />
+      </div>
+      {isAdding && (
+        <form onSubmit={handleSubmit} style={{ display: "flex", gap: 6, flexShrink: 0, marginTop: 10 }}>
+          <input
+            autoFocus
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                setTitle("");
+                setIsAdding(false);
+              }
+            }}
+            aria-label="Task title"
+            placeholder="What needs to be done?"
+            maxLength={120}
+            style={{ minWidth: 0, flex: 1, height: 32, padding: "0 10px", borderRadius: 9, border: "1px solid rgba(125,190,255,.24)", outline: "none", background: "rgba(6,12,35,.48)", color: "#F2F6FF", fontSize: 11 }}
+          />
+          <button
+            type="submit"
+            disabled={!title.trim()}
+            style={{ height: 32, padding: "0 10px", borderRadius: 9, border: "1px solid rgba(99,102,241,.42)", background: "#4F46E5", color: "#FFFFFF", fontSize: 11, fontWeight: 600, cursor: title.trim() ? "pointer" : "default", opacity: title.trim() ? 1 : 0.5 }}
+          >
+            Add
+          </button>
+        </form>
+      )}
+      <div className="noscroll" style={{ flex: 1, minHeight: 0, overflowY: "auto", overflowX: "hidden", marginTop: 10, display: "flex", flexDirection: "column", gap: 6, scrollSnapType: "y mandatory" }}>
+        {tasks.length === 0 && (
+          <div style={{ flex: 1, minHeight: 90, display: "flex", alignItems: "center", justifyContent: "center", color: "#7C8698", fontSize: 11, textAlign: "center" }}>
+            No tasks yet. Add one for today.
+          </div>
+        )}
+        {tasks.map((task) => (
+          <div
+            key={task.id}
+            className="nested-card-hover"
+            role="checkbox"
+            aria-checked={task.done}
+            tabIndex={0}
+            onClick={task.toggle}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                task.toggle();
+              }
+            }}
+            style={{ minHeight: 48, flexShrink: 0, display: "flex", alignItems: "center", gap: 10, padding: "0 10px", borderRadius: 10, background: "rgba(255,255,255,.03)", cursor: "pointer", scrollSnapAlign: "start" }}
+          >
+            <div aria-hidden="true" style={{ width: 18, height: 18, borderRadius: 5, flexShrink: 0, border: `1px solid ${task.done ? "#6366F1" : "rgba(255,255,255,.35)"}`, background: task.done ? "#6366F1" : "transparent", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              {task.done && (
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+              )}
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              {group.tasks.map((task) => (
-                <div key={task.key} className="nested-card-hover" onClick={task.toggle} style={{ height: 38, flexShrink: 0, display: "flex", alignItems: "center", gap: 10, padding: "0 10px", borderRadius: 10, background: "rgba(255,255,255,.03)", cursor: "pointer", scrollSnapAlign: "start" }}>
-                  <div style={{ width: 8, height: 8, borderRadius: "50%", flexShrink: 0, border: `2px solid ${task.checkBorder}`, background: task.checkBg, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {task.done && (
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#020B24" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
-                    )}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0, fontSize: 10, fontWeight: 500, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textDecoration: task.strike, color: task.textColor }}>{task.title}</div>
-                  <div style={{ fontSize: 10, color: "#7C8698", flexShrink: 0 }}>{task.time}</div>
-                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: task.dot, flexShrink: 0 }} />
-                </div>
-              ))}
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textDecoration: task.done ? "line-through" : "none", color: task.done ? "#7C8698" : "#F2F6FF" }}>{task.title}</div>
             </div>
+            <div style={{ fontSize: 10, color: "#7C8698", flexShrink: 0 }}>{task.time}</div>
           </div>
         ))}
       </div>
-      <div style={{ flexShrink: 0, marginTop: 18, fontSize: 12, fontWeight: 600, color: "#93C5FD", cursor: "pointer" }}>View all tasks →</div>
     </div>
   );
 }

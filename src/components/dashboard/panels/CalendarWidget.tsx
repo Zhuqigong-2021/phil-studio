@@ -112,7 +112,7 @@ export default function CalendarWidget({ state }: { state: DashboardState }) {
           "inset 0 1.5px 0 rgba(210,220,255,.18), inset 0 0 28px rgba(99,102,241,.04), 0 18px 40px rgba(0,4,20,.26)",
         overflow: "hidden",
         width: "100%",
-        height: 361,
+        height: 318,
       }}
     >
       <div
