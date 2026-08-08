@@ -19,6 +19,7 @@ The Owner selected a combined global-and-local model:
 2. Each of the 18 live spectrum bands controls the relative brightness of grains associated with that horizontal region.
 3. Airborne grains capture the source band's energy and beat/onset strength at launch so their brightness follows the musical event that created them instead of flickering with unrelated later frames.
 4. Airborne brightness decays gradually with particle age and altitude; it must not switch abruptly at the apex.
+5. Airborne grains receive a restrained brightness emphasis relative to resting grains under the same musical input: approximately 15% for ordinary launches and up to 20% for strong beat launches, without exceeding the shared 85% brightness ceiling.
 
 ## Brightness Range and Smoothing
 
