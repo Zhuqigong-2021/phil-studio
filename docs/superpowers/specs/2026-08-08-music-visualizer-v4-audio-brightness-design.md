@@ -31,8 +31,9 @@ The Owner selected a combined global-and-local model:
 
 ## Rendering Safety
 
+- Apply a presentation-only global lift after music-driven brightness is calculated: increase particle RGB output by approximately 25% and effective alpha by approximately 10%. This lift must preserve the relative weak/strong and local-band differences rather than replacing the audio mapping.
 - Keep `THREE.NormalBlending`; do not restore additive blending.
-- Keep fragment alpha bounded below full opacity so overlapping particles cannot accumulate into white rectangles.
+- Keep fragment alpha capped at `0.62` and bounded below full opacity so overlapping particles cannot accumulate into white rectangles.
 - Pass brightness through a per-instance attribute or an equivalent fixed typed-array channel. Do not allocate particle objects or React state inside the animation loop.
 - Do not recreate the renderer, material, geometry, canvas, or fallback callback when brightness changes.
 - Keep the existing transparent clear color and WebGL fallback.
@@ -54,6 +55,7 @@ Pure tests must verify:
 5. A launched particle retains its captured event brightness when later spectrum frames change.
 6. Airborne brightness decays smoothly with age instead of switching at the apex.
 7. Existing V3 rhythm, bed-height, pause, trajectory, stable-callback, and normal-blending tests remain green.
+8. The shader contains the approved global RGB and alpha lift while preserving the `0.62` alpha ceiling.
 
 ## Acceptance Criteria
 
@@ -63,6 +65,7 @@ Pure tests must verify:
 4. The continuous bed remains visible in quiet passages without looking uniformly bright.
 5. No new local white flash, full-screen flash, canvas replacement, or blank particle frame is introduced.
 6. `回到 V3` restores the preserved pre-V4 continuous-bed rhythm-fountain state only.
+7. The whole particle field is visibly brighter than the initial V4 tuning without flattening the musical brightness differences.
 
 ## Verification
 
