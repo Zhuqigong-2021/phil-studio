@@ -50,10 +50,11 @@ Every launch follows a continuous ballistic arc: upward acceleration is never ap
 
 ## Two-Layer Rhythm Fountain
 
+- **Continuous sand bed:** every frame maps RMS loudness and the full live spectrum into a persistent irregular bed. Its visible range targets roughly 7% at the quiet floor and up to 38% in strong regions. A nonlinear contrast curve must make strong bands stand clearly above weak neighbors without turning the bed into rigid equalizer columns.
 - **Primary beat fountain:** a clearly visible group launch driven by the beat-pulse rising edge. Stronger beats produce more active grains and greater vertical velocity.
 - **Secondary spectral accents:** sparse, shorter launches driven by measured positive band onsets. These keep non-bass musical accents responsive without creating autonomous continuous boiling.
 
-Both layers are event-driven by measured audio. Neither layer may emit on a decorative clock.
+The continuous bed is audio-driven on every frame; the two airborne launch layers are event-driven by measured audio. No layer may move or emit on a decorative clock. This enhancement changes only the bed-height mapping: it must not change burst detection, launch timing, particle physics, renderer lifecycle, or white-flash safeguards.
 
 ## Rendering and Stability
 
@@ -92,6 +93,7 @@ Pure tests must verify:
 6. Burst origins move across the full width according to live band energy rather than remaining artificially concentrated on the left.
 7. During continuous playback, the same WebGL canvas remains mounted with zero blank frames and zero local white flashes.
 8. `回到 V2` restores the exact pre-V3 visualizer; `回到 V3` restores this fountain version only.
+9. The continuous bed remains visible in quiet passages and shows substantially stronger peak-to-valley height contrast during loud, spectrally uneven passages; it must not leave a flat low strip between airborne bursts.
 
 ## Verification
 
