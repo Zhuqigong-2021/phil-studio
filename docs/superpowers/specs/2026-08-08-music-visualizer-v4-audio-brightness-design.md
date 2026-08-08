@@ -32,6 +32,8 @@ The Owner selected a combined global-and-local model:
 ## Rendering Safety
 
 - Apply a presentation-only global lift after music-driven brightness is calculated: increase particle RGB output by approximately 25% and effective alpha by approximately 10%. This lift must preserve the relative weak/strong and local-band differences rather than replacing the audio mapping.
+- Feather every individual grain radially: preserve a clear luminous core, begin a smooth alpha reduction at approximately 20% of particle radius, and approach zero alpha at the quad edge. The feather multiplies final alpha only; it must not alter music brightness values, RGB lift, particle size, position, or trajectory.
+- Avoid an early hard radial discard that creates a visible cut edge. A negligible final-alpha discard may remain only as a rendering optimization after the smooth feather reaches near-zero opacity.
 - Keep `THREE.NormalBlending`; do not restore additive blending.
 - Keep fragment alpha capped at `0.62` and bounded below full opacity so overlapping particles cannot accumulate into white rectangles.
 - Pass brightness through a per-instance attribute or an equivalent fixed typed-array channel. Do not allocate particle objects or React state inside the animation loop.
@@ -56,6 +58,7 @@ Pure tests must verify:
 6. Airborne brightness decays smoothly with age instead of switching at the apex.
 7. Existing V3 rhythm, bed-height, pause, trajectory, stable-callback, and normal-blending tests remain green.
 8. The shader contains the approved global RGB and alpha lift while preserving the `0.62` alpha ceiling.
+9. The shader uses a smooth radial feather from a clear core to a transparent outer edge and does not clip grains at the old `falloff < 0.02` threshold.
 
 ## Acceptance Criteria
 
@@ -66,6 +69,7 @@ Pure tests must verify:
 5. No new local white flash, full-screen flash, canvas replacement, or blank particle frame is introduced.
 6. `回到 V3` restores the preserved pre-V4 continuous-bed rhythm-fountain state only.
 7. The whole particle field is visibly brighter than the initial V4 tuning without flattening the musical brightness differences.
+8. Individual grains no longer read as hard-edged dots or tiny quads; their transparent outer edges blend naturally into the player card.
 
 ## Verification
 
