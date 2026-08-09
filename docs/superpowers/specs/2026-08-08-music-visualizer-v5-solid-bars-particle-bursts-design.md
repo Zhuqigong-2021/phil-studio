@@ -24,10 +24,12 @@ Music Visualizer V5 consists of twelve genuinely solid, separated, music-driven 
 ## Event Particle Layer
 
 - The existing fixed pool renders no inactive/resting grains; inactive instances have zero scale.
-- A valid beat or onset first creates a short-lived dense transition cluster attached to the selected captured bar top. This cluster visually bridges the solid rectangle and the sparse airborne grains instead of letting isolated particles appear from empty space.
+- A valid beat or onset creates a short-lived local erosion chain at the selected captured bar top instead of overlaying a detached particle cloud. A narrow top fragment visually breaks away from the solid surface, becomes dense debris immediately above the opening, stretches into a sparse trail, and joins the airborne grains.
 - The same event launches airborne grains using `budget === 0 ? 0 : Math.max(1, Math.ceil(budget * 0.4))`.
-- Transition-cluster grains appear and disappear within `0.10-0.18s`. They are densest within the first short band above the flat top, then taper upward in count and opacity so only a few grains visually continue into flight.
-- The cluster remains locally aligned to the emitting column, never fills the whole visualizer, and never changes the bar height or opacity.
+- Erosion grains use staggered birth delays and appear within `0.12-0.24s`; neighboring grains must not appear or disappear on the same frame.
+- Each event selects a narrow erosion center inside the emitting column. Grains stay concentrated around that center near the surface, then acquire progressively greater vertical displacement and slight directional drift as they age.
+- The solid body remains opaque. Only a small local top-edge notch may be overlaid with the card background during erosion; it must recover within `0.12s`, affect less than `28%` of the column width and `0.012` normalized height, and never flash white.
+- The erosion chain remains aligned with the airborne launch origin so the eye can follow one continuous path from bar surface to flying grain.
 - Airborne grains retain mostly vertical velocity, restrained horizontal drift, apex, gravity, descent, captured surface, music brightness emphasis, and lifetime fade.
 - No random timer, continuous boiling, permanent head texture, or whole-bar transparency pulse is allowed.
 
@@ -43,13 +45,14 @@ Music Visualizer V5 consists of twelve genuinely solid, separated, music-driven 
 
 1. Ordinary playback shows twelve truly solid colored bars with completely flat tops and no visible internal grains or pores.
 2. Heights and brightness remain visibly music-driven.
-3. A real event briefly forms a visibly denser particle cluster directly at the affected bar top, tapering from dense near the surface to sparse above it while the solid bar remains unchanged.
-4. Only a small number of grains leave that cluster and fly, using the approved 40% budget, so the motion reads continuously as solid bar to dense breakup to sparse spray to free fall.
-5. Airborne grains rise and free-fall back to captured surfaces.
-6. After the event, every affected top returns to a completely flat solid state.
-7. No bar or particle region flashes white, disappears for a frame, or recreates the canvas.
-8. Authenticated playback produces zero blank frames, replacements, or local white flashes over at least 600 frames.
-9. `音乐动态显示回到 V5` means this solid-bar implementation; `音乐动态显示回到 V4` remains unchanged.
+3. A real event briefly creates a narrow local erosion point in the affected bar top rather than a detached cloud or whole-width dissolved edge.
+4. Dense debris originates inside that erosion point, stretches into a sparse directional trail, and connects spatially to the airborne launch origin.
+5. Only a small number of grains leave that trail and fly, using the approved 40% budget.
+6. Airborne grains rise and free-fall back to captured surfaces.
+7. After the event, every affected top returns to a completely flat solid state.
+8. No bar or particle region flashes white, disappears for a frame, or recreates the canvas.
+9. Authenticated playback produces zero blank frames, replacements, or local white flashes over at least 600 frames.
+10. `音乐动态显示回到 V5` means this solid-bar implementation; `音乐动态显示回到 V4` remains unchanged.
 
 ## Verification
 
