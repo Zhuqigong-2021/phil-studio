@@ -12,7 +12,7 @@ Use a restrained cinematic combination:
 2. The existing blurred photo layer drifts slightly in the opposite direction to create depth.
 3. Pointer movement adds at most 5px of parallax and settles smoothly back to center.
 4. A low-opacity masked highlight moves only across the lower water area every 10 seconds.
-5. The initial page entrance resolves from slight blur and scale to its resting state in about 1.2 seconds.
+5. The initial page entrance uses a true 2.2-second rack focus on the same fully visible photo: blur progresses through `32px`, `24px`, `8px`, and `0`, while scale settles from `1.045` to `1.02` and contrast rises from `0.92` to `1.1`. No opacity crossfade is used.
 6. When a modal or drawer is open, the background becomes slightly darker and softer to reinforce depth.
 
 ## Implementation Boundaries

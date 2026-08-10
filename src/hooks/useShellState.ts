@@ -3,7 +3,7 @@
 import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { DecoratedTool } from "@/lib/dashboard/types";
-import { signOutFromApp } from "@/lib/auth/actions";
+import { signOutFromApp } from "@/lib/auth/client";
 
 export interface ToolResult extends DecoratedTool {
   select: () => void;

@@ -10,7 +10,7 @@
 ## Current Project State
 
 - Status: Personal-use digital workspace defined with eighteen confirmed MVP features.
-- Last updated: 2026-07-23
+- Last updated: 2026-08-08
 
 ## Workflow State
 
@@ -1220,7 +1220,7 @@
 
 ### D-108: Normalize the five background-only restoration versions
 
-- Status: Active
+- Status: Superseded by `D-109`
 - Date: 2026-07-23
 - Context: The Owner wants one simple and sequential `V1` through `V5` background vocabulary based on the five background component files currently retained in the project. Earlier experimental names included `V0`, an obsolete `SkillBackround1.tsx` V2, and a different V3 mapping, which would make future rollback instructions ambiguous.
 - Decision/Finding: The only active background-version mapping is:
@@ -1234,9 +1234,126 @@
 - Consequences: When the Owner says `回滚到 V1`, `回滚到 V2`, `回滚到 V3`, `回滚到 V4`, or `回滚到 V5`, change only the Dashboard and secondary-page background component import/render target to the corresponding file. Do not use Git reset and do not revert or modify Cards, Sidebar, layout, content, authentication, Splash Cursor, responsive behavior, animations outside the selected background component, or any other project changes. Background-version rollback and `Layout 1` rollback remain different operations: `Layout 1` continues to mean the complete tagged layout under `D-107`.
 - Evidence/Links: The five component files listed above; `src/app/dashboard/page.tsx`; `src/components/dashboard/SecondaryPageShell.tsx`; explicit Owner instruction on 2026-07-23.
 
+### D-109: Add pure-black background V6
+
+- Status: Superseded by `D-110`
+- Date: 2026-07-23
+- Context: The Owner wants to begin a new visual-style experiment with a pure-black background while preserving all five established background implementations unchanged.
+- Decision/Finding: Preserve the complete `D-108` mapping for V1 through V5 and add `V6` = `src/components/dashboard/SkillBackground6.tsx` (SHA-256 `F54AAEB39A802D7E5834F685CFBBB5BAF52DCA4505B6B620C6D0A0967D9C936A`). V6 is a full-viewport `#000000` layer with no gradient, shader, texture, glow, or background animation. V6 is the current active background.
+- Why: A separate component allows pure-black style exploration without modifying or losing any V1-V5 implementation.
+- Alternatives: Modify V5 in place, add a Theme override, or replace the root fallback color without establishing a restorable background version.
+- Consequences: `回滚到 V1` through `回滚到 V6` remain background-only operations. Switch only the background component imported and rendered by Dashboard and secondary-page shells. Do not modify the six versioned background files during a normal switch, use Git reset, or revert Cards, Sidebar, layout, content, authentication, Splash Cursor, responsive behavior, or unrelated changes. `Layout 1` remains the separate full-layout rollback defined by `D-107`.
+- Evidence/Links: `src/components/dashboard/SkillBackground6.tsx`; `src/app/dashboard/page.tsx`; `src/components/dashboard/SecondaryPageShell.tsx`; explicit Owner instruction on 2026-07-23.
+
+### D-110: Use the supplied image as the V6 background
+
+- Status: Superseded by `D-111`
+- Date: 2026-07-24
+- Context: After creating pure-black V6, the Owner supplied a dark blue-purple aerial city image and requested that it become the V6 background while keeping V1-V5 unchanged.
+- Decision/Finding: V1 through V5 retain their mappings from `D-108`. V6 remains `src/components/dashboard/SkillBackground6.tsx` (SHA-256 `8E728B00E284A653B1FA2B60E98C150EE8F09CE064AB10D883E4399ECD91B94F`) and now renders `public/backgrounds/v6-background.png` (SHA-256 `B435F74D86699775BEC6658E4BC657726D40B6573585443E733A85A70EFA4BC0`) centered with `background-size: cover`, no repeat, and pure black as the loading/failure fallback color. V6 remains the current active background.
+- Why: Keeping the supplied image inside the project makes the V6 appearance deployable and restorable without depending on a temporary clipboard path.
+- Alternatives: Reference the temporary clipboard file directly, modify V1-V5, stretch the image without preserving its aspect ratio, or create a separate V7.
+- Consequences: Switching to or restoring V6 must use both the versioned component and its project image asset. Normal background-version switching still changes only the Dashboard and secondary-page background target; it must not revert Cards, Sidebar, layout, content, authentication, Splash Cursor, responsive behavior, or unrelated work.
+- Evidence/Links: `src/components/dashboard/SkillBackground6.tsx`; `public/backgrounds/v6-background.png`; explicit Owner instruction and supplied image on 2026-07-24.
+
+### D-111: Refine the V6 architectural focal point
+
+- Status: Superseded by `D-112`
+- Date: 2026-07-24
+- Context: In the wide Dashboard preview, `background-size: cover` enlarged and cropped the 3:2 V6 source image too aggressively, making the stadium and tower appear oversized and incorrectly positioned.
+- Decision/Finding: Keep the same V6 image asset and pure-black fallback, but render it with `background-size: 92% auto` and `background-position: center 66%` in `src/components/dashboard/SkillBackground6.tsx` (SHA-256 `6E3724F16EBECBFF910841FE5EBC1BA5543E46B4D432B541F74F0E5609458CA7`). This reduces the architectural subject by approximately eight percent relative to full viewport width and shifts its focal area upward into the middle-to-upper portion of wide screens. V6 remains current.
+- Why: Explicit sizing and vertical focal positioning produce a more balanced architectural composition on the Owner's wide Dashboard viewport than `cover`, which must zoom a 3:2 image to fill a much wider screen.
+- Alternatives: Continue using `cover`, distort the image to the viewport aspect ratio, edit/crop the source asset destructively, or modify Dashboard layout around the oversized subject.
+- Consequences: Some pure-black fallback may remain visible near the horizontal edges because the image is intentionally narrower than the viewport. Further V6 composition refinements should adjust only `backgroundSize` and `backgroundPosition` unless the Owner requests a different image treatment. V1-V5 and all non-background UI remain unchanged.
+- Evidence/Links: `src/components/dashboard/SkillBackground6.tsx`; Owner comparison screenshots and explicit instruction on 2026-07-24.
+
+### D-112: Top-anchor V6 and fill missing areas with matching imagery
+
+- Status: Superseded by `D-113`
+- Date: 2026-07-24
+- Context: The `92% auto` V6 foreground produced exposed fallback areas and its percentage-based vertical position did not keep the source image attached to the top edge. The Owner requires the clear architectural image to remain top-anchored while any uncovered viewport area is filled with visually matching background content.
+- Decision/Finding: V6 uses two non-interactive layers from the same image asset in `src/components/dashboard/SkillBackground6.tsx` (SHA-256 `018635BC1B952C112C45B346BE2003E4EB515DA246F2A45E049674FE32643CD0`). The foreground remains sharp at `92% auto`, `center top`, and no-repeat. A separate full-bleed `cover`, `center top` layer sits behind it with a 20px blur, `.72` brightness, `.9` saturation, slight `1.03` scale, and 32px overscan so uncovered side or bottom areas continue the same dark blue-purple atmosphere without blur-edge gaps. Pure black remains only the final loading/failure fallback. V6 remains current.
+- Why: Separating the focal image from the viewport fill preserves the smaller architectural scale and fixed top alignment while preventing empty or unrelated color bands on changing screen ratios.
+- Alternatives: Return the foreground to `cover`, stretch the source image, leave black gutters, generate a new outpainted asset, or position the foreground with a percentage-based vertical focal point.
+- Consequences: V6 foreground positioning must remain `center top` unless the Owner explicitly changes the anchor. Responsive fill belongs to the matching rear layer and must not enlarge or move the clear architectural foreground. V1-V5 and all non-background UI remain unchanged.
+- Evidence/Links: `src/components/dashboard/SkillBackground6.tsx`; Owner screenshot and explicit instruction on 2026-07-24.
+
+### D-113: Make V6 a single image that always covers the viewport
+
+- Status: Active
+- Date: 2026-07-24
+- Context: The Owner supplied the V6 image again and explicitly prioritized complete viewport coverage at every screen ratio over preserving the smaller foreground scale or using a separate matching fill layer.
+- Decision/Finding: V6 uses one full-viewport background layer in `src/components/dashboard/SkillBackground6.tsx` (SHA-256 `E780F2419A89D326A506905DF1CCFD7488A5EC6CBDFC0DDCE09A6D65BD9EBC16`). It renders `public/backgrounds/v6-background.png` with `background-size: cover`, `background-position: center top`, and no repeat. The newly supplied file is byte-identical to the existing project asset (SHA-256 `B435F74D86699775BEC6658E4BC657726D40B6573585443E733A85A70EFA4BC0`), so the asset itself does not require replacement. V6 remains current.
+- Why: `cover` is the simplest reliable rule that guarantees no empty viewport area, gutter, or uncovered band across changing aspect ratios while preserving the image's proportions.
+- Alternatives: Preserve the 92% foreground with a softened fill layer, use `contain`, stretch the image to 100% width and height, or generate a separately outpainted wide asset.
+- Consequences: The image always fills the whole viewport and remains anchored to the top center. Depending on screen aspect ratio, the browser will naturally crop either the horizontal or vertical edges; avoiding both cropping and empty space is impossible without distortion or a different source aspect ratio. V1-V5 and all non-background UI remain unchanged.
+- Evidence/Links: `src/components/dashboard/SkillBackground6.tsx`; `public/backgrounds/v6-background.png`; explicit Owner instruction and supplied image on 2026-07-24.
+
+### D-114: Preserve the current music visualizer as Music Visualizer V1
+
+- Status: Active
+- Date: 2026-08-08
+- Context: The Owner explicitly named the current animated music display above the left-side volume slider `V1` and supplied a screenshot of its appearance. This name is scoped to the music visualizer and must not be confused with the separately versioned Dashboard background V1.
+- Decision/Finding: Treat the current `EnergySandVolume` WebGL visualization and its existing player integration as **Music Visualizer V1**. Its visual anchor is a compact dark field with dense blue/cyan particles and short vertical energy marks concentrated on the left, tapering toward the right into a thin purple-white luminous line, with a soft white glow beneath the right edge. The implementation baseline is `src/components/dashboard/EnergySandVolume.jsx` SHA-256 `45EF7996E6B7D8ECD24E1F3ED8CF42D256E5D1F086554021E6026143E11FC322`, rendered by `MusicPlayerPanel` inside `.energy-sand-volume-canvas` and `.volume-waveform-stack`; the relevant `src/app/darktheme/darktheme.css` baseline is SHA-256 `F438837BF5C9C8541CDF3CF71491FB99BD9EF2BFD3E7AE142F90D39659912158`.
+- Why: A named and fingerprinted baseline allows later music-visualizer experiments without losing the Owner-approved current particle-wave appearance.
+- Alternatives: Identify the state only through a temporary screenshot, call it simply `V1` without a scope, or roll back the whole player/page when only the visualizer needs restoration.
+- Consequences: When the Owner says `音乐条回到 V1`, `音乐动态显示回到 V1`, or otherwise clearly refers to the music visualizer V1, restore only this visualizer component, its player wiring, and the CSS necessary for its size/composition. Do not change the Dashboard background version, playback progress layout, album art, volume slider behavior, transport controls, or unrelated UI. If the Owner says only `回到 V1` and the target is ambiguous, distinguish Music Visualizer V1 from Dashboard Background V1 before changing files.
+- Evidence/Links: `src/components/dashboard/EnergySandVolume.jsx`; `src/app/darktheme/page.tsx` `MusicPlayerPanel`; `src/app/darktheme/darktheme.css`; Owner instruction and supplied visual reference on 2026-08-08.
+
+### D-115: Use beat-accurate Music Visualizer V2
+
+- Status: Active
+- Date: 2026-08-08
+- Context: The Owner found that Music Visualizer V1 moved largely at random instead of matching musical rhythm and volume, then selected the beat-accurate direction for the next version.
+- Decision/Finding: Music Visualizer V2 is the current active music visualization. `useAudioAnalyser` calculates time-domain RMS loudness and a refractory low-frequency transient pulse through the pure `audio-reactivity` signal model. After the first V2 mapping produced an unacceptable flat particle wall, V2 was recalculated so each frame's relative 18-band spectrum primarily determines column resting heights. The approved B update now applies a nonlinear `1.85` peak-valley curve: weak bands remain near the baseline while strong bands use substantially more of the available height. Only the beat pulse's rising edge applies a synchronized velocity impulse; real band strength and deterministic particle weights vary the impulse, and deterministic gravity creates unequal arcs. Particle compositing uses bounded alpha with `THREE.NormalBlending` instead of additive accumulation. The player passes a memoized fallback callback so playback-progress rerenders do not tear down and recreate the WebGL renderer; the prior inline callback changed identity on each parent render and caused intermittent one-frame particle-layer disappearance. Overall loudness defines the available height range but no longer adds one dominant shared height. Runtime-random density, column gain, launch timing, physics, and pointer boosts remain removed. Current fingerprints are `src/components/dashboard/EnergySandVolume.jsx` SHA-256 `3AA61778E7B6F013B17EB1DDE63D93572809370CF1D41EC903F87BCDBFB067C3`, `src/hooks/useAudioAnalyser.ts` SHA-256 `A3EF34B8B7C314675AA0DE179A2E4624D9719931820AF1931BF58824C3E72804`, `src/lib/dashboard/audio-reactivity.ts` SHA-256 `D034028AB317E53337DEABF0D66D8B6F456880CF3EF1866FD2C3B0C730EA9DD8`, and `src/app/darktheme/page.tsx` SHA-256 `8B0134D6033592A6F8E6BC23115E85A20E5B09D8B37B5D30A707F6C2B379E143`.
+- Why: Real loudness and transient detection make the particle field visibly follow quiet/loud passages and drum hits instead of masking audio data with decorative randomness.
+- Alternatives: Keep tuning V1 randomness, use a strict 18-column spectrum with weaker beat emphasis, or combine a full spectrum with moderate beat emphasis.
+- Consequences: `音乐动态显示回到 V2` restores `src/components/dashboard/EnergySandVolume.v2.jsx` byte-for-byte to `EnergySandVolume.jsx` together with the D-115 analyser and stable page integration. `音乐动态显示回到 V1` still restores the separately recorded V1 baseline in `D-114`; V1 is not deleted or redefined. Neither music-visualizer restore request changes the Dashboard background, player layout, progress position, album art, volume-slider behavior, transport controls, or unrelated UI.
+- Evidence/Links: `src/components/dashboard/EnergySandVolume.v2.jsx` is the exact V2 snapshot and has the same SHA-256 `3AA61778E7B6F013B17EB1DDE63D93572809370CF1D41EC903F87BCDBFB067C3` as the verified pre-V3 component. `src/lib/dashboard/audio-reactivity.test.ts` and `src/components/dashboard/EnergySandVolume.test.ts` pass 8/8 cases, including strong peak-valley thresholds, additive-saturation protection, and a stable-callback guard. The earlier canvas-only 120-frame check was insufficient and did not prove the reported composite-region flash was fixed. A subsequent full-region capture reproduced adjacent frames with particles present, entirely absent, then present again and traced the teardown to the changing inline fallback callback. After memoization, a 600-frame bundled-track browser observation measured `0` DOM child mutations, `0` canvas replacements, and `0/600` blank particle frames while retaining the same canvas instance; browser console had 0 errors; targeted ESLint exited with 0 errors and 8 pre-existing warnings; Next.js production build completed on 2026-08-08.
+
+### D-116: Use a continuous rhythm bed plus event-driven fountain for Music Visualizer V3
+
+- Status: Active
+- Date: 2026-08-08
+- Context: The Owner approved V3's free upward spray and falling-sand motion, but rejected the first burst-only result because the visualization became a nearly flat baseline between bursts. The continuous music rhythm and volume still need to remain visible while real beats and spectral onsets produce airborne sprays. The Owner then found the first continuous-bed tuning too restrained and requested a taller bed with much stronger height contrast.
+- Decision/Finding: Music Visualizer V3 is the current active music visualization. It combines a continuous 18-band sand bed driven every frame by RMS loudness and live spectrum with a separate pooled fountain layer driven only by detected beat rising edges and measured band-onset rising edges. The continuous-bed mapping now uses a `0.06` visible floor, `0.02` loudness base gain, nonlinear `1.4` spectral shaping, `0.48` peak gain, and a `0.38` height cap. A representative uneven spectrum produces a quiet range of `0.0625-0.0996`, a loud range of `0.0779-0.3405`, and a full-strength range up to `0.3800`. Frequency bands choose launch positions across the full width; fixed seeds vary texture but never launch timing. Active grains retain independent velocity, gravity, ascent, apex, descent, and pool return. V2's stable fallback callback, fixed WebGL lifecycle, transparent clearing, and bounded `THREE.NormalBlending` remain unchanged.
+- Why: A persistent, visibly taller and more contrasting bed communicates continuous rhythm and volume, while audio-event-only sprays provide the approved energetic release without decorative random motion or empty gaps.
+- Alternatives: Keep V3 burst-only, uniformly scale the low bed without increasing peak-to-valley contrast, or use extreme decorative autonomous eruptions. These were rejected because they respectively lose continuous musical information, remain visually flat, or stop following the music.
+- Consequences: `音乐动态显示回到 V3` restores this two-layer version. `音乐动态显示回到 V2` still restores the exact `EnergySandVolume.v2.jsx` snapshot recorded in `D-115`; V1 and Dashboard background versions remain separate. The current V3 fingerprints are `src/components/dashboard/EnergySandVolume.jsx` SHA-256 `461B283637ABD08A98065E6E2CFA3F37CDCC76803380F7B233800555FADBE3B0` and `src/lib/dashboard/fountain-physics.ts` SHA-256 `87AAD413AEE0BB9BF5EF098F38D77B08CE6D2A98D344A2F3863BBE0D888A0E1D`.
+- Evidence/Links: `docs/superpowers/specs/2026-08-08-music-visualizer-v3-fountain-design.md`; `src/lib/dashboard/fountain-physics.test.ts` SHA-256 `EE5661D3B8FEC038FC0143976332EF910B6618B389B99249AE4944EAA35C0228`; 17/17 visualizer and audio tests pass; targeted ESLint exits with 0 errors and 2 existing warnings; Next.js 16.2.10 production build completes. Before the final bed-height-only tuning, a 600-frame bundled-track observation measured 0 canvas replacements and 0 blank frames. The final height tuning does not touch renderer lifecycle code, but a new authenticated 600-frame playback observation remains unverified because the automation browser reached the Owner-only sign-in gate without the Owner session.
+
+### D-117: Make Music Visualizer V4 brightness follow global and local music strength
+
+- Status: Active
+- Date: 2026-08-08
+- Context: The Owner preserved V3 and requested that V4 change only particle brightness because V3 grains appeared equally bright regardless of musical strength. The Owner selected combined global RMS and local 18-band brightness, with emitted grains slightly brighter than the resting bed.
+- Decision/Finding: Music Visualizer V4 is the current active music visualization. V4 preserves V3 positions, continuous-bed heights, emission timing/count, launch velocity, gravity, trajectories, renderer lifecycle, and `THREE.NormalBlending`. A pure brightness model sets a `0.18` quiet floor and `0.85` ceiling. RMS controls overall field intensity; each live band controls local intensity. Brightness uses a fast attack and slower release envelope. Resting grains read smoothed live band brightness. A launched grain captures source/event brightness in fixed `pLaunchBrightness` typed-array state, receives 15% emphasis for ordinary launches and up to 20% for strong beats, then fades smoothly by up to 30% across its lifetime without switching at the apex. A fixed `aBrightness` instanced attribute controls bounded shader color and alpha intensity without per-frame object allocation. After Owner review found the initial V4 presentation too dim overall, the approved V4-B tuning applies a shader-only `1.25` RGB multiplier and `1.10` alpha multiplier after the music-driven value; relative music contrast remains intact and fragment alpha is still capped at `0.62`.
+- Why: Combined global and local brightness communicates overall musical strength and frequency-specific energy, while captured launch brightness makes real sprays more prominent without allowing later unrelated frames to flicker airborne grains.
+- Alternatives: Apply one global brightness to all grains, use only local band brightness, or change particle height/physics alongside brightness. These were rejected because they are respectively too uniform, omit overall intensity, or violate the Owner-confirmed V4-only brightness boundary.
+- Consequences: `音乐动态显示回到 V4` restores this brightness-responsive version. `音乐动态显示回到 V3` restores the committed pre-V4 archive: decode `src/components/dashboard/EnergySandVolume.v3.jsx.b64` to the component (decoded SHA-256 `461B283637ABD08A98065E6E2CFA3F37CDCC76803380F7B233800555FADBE3B0`) and restore `src/lib/dashboard/fountain-physics.v3.ts` (SHA-256 `87AAD413AEE0BB9BF5EF098F38D77B08CE6D2A98D344A2F3863BBE0D888A0E1D`). V1, V2, and Dashboard background versions remain separate. Current V4 fingerprints are `src/components/dashboard/EnergySandVolume.jsx` SHA-256 `B91B761BC562B71DDD43A7F5C63102F841BA93A118E5F19DA2A76B420A7733D7` and `src/lib/dashboard/particle-brightness.ts` SHA-256 `996C38DCBD775B0BC87F7B3E9B79D3CE10F18BD833E1A3F97CEC876CFC3EB751`.
+- V4-B fingerprint correction: the earlier component fingerprint on the consequences line describes the initial V4 tuning. The current V4-B `src/components/dashboard/EnergySandVolume.jsx` SHA-256 is `03E1684E96A38510D266E165ACB22BF617DF7B54449E94D3EF0B31CE2858EC43`.
+- Particle feather update: each grain now uses `1.0 - smoothstep(0.2, 1.0, r)` as a final-alpha multiplier, removes the old early `falloff < 0.02` clip, and retains only the negligible `alpha < 0.003` optimization discard. Current component SHA-256 is `ADE1B4E77B797BBD9213D8121646DAB7A36D8BCF3488CE4E0FB0440464B766EB`.
+- Evidence/Links: `docs/superpowers/specs/2026-08-08-music-visualizer-v4-audio-brightness-design.md`; committed V3 archive/design boundary `840ab89`; 26/26 audio, physics, visualizer, brightness, V4-B, and feather-boundary tests pass; targeted ESLint exits with 0 errors and 8 existing warnings; Next.js 16.2.10 production build completes. A new authenticated 600-frame V4 playback observation remains unverified because the automation browser reaches the Owner-only sign-in gate without an Owner session.
+
+### D-118: Use canonical solid-bar Music Visualizer V5
+
+- Status: Active
+- Date: 2026-08-08
+- Context: Particle-built column bodies remained visibly granular because every quad retained transparent feathered edges. The Owner clarified that ordinary playback requires genuinely continuous pure-color columns and explicitly removed every music-visualizer version name after V5.
+- Decision/Finding: Music Visualizer V5 is the only post-V4 version. It keeps the 18-band analyser and overlap-resamples it into 12 display columns. One fixed 12-instance mesh renders contiguous, flat-topped, fully opaque-at-presence bars with dark gaps and music-driven cyan-blue-violet brightness. A separate fixed particle pool is invisible at rest. Real beat/onset events create only `2-8` short surface grains and airborne grains reduced to 40% of the previous event budget. Airborne grains retain captured column surfaces, mostly vertical velocity, gravity, apex, descent, V4 brightness emphasis, radial feather, and normal blending.
+- Why: Separate bar and particle meshes are the only reliable way to combine truly solid ordinary columns with sparse event grains. Increasing particle overlap cannot remove pores reliably and raises saturation/performance risk.
+- Alternatives: Permanent layered particle columns, full-height dense particles, V6 event-sparse particle heads, and V7 naming were rejected or removed. They either remain visibly granular or violate the Owner's single-V5 version boundary.
+- Consequences: `音乐动态显示回到 V5` means this solid-bar implementation. `音乐动态显示回到 V4` still restores `src/components/dashboard/EnergySandVolume.v4.jsx.b64` and `src/lib/dashboard/particle-brightness.v4.ts.b64`. There are no active music-visualizer V6 or V7 definitions. Current V5 fingerprints are `src/components/dashboard/EnergySandVolume.jsx` SHA-256 `21F2BB9E1CA04CB2C051981727005392D484E1527D505812C6414FEDA323660E`, `src/lib/dashboard/solid-bar-particles.ts` SHA-256 `D613D27F3550A373033462162395A3818B41A758274B69C7F276E4CA4D97F6E5`, and `src/lib/dashboard/layered-columns.ts` SHA-256 `234C04C490AD76FEA2F7D3DA971B9239FE92D9487B0CA75B72232C4C7D9D612D`.
+- Evidence/Links: `docs/superpowers/specs/2026-08-08-music-visualizer-v5-solid-bars-particle-bursts-design.md`; `docs/superpowers/plans/2026-08-08-music-visualizer-v5-solid-bars-particle-bursts.md`; 38/38 visualizer, audio, event, physics, brightness, resampling, bar-geometry, surface-grain, and budget tests pass; targeted ESLint exits with 0 errors and 2 existing warnings; Next.js 16.2.10 production build completes. Authenticated visual review and the required 600-frame blank/white-flash check remain unverified.
+
 ## Superseded Decisions
 
 - `D-102` through `D-105` used the earlier experimental background vocabulary. Their historical component fingerprints remain useful evidence, but all old V0/V1/V2/V3 naming and restoration semantics are superseded by the sequential mapping in `D-108`.
+- `D-108` established the canonical V1-V5 mapping and is extended, without changing those five mappings, by active decision `D-109`, which adds V6 and makes it current.
+- `D-109` established the initial pure-black V6. Its black layer remains the fallback, but its no-image appearance is superseded by active decision `D-110`.
+- `D-110` introduced the V6 image with centered `cover`; its asset choice remains active, but its sizing and focal-position treatment are superseded by `D-111`.
+- `D-111` established the smaller V6 foreground but allowed black fallback exposure and used percentage-based vertical positioning; `D-112` preserves the smaller scale while replacing those behaviors with a top anchor and matching full-bleed fill layer.
+- `D-112` used separate clear and softened V6 layers to preserve foreground scale while filling gaps; `D-113` supersedes that composition with a single top-centered `cover` layer because complete coverage is now the priority.
 
 ## Rejected Alternatives
 
@@ -1517,3 +1634,17 @@ None.
 - 2026-07-21: Replaced the forgeable mock session with Auth.js Google OAuth, encrypted JWT sessions, protected-route Proxy checks, and a server-enforced Owner email allowlist; kept all secrets and the exact Owner email out of project memory and source (`D-106`).
 - 2026-07-22: Preserved the complete current display state as Layout 1, anchored by commit subject `initial layout 1` and Git tag `layout-1`; future Layout 1 rollback requests restore the full tracked state rather than only a background (`D-107`).
 - 2026-07-23: Replaced the earlier experimental V0/V1/V2/V3 background vocabulary with the canonical five-file mapping `V1 = SilkBackground`, `V2 = SkillBackground2`, `V3 = SkillBackground3`, `V4 = SkillBackground4`, and `V5 = SkillBackground5`; confirmed V5 as current and made every V1-V5 rollback background-only (`D-108`).
+- 2026-07-23: Added `SkillBackground6.tsx` as the pure-black V6 experiment, preserved V1-V5 unchanged, switched Dashboard and secondary pages to V6, and retained background-only switching semantics (`D-109`).
+- 2026-07-24: Added the supplied aerial city image to the project and made it the current V6 background with centered cover behavior and a pure-black fallback, while preserving V1-V5 unchanged (`D-110`).
+- 2026-07-24: Reduced the V6 image to `92% auto` and moved its vertical focal point to `66%` so the architectural subject reads smaller and sits in the middle-to-upper area on wide Dashboard screens (`D-111`).
+- 2026-07-24: Anchored the clear V6 image to the top and added a softened full-bleed copy behind it to fill uncovered viewport areas with matching background content instead of exposed black (`D-112`).
+- 2026-07-24: Verified the newly supplied V6 image matches the existing project asset and replaced the two-layer composition with one top-centered `cover` background that always fills the viewport (`D-113`).
+- 2026-08-08: Named and fingerprinted the current left-side volume-area particle-wave display as Music Visualizer V1; future music-visualizer V1 restoration requests affect only that visualization and not the separately versioned Dashboard background (`D-114`).
+- 2026-08-08: Replaced V1's runtime-random particle launches with Music Visualizer V2's deterministic RMS and refractory bass-beat mapping, then recalculated V2 after user review rejected its flat shared-height result; the active V2 now uses relative spectrum-shaped resting heights plus beat-edge particle velocity and gravity, while V1 remains a separate restoration baseline (`D-115`).
+- 2026-08-08: Updated the same Music Visualizer V2 with the approved B strong peak-valley curve and bounded normal alpha compositing; consecutive playback-frame verification found no saturated-white particle frames while preserving a visibly uneven skyline (`D-115`).
+- 2026-08-08: Corrected the initial incomplete flash diagnosis after the Owner reported continued flashing. Full composite-region frames showed the WebGL particle layer disappearing for one frame because an inline fallback callback caused renderer teardown on playback-progress rerenders. Memoizing the callback eliminated canvas recreation and produced 0 blank frames across 600 consecutive playback frames (`D-115`).
+- 2026-08-08: Recorded Music Visualizer V3 as a continuous music-driven sand bed plus event-driven fountain, including the Owner-requested taller `0.06-0.38` bed range and stronger spectral contrast; V2 remains an exact restoration baseline (`D-116`).
+- 2026-08-08: Preserved V3 as a committed exact restoration archive and created Music Visualizer V4 with RMS-plus-local-band brightness, 15%-20% airborne emphasis, smooth lifetime decay, and no changes to V3 motion or geometry (`D-117`).
+- 2026-08-08: Applied the approved V4-B presentation lift of `1.25` RGB and `1.10` alpha after music-driven brightness while retaining the `0.62` alpha cap and every V3 motion value (`D-117`).
+- 2026-08-08: Replaced each V4 grain's early hard radial clip with a smooth 20%-to-edge alpha feather so particles blend into the card without changing music brightness or motion (`D-117`).
+- 2026-08-08: Replaced the particle-column experiments with the only canonical Music Visualizer V5: twelve continuous solid bars plus event-only surface and airborne grains; removed V6/V7 semantics while preserving V4 (`D-118`).

@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "overrides": {
+    "body > div:nth-of-type(2) > div:nth-of-type(4) > main:nth-of-type(1) > div:nth-of-type(3) > div:nth-of-type(2)": {
+      "styles": {
+        "height": "300"
+      }
+    },
+    "body > main:nth-of-type(1) > section:nth-of-type(1) > div:nth-of-type(1) > section:nth-of-type(1)": {
+      "styles": {}
+    }
+  }
+}
