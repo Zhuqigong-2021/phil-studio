@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { ACCENTS, ACCENT_RGB, TAGS } from "@/lib/dashboard/mock-data";
+import { TAGS } from "@/lib/dashboard/mock-data";
+import { DEFAULT_TOOL_ICON_KEY } from "@/lib/dashboard/tool-icons";
 import type { Accent } from "@/lib/dashboard/types";
 import type { ShellState } from "@/hooks/useShellState";
+import ToolIconPicker from "./ToolIconPicker";
 
 type Status = "idle" | "suggesting" | "ready" | "error";
-
-const ACCENT_LIST = Object.keys(ACCENTS) as Accent[];
 
 function suggestNameFromUrl(url: string): string {
   try {
@@ -22,13 +22,6 @@ function suggestNameFromUrl(url: string): string {
   } catch {
     return "";
   }
-}
-
-function monoFromName(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  if (words.length === 0) return "?";
-  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
-  return (words[0][0] + words[1][0]).toUpperCase();
 }
 
 const statusCopy: Record<Status, string> = {
@@ -47,6 +40,7 @@ function emptyForm() {
     aliasInput: "",
     aliases: [] as string[],
     source: "internal" as "internal" | "external",
+    iconKey: DEFAULT_TOOL_ICON_KEY,
     accent: "blue" as Accent,
     pin: false,
   };
@@ -108,9 +102,6 @@ function AddToolForm({ closeAddTool }: { closeAddTool: () => void }) {
     }, 500);
   };
 
-  const mono = monoFromName(form.name);
-  const rgb = ACCENT_RGB[form.accent];
-
   return (
     <div
       onClick={closeAddTool}
@@ -166,30 +157,13 @@ function AddToolForm({ closeAddTool }: { closeAddTool: () => void }) {
             )}
           </div>
 
-          {/* Icon preview + accent picker */}
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 13, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, background: `rgba(${rgb},0.18)`, border: `1px solid rgba(${rgb},0.35)`, color: ACCENTS[form.accent] }}>
-              {mono}
-            </div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {ACCENT_LIST.map((a) => (
-                <button
-                  key={a}
-                  onClick={() => setForm((f) => ({ ...f, accent: a }))}
-                  aria-label={`Use ${a} icon color`}
-                  style={{
-                    width: 22,
-                    height: 22,
-                    borderRadius: "50%",
-                    background: ACCENTS[a],
-                    border: form.accent === a ? "2px solid #fff" : "2px solid transparent",
-                    cursor: "pointer",
-                    padding: 0,
-                  }}
-                />
-              ))}
-            </div>
-          </div>
+          {/* Icon and accent picker */}
+          <ToolIconPicker
+            iconKey={form.iconKey}
+            accent={form.accent}
+            onIconChange={(iconKey) => setForm((f) => ({ ...f, iconKey }))}
+            onAccentChange={(accent) => setForm((f) => ({ ...f, accent }))}
+          />
 
           {/* Name */}
           <div>
