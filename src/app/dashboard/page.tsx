@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { createPortal } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import gsap from "gsap";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import "./dashboard.css";
@@ -2219,16 +2219,6 @@ function useMusicPlayer(audioRef: React.RefObject<HTMLAudioElement | null>) {
 
   const track = TRACKS[currentIndex];
 
-  React.useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (isPlaying) {
-      void audio.play().catch(() => setIsPlaying(false));
-    } else {
-      audio.pause();
-    }
-  }, [isPlaying, currentIndex, audioRef]);
-
   // Drives the progress bar. The <audio> element is created once and persists across
   // track changes (only its src swaps), so these listeners are attached once rather than
   // re-subscribed per track; "loadstart" (fired as soon as a new src starts loading) resets
@@ -2238,6 +2228,8 @@ function useMusicPlayer(audioRef: React.RefObject<HTMLAudioElement | null>) {
     if (!audio) return;
     const onTimeUpdate = () => setCurrentTime(audio.currentTime);
     const onLoadedMetadata = () => setDuration(audio.duration || 0);
+    const onPlay = () => setIsPlaying(true);
+    const onPause = () => setIsPlaying(false);
     const onLoadStart = () => {
       setCurrentTime(0);
       setDuration(0);
@@ -2245,6 +2237,8 @@ function useMusicPlayer(audioRef: React.RefObject<HTMLAudioElement | null>) {
     audio.addEventListener("timeupdate", onTimeUpdate);
     audio.addEventListener("loadedmetadata", onLoadedMetadata);
     audio.addEventListener("loadstart", onLoadStart);
+    audio.addEventListener("play", onPlay);
+    audio.addEventListener("pause", onPause);
     // Catch-up for the very first track: its metadata can finish loading between mount
     // and this effect running, so the "loadedmetadata" event fires before these listeners
     // are attached and gets missed entirely — duration would then stay stuck at 0:00.
@@ -2259,6 +2253,8 @@ function useMusicPlayer(audioRef: React.RefObject<HTMLAudioElement | null>) {
       audio.removeEventListener("timeupdate", onTimeUpdate);
       audio.removeEventListener("loadedmetadata", onLoadedMetadata);
       audio.removeEventListener("loadstart", onLoadStart);
+      audio.removeEventListener("play", onPlay);
+      audio.removeEventListener("pause", onPause);
     };
   }, [audioRef]);
 
@@ -2269,32 +2265,43 @@ function useMusicPlayer(audioRef: React.RefObject<HTMLAudioElement | null>) {
     return next;
   };
 
-  const playAt = React.useCallback((index: number) => {
-    setCurrentIndex(index);
-    setIsPlaying(true);
-  }, []);
+  const playAt = React.useCallback(
+    (index: number) => {
+      flushSync(() => setCurrentIndex(index));
+      const audio = audioRef.current;
+      if (!audio) return;
+      void audio.play().catch(() => setIsPlaying(false));
+    },
+    [audioRef],
+  );
 
   // Manual skip always moves through the list (or jumps randomly in shuffle) — repeat-one
   // only kicks in when a track ends on its own, not on an explicit prev/next tap.
   const playNext = React.useCallback(() => {
-    setCurrentIndex((i) =>
+    playAt(
       playMode === "shuffle"
-        ? randomIndexExcluding(i)
-        : (i + 1) % TRACKS.length,
+        ? randomIndexExcluding(currentIndex)
+        : (currentIndex + 1) % TRACKS.length,
     );
-    setIsPlaying(true);
-  }, [playMode]);
+  }, [currentIndex, playAt, playMode]);
 
   const playPrev = React.useCallback(() => {
-    setCurrentIndex((i) =>
+    playAt(
       playMode === "shuffle"
-        ? randomIndexExcluding(i)
-        : (i - 1 + TRACKS.length) % TRACKS.length,
+        ? randomIndexExcluding(currentIndex)
+        : (currentIndex - 1 + TRACKS.length) % TRACKS.length,
     );
-    setIsPlaying(true);
-  }, [playMode]);
+  }, [currentIndex, playAt, playMode]);
 
-  const togglePlay = React.useCallback(() => setIsPlaying((p) => !p), []);
+  const togglePlay = React.useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (audio.paused) {
+      void audio.play().catch(() => setIsPlaying(false));
+    } else {
+      audio.pause();
+    }
+  }, [audioRef]);
   const cyclePlayMode = React.useCallback(() => {
     setPlayMode((m) =>
       m === "sequential"
