@@ -7,31 +7,24 @@ const source = readFileSync(
   "utf8",
 );
 
-test("starts the Web Audio graph from an explicit user activation", () => {
-  assert.match(
-    source,
-    /addEventListener\("pointerdown",\s*initializeAudioGraph/,
-  );
-  assert.match(
-    source,
-    /addEventListener\("keydown",\s*initializeAudioGraph/,
-  );
-  assert.match(source, /void ctx\.resume\(\)\.catch/);
-});
-
-test("removes pending activation listeners after initialization", () => {
-  assert.match(
-    source,
-    /removeEventListener\("pointerdown",\s*initializeAudioGraph/,
-  );
-  assert.match(
-    source,
-    /removeEventListener\("keydown",\s*initializeAudioGraph/,
-  );
-});
-
-test("keeps native audio output independent from Web Audio rendering", () => {
-  assert.match(source, /captureStream\?\.\(\)/);
+test("music analysis never instantiates Web Audio", () => {
+  assert.doesNotMatch(source, /AudioContext/);
   assert.doesNotMatch(source, /createMediaElementSource/);
-  assert.doesNotMatch(source, /analyser\.connect\(ctx\.destination\)/);
+  assert.doesNotMatch(source, /createMediaStreamSource/);
+  assert.doesNotMatch(source, /captureStream/);
+});
+
+test("keeps the visualizer contract with inert level refs", () => {
+  for (const refName of [
+    "bassRef",
+    "midRef",
+    "trebleRef",
+    "energyRef",
+    "loudnessRef",
+    "beatPulseRef",
+    "audioLevelRef",
+    "bandsRef",
+  ]) {
+    assert.match(source, new RegExp(`\\b${refName}\\b`));
+  }
 });
