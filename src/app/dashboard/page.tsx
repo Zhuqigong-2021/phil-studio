@@ -3940,13 +3940,6 @@ function MusicPlayerPanel({
   const [showLyrics, setShowLyrics] = React.useState(false);
   const lyricLines = useLyricsTimeline(track.lyricsSlug, showLyrics, duration);
 
-  // EnergySandVolume reads these imperatively inside its own rAF loop rather than via
-  // props, so dragging the volume slider (which fires onChange every pixel) doesn't
-  // re-run the WebGL init effect on every tick.
-  const volumeRef = React.useRef(volume);
-  React.useEffect(() => {
-    volumeRef.current = volume;
-  }, [volume]);
   const isPlayingRef = React.useRef(isPlaying);
   React.useEffect(() => {
     isPlayingRef.current = isPlaying;
@@ -4272,7 +4265,6 @@ function MusicPlayerPanel({
                     loudnessRef={loudnessRef}
                     beatPulseRef={beatPulseRef}
                     bandsRef={bandsRef}
-                    volumeRef={volumeRef}
                     isPlayingRef={isPlayingRef}
                     onFallback={handleEnergyVisualFallback}
                   />

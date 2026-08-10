@@ -61,7 +61,6 @@ import {
   computeTrailScale,
   writeSolidBarGeometry,
 } from "@/lib/dashboard/solid-bar-particles";
-import { writeVolumeDrivenSpectrum } from "@/lib/dashboard/volume-driven-spectrum";
 
 const DISPLAY_COLUMN_COUNT = 24;
 
@@ -208,7 +207,7 @@ function seededUnit(index) {
  *   trebleRef: { current: number }, energyRef: { current: number },
  *   loudnessRef: { current: number }, beatPulseRef: { current: number },
  *   bandsRef: { current: Float32Array },
- *   volumeRef: { current: number }, isPlayingRef: { current: boolean },
+ *   isPlayingRef: { current: boolean },
  *   onFallback?: () => void,
  * }} props
  */
@@ -216,7 +215,6 @@ export default function EnergySandVolume({
   bandsRef,
   loudnessRef,
   beatPulseRef,
-  volumeRef,
   isPlayingRef,
   onFallback,
 }) {
@@ -286,7 +284,6 @@ export default function EnergySandVolume({
     const detailDisplayBands = new Float32Array(DISPLAY_COLUMN_COUNT);
     const compressedDisplayBands = new Float32Array(DISPLAY_COLUMN_COUNT);
     const bedTargets = new Float32Array(DISPLAY_COLUMN_COUNT);
-    const volumeDrivenBands = new Float32Array(AUDIO_BAND_COUNT);
     pBandBrightness.fill(0.18);
     pTrailParent.fill(-1);
     pErosionAge.fill(1);
@@ -482,16 +479,9 @@ export default function EnergySandVolume({
       particleUniforms.uPresence.value = presence;
       const baselineY = particleUniforms.uBaselineY.value;
 
-      const volume = playing ? Math.min(1, Math.max(0, volumeRef.current)) : 0;
-      const analyserBands = bandsRef.current;
-      const hasAnalyserSignal = analyserBands.some((band) => band > 0.001);
-      const bands = hasAnalyserSignal
-        ? analyserBands
-        : writeVolumeDrivenSpectrum(t, volume, playing, volumeDrivenBands);
-      const loudness = hasAnalyserSignal ? loudnessRef.current : volume;
-      const beat = hasAnalyserSignal && playing && !reducedMotion
-        ? beatPulseRef.current
-        : 0;
+      const loudness = playing ? loudnessRef.current : 0;
+      const beat = playing && !reducedMotion ? beatPulseRef.current : 0;
+      const bands = bandsRef.current;
       triggerState = stepFountainTriggers(triggerState, {
         bands,
         loudness,
@@ -917,7 +907,7 @@ export default function EnergySandVolume({
       }
       renderer.dispose();
     };
-  }, [bandsRef, beatPulseRef, isPlayingRef, loudnessRef, onFallback, volumeRef]);
+  }, [bandsRef, beatPulseRef, isPlayingRef, loudnessRef, onFallback]);
 
   return (
     <div

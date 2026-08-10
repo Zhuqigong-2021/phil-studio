@@ -146,3 +146,8 @@ test("V5 bars stay opaque and uniformly receive a bounded brightness lift", () =
   assert.doesNotMatch(barShader, /verticalLight|musicTopLift/);
   assert.match(barShader, /gl_FragColor = vec4\(col, uPresence\)/);
 });
+
+test("music visualization uses decoded track bands without a synthetic rhythm fallback", () => {
+  assert.doesNotMatch(source, /writeVolumeDrivenSpectrum/);
+  assert.match(source, /const bands = bandsRef\.current/);
+});
