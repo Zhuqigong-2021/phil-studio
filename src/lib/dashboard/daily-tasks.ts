@@ -54,6 +54,23 @@ export function writeDailyTasks(tasks: DailyTask[]) {
   }
 }
 
+export function renameDailyTask(
+  tasks: DailyTask[],
+  id: string,
+  title: string,
+) {
+  const trimmedTitle = title.trim();
+  if (!trimmedTitle) return tasks;
+
+  return tasks.map((task) =>
+    task.id === id ? { ...task, title: trimmedTitle } : task,
+  );
+}
+
+export function deleteDailyTask(tasks: DailyTask[], id: string) {
+  return tasks.filter((task) => task.id !== id);
+}
+
 export function millisecondsUntilTomorrow() {
   const now = new Date();
   const tomorrow = new Date(now);

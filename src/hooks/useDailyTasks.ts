@@ -3,8 +3,10 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   DAILY_TASKS_STORAGE_KEY,
+  deleteDailyTask,
   millisecondsUntilTomorrow,
   readDailyTasks,
+  renameDailyTask,
   writeDailyTasks,
   type DailyTask,
 } from "@/lib/dashboard/daily-tasks";
@@ -74,5 +76,21 @@ export function useDailyTasks() {
     [updateTasks],
   );
 
-  return { tasks, addTask, toggleTask };
+  const updateTask = useCallback(
+    (id: string, title: string) => {
+      if (!title.trim()) return false;
+      updateTasks((current) => renameDailyTask(current, id, title));
+      return true;
+    },
+    [updateTasks],
+  );
+
+  const deleteTask = useCallback(
+    (id: string) => {
+      updateTasks((current) => deleteDailyTask(current, id));
+    },
+    [updateTasks],
+  );
+
+  return { tasks, addTask, toggleTask, updateTask, deleteTask };
 }

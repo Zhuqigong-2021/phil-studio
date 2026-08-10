@@ -77,6 +77,7 @@ import {
   Volume1,
   Volume2,
   VolumeX,
+  Trash2,
 } from "lucide-react";
 import { TRACKS, type Track } from "@/lib/dashboard/music";
 import {
@@ -4777,15 +4778,22 @@ function TaskCompletionPanel({
   tasks,
   addTask,
   toggleTask,
+  updateTask,
+  deleteTask,
 }: {
   tasks: DailyTask[];
   addTask: (title: string) => boolean;
   toggleTask: (id: string) => void;
+  updateTask: (id: string, title: string) => boolean;
+  deleteTask: (id: string) => void;
 }) {
   const reduceMotion = Boolean(useReducedMotion());
   const listItemMotion = getListItemMotion(reduceMotion);
   const [isAdding, setIsAdding] = React.useState(false);
   const [title, setTitle] = React.useState("");
+  const [editingTaskId, setEditingTaskId] = React.useState<string | null>(null);
+  const [draftTitle, setDraftTitle] = React.useState("");
+  const cancelledEditIdRef = React.useRef<string | null>(null);
   const completedCount = tasks.filter((t) => t.done).length;
   const progress = tasks.length ? (completedCount / tasks.length) * 100 : 0;
 
@@ -4794,6 +4802,25 @@ function TaskCompletionPanel({
     if (!addTask(title)) return;
     setTitle("");
     setIsAdding(false);
+  };
+
+  const startEditing = (task: DailyTask) => {
+    cancelledEditIdRef.current = null;
+    setEditingTaskId(task.id);
+    setDraftTitle(task.title);
+  };
+
+  const finishEditing = (task: DailyTask) => {
+    if (cancelledEditIdRef.current === task.id) {
+      cancelledEditIdRef.current = null;
+      setEditingTaskId(null);
+      setDraftTitle("");
+      return;
+    }
+    const nextTitle = draftTitle.trim();
+    if (nextTitle) updateTask(task.id, nextTitle);
+    setEditingTaskId(null);
+    setDraftTitle("");
   };
 
   return (
@@ -4892,21 +4919,15 @@ function TaskCompletionPanel({
             key={task.id}
             layout={!reduceMotion}
             {...listItemMotion}
-            role="checkbox"
-            aria-checked={task.done}
-            tabIndex={0}
-            onClick={() => toggleTask(task.id)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" || e.key === " ") {
-                e.preventDefault();
-                toggleTask(task.id);
-              }
-            }}
-            className="flex items-center gap-[10px] px-[10px] rounded-[10px] cursor-pointer flex-shrink-0 hover:bg-[rgba(255,255,255,0.05)] transition-colors"
+            className="group flex items-center gap-[10px] px-[10px] rounded-[10px] flex-shrink-0 hover:bg-[rgba(255,255,255,0.05)] transition-colors"
             style={{ minHeight: 44 }}
           >
-            <div
-              aria-hidden="true"
+            <button
+              type="button"
+              role="checkbox"
+              aria-checked={task.done}
+              aria-label={`${task.done ? "Mark incomplete" : "Mark complete"}: ${task.title}`}
+              onClick={() => toggleTask(task.id)}
               className="flex items-center justify-center rounded-[5px] flex-shrink-0"
               style={{
                 width: 18,
@@ -4922,19 +4943,57 @@ function TaskCompletionPanel({
                   strokeWidth={3}
                 />
               )}
+            </button>
+            {editingTaskId === task.id ? (
+              <input
+                autoFocus
+                value={draftTitle}
+                onChange={(event) => setDraftTitle(event.target.value)}
+                onBlur={() => finishEditing(task)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") event.currentTarget.blur();
+                  if (event.key === "Escape") {
+                    cancelledEditIdRef.current = task.id;
+                    event.currentTarget.blur();
+                  }
+                }}
+                aria-label={`Edit task: ${task.title}`}
+                maxLength={120}
+                className="flex-1 min-w-0 h-[30px] rounded-[7px] px-2 text-[12px] font-medium text-[#eef1fb] outline-none"
+                style={{
+                  background: "rgba(6,12,35,0.5)",
+                  border: "1px solid rgba(154,112,255,0.48)",
+                  boxShadow: "0 0 12px rgba(154,112,255,0.12)",
+                }}
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => startEditing(task)}
+                aria-label={`Edit task: ${task.title}`}
+                className="flex-1 min-w-0 text-left text-[12px] font-medium truncate"
+                style={{
+                  color: task.done ? "#7c8698" : "#d7dcee",
+                  textDecoration: task.done ? "line-through" : "none",
+                }}
+              >
+                {task.title}
+              </button>
+            )}
+            <div className="relative h-7 w-[68px] flex-shrink-0">
+              <span className="absolute inset-0 flex items-center justify-end text-[#6a748e] text-[11px] transition-opacity duration-150 group-hover:opacity-0">
+                {formatTaskTime(task.createdAt)}
+              </span>
+              <button
+                type="button"
+                onClick={() => deleteTask(task.id)}
+                aria-label={`Delete ${task.title}`}
+                className="absolute inset-0 flex items-center justify-end gap-1 text-[#ff6b9d] text-[11px] font-medium opacity-0 pointer-events-none transition-[opacity,color] duration-150 group-hover:opacity-100 group-hover:pointer-events-auto focus:opacity-100 focus:pointer-events-auto hover:text-[#ff8eb3]"
+              >
+                <Trash2 aria-hidden="true" style={{ width: 12, height: 12 }} />
+                Delete
+              </button>
             </div>
-            <p
-              className="flex-1 min-w-0 text-[12px] font-medium truncate"
-              style={{
-                color: task.done ? "#7c8698" : "#d7dcee",
-                textDecoration: task.done ? "line-through" : "none",
-              }}
-            >
-              {task.title}
-            </p>
-            <span className="text-[#6a748e] text-[11px] flex-shrink-0">
-              {formatTaskTime(task.createdAt)}
-            </span>
           </motion.div>
           ))}
         </AnimatePresence>
@@ -5171,6 +5230,8 @@ function BottomRow({
   tasks,
   addTask,
   toggleTask,
+  updateTask,
+  deleteTask,
   favoriteTools,
   onToggleFavorite,
   focusEntries,
@@ -5184,6 +5245,8 @@ function BottomRow({
   tasks: DailyTask[];
   addTask: (title: string) => boolean;
   toggleTask: (id: string) => void;
+  updateTask: (id: string, title: string) => boolean;
+  deleteTask: (id: string) => void;
   favoriteTools: typeof allTools;
   onToggleFavorite: (id: string) => void;
   focusEntries: FocusEntry[];
@@ -5228,6 +5291,8 @@ function BottomRow({
             tasks={tasks}
             addTask={addTask}
             toggleTask={toggleTask}
+            updateTask={updateTask}
+            deleteTask={deleteTask}
           />
         ) : active === "categories" ? (
           <CategoriesPanel />
@@ -5284,7 +5349,7 @@ export default function DashboardPage() {
   const [drawerOpen, setDrawerOpen] = React.useState(false);
 
   const [activeStat, setActiveStat] = React.useState<StatKey>("recent");
-  const { tasks, addTask, toggleTask } = useDailyTasks();
+  const { tasks, addTask, toggleTask, updateTask, deleteTask } = useDailyTasks();
   const completedCount = tasks.filter((t) => t.done).length;
   const completionPercent = tasks.length
     ? Math.round((completedCount / tasks.length) * 100)
@@ -5522,6 +5587,8 @@ export default function DashboardPage() {
             tasks={tasks}
             addTask={addTask}
             toggleTask={toggleTask}
+            updateTask={updateTask}
+            deleteTask={deleteTask}
             favoriteTools={favoriteTools}
             onToggleFavorite={toggleFavorite}
             focusEntries={focusEntries}
