@@ -92,9 +92,12 @@
 }
 
 .categories {
+  max-height: 300px;
   display: flex;
   flex-direction: column;
   gap: 5px;
+  overflow-y: auto;
+  padding-right: 3px;
 }
 
 .categories button {
@@ -122,6 +125,9 @@
 
 .results {
   min-width: 0;
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 3px;
 }
 
 .iconGrid {
@@ -169,9 +175,16 @@
   }
 
   .categories {
+    max-height: none;
     flex-direction: row;
     overflow-x: auto;
+    overflow-y: hidden;
+    padding-right: 0;
     padding-bottom: 3px;
+  }
+
+  .results {
+    max-height: 260px;
   }
 
   .categories button {
