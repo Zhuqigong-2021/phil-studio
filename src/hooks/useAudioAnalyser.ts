@@ -29,12 +29,9 @@ export const AUDIO_BAND_COUNT = 18;
  * to raw FFT data or smoothly blurring into a wave — that's what actually reads as
  * "rhythm" rather than either jitter or a flowing blob.
  *
- * Web Audio only allows `createMediaElementSource` to be called ONCE per element for its
- * entire lifetime — calling it twice throws. This hook guards that with a ref flag so
- * it's safe even if the owning component re-renders or effects re-run; it never creates
- * a second AudioContext/source for the same element. The analyser node stays connected in
- * the graph on the way to `ctx.destination`, so playback is unaffected — this only
- * *listens*, it never touches volume/routing.
+ * The media element keeps its native output path. Web Audio receives a captured stream
+ * only for analysis, so a browser audio-renderer failure cannot take the actual music
+ * output down with the visualizer.
  */
 export function useAudioAnalyser(
   audioRef: React.RefObject<HTMLAudioElement | null>,
@@ -57,31 +54,51 @@ export function useAudioAnalyser(
   const graphInitedRef = useRef(false);
 
   useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio || graphInitedRef.current) return;
-    graphInitedRef.current = true;
-    try {
-      type AudioCtorWindow = Window & {
-        webkitAudioContext?: typeof AudioContext;
-      };
-      const AudioCtx =
-        window.AudioContext ?? (window as AudioCtorWindow).webkitAudioContext;
-      if (!AudioCtx) return;
-      const ctx = new AudioCtx();
-      const source = ctx.createMediaElementSource(audio);
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 2048;
-      analyser.smoothingTimeConstant = 0.4; // light native smoothing; ballistics applied again in JS below
-      // Analyser must stay in the graph on the way to destination, or connecting it
-      // would silently mute playback (createMediaElementSource takes over routing).
-      source.connect(analyser);
-      analyser.connect(ctx.destination);
-      audioCtxRef.current = ctx;
-      analyserRef.current = analyser;
-    } catch {
-      // Web Audio unavailable (unsupported browser, blocked, etc.) — refs just stay at
-      // 0 forever and reactive visuals fall back to their idle/ambient state.
-    }
+    const initializeAudioGraph = () => {
+      const audio = audioRef.current;
+      if (!audio || graphInitedRef.current) return;
+      graphInitedRef.current = true;
+      window.removeEventListener("pointerdown", initializeAudioGraph);
+      window.removeEventListener("keydown", initializeAudioGraph);
+
+      try {
+        type AudioCtorWindow = Window & {
+          webkitAudioContext?: typeof AudioContext;
+        };
+        const AudioCtx =
+          window.AudioContext ?? (window as AudioCtorWindow).webkitAudioContext;
+        if (!AudioCtx) return;
+        const audioWithCapture = audio as HTMLAudioElement & {
+          captureStream?: () => MediaStream;
+          mozCaptureStream?: () => MediaStream;
+        };
+        const mediaStream =
+          audioWithCapture.captureStream?.() ??
+          audioWithCapture.mozCaptureStream?.();
+        if (!mediaStream) return;
+        const ctx = new AudioCtx();
+        const source = ctx.createMediaStreamSource(mediaStream);
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 2048;
+        analyser.smoothingTimeConstant = 0.4; // light native smoothing; ballistics applied again in JS below
+        // The analyser intentionally has no connection to ctx.destination. Native
+        // <audio> playback remains the only output path; this graph only reads levels.
+        source.connect(analyser);
+        audioCtxRef.current = ctx;
+        analyserRef.current = analyser;
+        void ctx.resume().catch(() => {});
+      } catch {
+        // Web Audio unavailable (unsupported browser, blocked, etc.) — refs just stay at
+        // 0 forever and reactive visuals fall back to their idle/ambient state.
+      }
+    };
+
+    window.addEventListener("pointerdown", initializeAudioGraph);
+    window.addEventListener("keydown", initializeAudioGraph);
+    return () => {
+      window.removeEventListener("pointerdown", initializeAudioGraph);
+      window.removeEventListener("keydown", initializeAudioGraph);
+    };
   }, [audioRef]);
 
   useEffect(() => {
