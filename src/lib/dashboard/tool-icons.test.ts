@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import dynamicIconImports from "lucide-react/dynamicIconImports.mjs";
 
 import {
   getToolIcon,
@@ -47,6 +48,16 @@ test("preserves every original icon key", () => {
 test("keeps icon metadata serializable and component-free", () => {
   assert.ok(TOOL_ICONS.every((icon) => !("Icon" in icon)));
   assert.doesNotThrow(() => JSON.stringify(TOOL_ICONS));
+});
+
+test("resolves every stable key to an installed Lucide dynamic import", () => {
+  for (const icon of TOOL_ICONS) {
+    const lucideName = icon.lucideName ?? icon.key;
+    assert.ok(
+      lucideName in dynamicIconImports,
+      `${icon.key} resolves to missing Lucide icon ${lucideName}`,
+    );
+  }
 });
 
 test("searches labels, keys, categories, and bilingual keywords", () => {
