@@ -3,9 +3,13 @@ import test from "node:test";
 
 import {
   createManageTableState,
+  isManagePopoverOpen,
   manageTableReducer,
+  parseManageAliasInput,
   runManageMutation,
+  validateManageDraft,
 } from "./manage-page-state.ts";
+import { toolToRowDraft } from "../lib/dashboard/tool-library.ts";
 import type { Tool } from "../lib/dashboard/types.ts";
 
 function tool(id: string, name = `Tool ${id}`): Tool {
@@ -36,6 +40,47 @@ test("changing one row draft leaves every other row unchanged", () => {
   assert.deepEqual(next.drafts.b, initial.drafts.b);
   assert.notEqual(next.drafts.a, initial.drafts.a);
   assert.equal(next.drafts.b, initial.drafts.b);
+  assert.deepEqual(next.dirtyIds, ["a"]);
+});
+
+test("authoritative tools replace untouched fallback drafts and pin values", () => {
+  const fallback = tool("a", "Fallback A");
+  const authoritative = tool("a", "Database A");
+  const initial = createManageTableState([fallback], []);
+  const synced = manageTableReducer(initial, {
+    type: "tools/sync",
+    tools: [authoritative],
+    pinnedToolIds: ["a"],
+    resetDraftIds: [],
+  });
+
+  assert.equal(synced.drafts.a.name, "Database A");
+  assert.equal(synced.drafts.a.pinned, true);
+  assert.equal(synced.aliasInputs.a, "");
+});
+
+test("authoritative refresh preserves dirty drafts and their active alias input", () => {
+  let state = createManageTableState([tool("a", "Fallback A")], []);
+  state = manageTableReducer(state, {
+    type: "draft/change",
+    id: "a",
+    partial: { name: "Unsaved A" },
+  });
+  state = manageTableReducer(state, {
+    type: "alias/change",
+    id: "a",
+    value: "Docs, docs, in progress",
+  });
+  const synced = manageTableReducer(state, {
+    type: "tools/sync",
+    tools: [{ ...tool("a", "Database A"), aliases: ["Database alias"] }],
+    pinnedToolIds: ["a"],
+    resetDraftIds: [],
+  });
+
+  assert.equal(synced.drafts.a.name, "Unsaved A");
+  assert.equal(synced.aliasInputs.a, "Docs, docs, in progress");
+  assert.deepEqual(synced.dirtyIds, ["a"]);
 });
 
 test("a successful refresh resets only the matching draft from database state", () => {
@@ -50,19 +95,22 @@ test("a successful refresh resets only the matching draft from database state", 
     id: "b",
     partial: { name: "Unsaved B" },
   });
+  state = manageTableReducer(state, { type: "alias/change", id: "a", value: "Unsaved alias, " });
   state = manageTableReducer(state, { type: "update/start", id: "a" });
 
   const refreshed = manageTableReducer(state, {
     type: "tools/sync",
-    tools: [tool("a", "Saved A"), tool("b")],
+    tools: [{ ...tool("a", "Saved A"), aliases: ["Saved alias"] }, tool("b")],
     pinnedToolIds: ["a"],
     resetDraftIds: ["a"],
   });
 
   assert.equal(refreshed.drafts.a.name, "Saved A");
   assert.equal(refreshed.drafts.a.pinned, true);
+  assert.equal(refreshed.aliasInputs.a, "Saved alias");
   assert.equal(refreshed.drafts.b.name, "Unsaved B");
   assert.deepEqual(refreshed.updatingIds, []);
+  assert.deepEqual(refreshed.dirtyIds, ["b"]);
 });
 
 test("a failed update clears pending state but keeps the user's draft", () => {
@@ -77,6 +125,7 @@ test("a failed update clears pending state but keeps the user's draft", () => {
 
   assert.equal(state.drafts.a.description, "Needs correction");
   assert.deepEqual(state.updatingIds, []);
+  assert.deepEqual(state.dirtyIds, ["a"]);
 });
 
 test("changing page size returns pagination to page one", () => {
@@ -158,4 +207,55 @@ test("publishes a mapped delete error only after the rejected request settles", 
   assert.equal(published.length, 1);
   assert.equal(published[0].tone, "error");
   assert.match(published[0].message, /permission/i);
+});
+
+test("strict alias parsing preserves duplicates so validation can reject them", () => {
+  assert.deepEqual(parseManageAliasInput(" Docs, docs\nKnowledge "), ["Docs", "docs", "Knowledge"]);
+});
+
+test("complete row validation rejects invalid names, links, and duplicate aliases before mutation", () => {
+  const base = toolToRowDraft(tool("a"), false);
+  const cases = [
+    { draft: { ...base, name: "   " }, aliases: "Docs", message: /name is required/i },
+    { draft: { ...base, url: "ftp://example.com" }, aliases: "Docs", message: /HTTP or HTTPS/i },
+    { draft: base, aliases: "Docs, docs", message: /duplicate alias/i },
+  ];
+
+  for (const sample of cases) {
+    let mutationCalls = 0;
+    assert.throws(() => {
+      validateManageDraft(sample.draft, sample.aliases, ["Work"]);
+      mutationCalls += 1;
+    }, sample.message);
+    assert.equal(mutationCalls, 0);
+  }
+});
+
+test("complete row validation normalizes valid shared patch fields and rejects unknown categories", () => {
+  const base = toolToRowDraft(tool("a"), false);
+  assert.deepEqual(validateManageDraft(
+    { ...base, name: "  Tool A  ", url: "example.com/a", color: "#22d3ee" },
+    " Docs, Knowledge ",
+    ["Work"],
+  ), {
+    iconKey: "app-window",
+    accent: "#22D3EE",
+    name: "Tool A",
+    description: "Tool a description",
+    tags: ["Work"],
+    url: "https://example.com/a",
+    pinned: false,
+    favorite: false,
+    aliases: ["Docs", "Knowledge"],
+  });
+  assert.throws(
+    () => validateManageDraft({ ...base, tags: ["Invented"] }, "", ["Work"]),
+    /category.*library/i,
+  );
+});
+
+test("pending controls always close their popovers", () => {
+  assert.equal(isManagePopoverOpen(true, false), true);
+  assert.equal(isManagePopoverOpen(true, true), false);
+  assert.equal(isManagePopoverOpen(false, true), false);
 });

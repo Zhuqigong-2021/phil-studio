@@ -50,14 +50,17 @@ export default function ManageContent({ state }: { state: ManagePageState }) {
             </tr>
           </thead>
           <tbody>
-            {pageRows.map(({ tool, draft }) => (
+            {pageRows.map(({ tool, draft, aliasInput, error }) => (
               <EditableToolRow
                 key={tool.id}
                 tool={tool}
                 draft={draft}
+                aliasInput={aliasInput}
                 categories={categories}
                 updating={updatingIds.includes(tool.id)}
+                error={error}
                 onChange={(partial) => state.updateDraft(tool.id, partial)}
+                onAliasInputChange={(value) => state.updateAliasInput(tool.id, value)}
                 onSubmit={() => { void state.submitRow(tool.id); }}
                 onDelete={() => state.requestDelete(tool.id)}
               />

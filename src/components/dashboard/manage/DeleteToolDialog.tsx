@@ -20,8 +20,12 @@ export default function DeleteToolDialog({
 
   useEffect(() => {
     returnFocusRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    cancelRef.current?.focus();
   }, []);
+
+  useEffect(() => {
+    if (deleting) dialogRef.current?.focus();
+    else cancelRef.current?.focus();
+  }, [deleting]);
 
   const cancel = () => {
     if (deleting) return;
@@ -40,8 +44,9 @@ export default function DeleteToolDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="delete-tool-title"
-        aria-describedby="delete-tool-description"
+        aria-describedby={deleting ? undefined : "delete-tool-description"}
         aria-busy={deleting}
+        tabIndex={-1}
         onKeyDown={(event) => {
           if (event.key === "Escape") {
             event.preventDefault();
@@ -50,7 +55,11 @@ export default function DeleteToolDialog({
           }
           if (event.key !== "Tab") return;
           const focusable = [...(dialogRef.current?.querySelectorAll<HTMLElement>("button:not(:disabled)") ?? [])];
-          if (!focusable.length) return;
+          if (!focusable.length) {
+            event.preventDefault();
+            dialogRef.current?.focus();
+            return;
+          }
           const first = focusable[0];
           const last = focusable[focusable.length - 1];
           if (event.shiftKey && document.activeElement === first) {

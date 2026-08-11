@@ -2,8 +2,9 @@
 
 import { Check, LoaderCircle, Search, Star, Trash2 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
+import { isManagePopoverOpen } from "@/hooks/manage-page-state";
 import { ACCENTS } from "@/lib/dashboard/mock-data";
-import { parseAliasInput, type ToolRowDraft } from "@/lib/dashboard/tool-library";
+import type { ToolRowDraft } from "@/lib/dashboard/tool-library";
 import { getToolIcon, searchToolIcons } from "@/lib/dashboard/tool-icons";
 import type { Accent, DecoratedTool } from "@/lib/dashboard/types";
 import DynamicToolIcon from "../DynamicToolIcon";
@@ -28,6 +29,7 @@ function InlineIconPicker({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const matches = useMemo(() => searchToolIcons(query, "all").slice(0, 30), [query]);
   const selected = getToolIcon(value);
+  const visibleOpen = isManagePopoverOpen(open, disabled);
   const close = () => {
     setOpen(false);
     setQuery("");
@@ -36,7 +38,7 @@ function InlineIconPicker({
 
   return (
     <div className="inline-icon-picker" onKeyDown={(event) => {
-      if (event.key === "Escape" && open) {
+      if (event.key === "Escape" && visibleOpen) {
         event.stopPropagation();
         close();
       }
@@ -47,19 +49,19 @@ function InlineIconPicker({
         className="inline-icon-trigger"
         aria-label={`Choose icon for ${toolName}`}
         aria-haspopup="dialog"
-        aria-expanded={open}
+        aria-expanded={visibleOpen}
         disabled={disabled}
         onClick={() => setOpen((current) => !current)}
         style={{ color }}
       >
         <DynamicToolIcon iconKey={selected.key} size={19} strokeWidth={1.8} aria-hidden="true" />
       </button>
-      {open && (
+      {visibleOpen && (
         <div className="inline-icon-popover" role="dialog" aria-label={`Icon picker for ${toolName}`}>
           <label className="inline-icon-search">
             <Search size={14} aria-hidden="true" />
             <span className="sr-only">Search icons for {toolName}</span>
-            <input autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search icons" />
+            <input disabled={disabled} autoFocus value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search icons" />
           </label>
           <div className="inline-icon-grid">
             {matches.map((icon) => (
@@ -69,6 +71,7 @@ function InlineIconPicker({
                 title={icon.label}
                 aria-label={`Use ${icon.label} for ${toolName}`}
                 aria-pressed={icon.key === selected.key}
+                disabled={disabled}
                 onClick={() => {
                   onChange(icon.key);
                   close();
@@ -87,27 +90,34 @@ function InlineIconPicker({
 export default function EditableToolRow({
   tool,
   draft,
+  aliasInput,
   categories,
   updating,
+  error,
   onChange,
+  onAliasInputChange,
   onSubmit,
   onDelete,
 }: {
   tool: DecoratedTool;
   draft: ToolRowDraft;
+  aliasInput: string;
   categories: readonly string[];
   updating: boolean;
+  error: string | null;
   onChange: (partial: Partial<ToolRowDraft>) => void;
+  onAliasInputChange: (value: string) => void;
   onSubmit: () => void;
   onDelete: () => void;
 }) {
-  const [aliasInput, setAliasInput] = useState(draft.aliases.join(", "));
   const renderedColor = ACCENTS[draft.color as Accent] ?? draft.color;
 
   return (
-    <tr className={updating ? "tool-library-row is-updating" : "tool-library-row"} aria-busy={updating}>
+    <>
+      <tr className={updating ? "tool-library-row is-updating" : "tool-library-row"} aria-busy={updating}>
       <td>
         <InlineIconPicker
+          key={updating ? "pending" : "ready"}
           toolName={tool.name}
           value={draft.iconKey}
           color={renderedColor}
@@ -117,6 +127,7 @@ export default function EditableToolRow({
       </td>
       <td>
         <ToolColorPicker
+          key={updating ? "pending" : "ready"}
           toolName={tool.name}
           value={draft.color}
           disabled={updating}
@@ -137,6 +148,7 @@ export default function EditableToolRow({
       </td>
       <td>
         <CategoryCollector
+          key={updating ? "pending" : "ready"}
           toolName={tool.name}
           categories={categories}
           selected={draft.tags}
@@ -181,16 +193,12 @@ export default function EditableToolRow({
           <input
             disabled={updating}
             value={aliasInput}
-            onChange={(event) => {
-              setAliasInput(event.target.value);
-              onChange({ aliases: parseAliasInput(event.target.value) });
-            }}
+            onChange={(event) => onAliasInputChange(event.target.value)}
             onKeyDown={(event) => {
               if (event.key !== "Enter") return;
               event.preventDefault();
               const separated = aliasInput.trimEnd().endsWith(",") ? `${aliasInput} ` : `${aliasInput}, `;
-              setAliasInput(separated);
-              onChange({ aliases: parseAliasInput(separated) });
+              onAliasInputChange(separated);
             }}
           />
         </label>
@@ -217,6 +225,12 @@ export default function EditableToolRow({
           </button>
         </div>
       </td>
-    </tr>
+      </tr>
+      {error && (
+        <tr className="tool-row-error-row">
+          <td colSpan={10}><div className="tool-row-error" role="alert">{error}</div></td>
+        </tr>
+      )}
+    </>
   );
 }

@@ -5,7 +5,6 @@ import { decorate } from "@/lib/dashboard/mock-data";
 import { openTool } from "@/lib/dashboard/open-tool";
 import {
   paginateTools,
-  rowDraftToPatch,
   toolToRowDraft,
   type ToolRowDraft,
 } from "@/lib/dashboard/tool-library";
@@ -17,6 +16,7 @@ import {
   createManageTableState,
   manageTableReducer,
   runManageMutation,
+  validateManageDraft,
   type ManagePageSize,
 } from "./manage-page-state";
 
@@ -63,11 +63,16 @@ export function useManagePageState() {
     return pagination.items.map((tool) => ({
       tool: decorate(tool),
       draft: tableState.drafts[tool.id] ?? toolToRowDraft(tool, pinned.has(tool.id)),
+      aliasInput: tableState.aliasInputs[tool.id] ?? (tool.aliases ?? []).join(", "),
+      error: tableState.rowErrors[tool.id] ?? null,
     }));
-  }, [pagination.items, pinnedToolIds, tableState.drafts]);
+  }, [pagination.items, pinnedToolIds, tableState.aliasInputs, tableState.drafts, tableState.rowErrors]);
 
   const updateDraft = useCallback((id: string, partial: Partial<ToolRowDraft>) => {
     dispatch({ type: "draft/change", id, partial });
+  }, []);
+  const updateAliasInput = useCallback((id: string, value: string) => {
+    dispatch({ type: "alias/change", id, value });
   }, []);
 
   const submitRow = useCallback(async (id: string) => {
@@ -75,13 +80,24 @@ export function useManagePageState() {
     const draft = tableState.drafts[id];
     const tool = rawTools.find((item) => item.id === id);
     if (!draft || !tool) return;
+    let patch: ReturnType<typeof validateManageDraft>;
+    try {
+      patch = validateManageDraft(draft, tableState.aliasInputs[id] ?? "", categories);
+    } catch (error) {
+      dispatch({
+        type: "validation/failed",
+        id,
+        message: error instanceof Error ? error.message : "Please check this row and try again.",
+      });
+      return;
+    }
 
     dispatch({ type: "update/start", id });
     mutationRefreshes.current.set(id, { phase: "pending", original: tool });
     const succeeded = await runManageMutation({
       action: "updated",
       toolName: tool.name,
-      mutate: () => updateTool(id, rowDraftToPatch(draft)),
+      mutate: () => updateTool(id, patch),
       publish: publishDatabaseToast,
     });
     if (succeeded) {
@@ -101,7 +117,7 @@ export function useManagePageState() {
       mutationRefreshes.current.delete(id);
       dispatch({ type: "update/failed", id });
     }
-  }, [rawTools, tableState.drafts, tableState.updatingIds, updateTool]);
+  }, [categories, rawTools, tableState.aliasInputs, tableState.drafts, tableState.updatingIds, updateTool]);
 
   const requestDelete = useCallback((id: string) => {
     dispatch({ type: "delete/request", id });
@@ -163,6 +179,7 @@ export function useManagePageState() {
     loading,
     syncError,
     updateDraft,
+    updateAliasInput,
     submitRow,
     requestDelete,
     cancelDelete,

@@ -2,6 +2,7 @@
 
 import { Check, ChevronDown, Search, X } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
+import { isManagePopoverOpen } from "@/hooks/manage-page-state";
 
 export default function CategoryCollector({
   toolName,
@@ -23,6 +24,7 @@ export default function CategoryCollector({
     const normalized = query.trim().toLocaleLowerCase();
     return categories.filter((category) => category.toLocaleLowerCase().includes(normalized));
   }, [categories, query]);
+  const visibleOpen = isManagePopoverOpen(open, disabled);
 
   const close = () => {
     setOpen(false);
@@ -37,7 +39,7 @@ export default function CategoryCollector({
 
   return (
     <div className="category-collector" onKeyDown={(event) => {
-      if (event.key === "Escape" && open) {
+      if (event.key === "Escape" && visibleOpen) {
         event.stopPropagation();
         close();
       }
@@ -48,7 +50,7 @@ export default function CategoryCollector({
         className="category-collector-trigger"
         aria-label={`Choose categories for ${toolName}`}
         aria-haspopup="listbox"
-        aria-expanded={open}
+        aria-expanded={visibleOpen}
         disabled={disabled}
         onClick={() => setOpen((current) => !current)}
       >
@@ -59,19 +61,20 @@ export default function CategoryCollector({
         </span>
         <ChevronDown size={14} aria-hidden="true" />
       </button>
-      {open && (
+      {visibleOpen && (
         <div className="category-collector-popover">
           <label className="category-search">
             <Search size={14} aria-hidden="true" />
             <span className="sr-only">Search categories for {toolName}</span>
             <input
               autoFocus
+              disabled={disabled}
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search categories"
             />
             {query && (
-              <button type="button" aria-label="Clear category search" onClick={() => setQuery("")}>
+              <button type="button" disabled={disabled} aria-label="Clear category search" onClick={() => setQuery("")}>
                 <X size={13} aria-hidden="true" />
               </button>
             )}
@@ -83,6 +86,7 @@ export default function CategoryCollector({
                 <label key={category} className="category-option">
                   <input
                     type="checkbox"
+                    disabled={disabled}
                     checked={checked}
                     onChange={() => toggle(category)}
                   />
