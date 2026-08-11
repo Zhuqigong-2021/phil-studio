@@ -64,7 +64,9 @@ test("root layout mounts one global accessible favorite toast host", async () =>
   assert.match(globals, /filter:\s*blur\(3px\)/);
   assert.match(globals, /transform:\s*translateY\(-44px\) scale\(0\.93\)/);
   assert.match(host, /favorite-toast-enter/);
+  assert.match(host, /key=\{toast\.id\}/);
   assert.match(host, /favorite-toast-retiring/);
+  assert.match(host, /key=\{retiringToast\.id\}/);
   assert.match(host, /z-10/);
   assert.match(globals, /\.favorite-toast-enter\s*\{\s*animation:\s*favorite-toast-enter 360ms/);
   assert.match(globals, /\.favorite-toast-retiring\s*\{\s*animation:\s*favorite-toast-retire 420ms/);

@@ -84,6 +84,7 @@ export default function FavoriteToastHost() {
         const { border, glow } = toneStyles[retiringToast.tone];
         return (
           <div
+            key={retiringToast.id}
             aria-hidden="true"
             className={`favorite-toast-retiring z-0 col-start-1 row-start-1 flex max-w-[min(420px,calc(100vw-2rem))] items-center gap-3 rounded-[10px] border ${border} bg-[#17152d]/75 px-4 py-3 text-sm font-medium text-white backdrop-blur-xl ${glow}`}
           >
@@ -95,6 +96,7 @@ export default function FavoriteToastHost() {
         const { border, glow } = toneStyles[toast.tone];
         return (
           <div
+            key={toast.id}
             role={toast.tone === "error" ? "alert" : "status"}
             aria-live={toast.tone === "error" ? "assertive" : "polite"}
             aria-label={`${toast.message}. Click to dismiss.`}

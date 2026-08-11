@@ -42,6 +42,7 @@ All favorite surfaces use this wrapper instead of silently swallowing the return
 - Use a compact panel with a restrained 10px corner radius and a small success/info/error icon.
 - Keep adequate contrast and maintain safe spacing from the top viewport edge on narrow screens.
 - The host sits 64px below the viewport top so the retiring card has visible travel space. Foreground entry briefly holds 14px below the destination, then fades and moves upward over 360ms. Retirement uses a visible 420ms transition: the old toast moves upward through a blurred background state, then reaches -44px, scales to 93%, and fades out.
+- Foreground and retiring cards are keyed by toast ID so React mounts a fresh DOM node for every result and restarts both CSS animations during successive notifications.
 
 ## Verification
 
