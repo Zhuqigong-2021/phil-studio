@@ -37,4 +37,8 @@ test("root layout mounts one global accessible favorite toast host", async () =>
   assert.match(host, /-translate-x-1\/2/);
   assert.match(host, /rounded-\[10px\]/);
   assert.doesNotMatch(host, /bottom-20|sm:bottom-6|rounded-2xl/);
+  assert.match(host, /rounded-full.*bg-emerald-500/);
+  assert.match(host, /rounded-full.*bg-indigo-500/);
+  assert.match(host, /rounded-full.*bg-rose-500/);
+  assert.match(host, /className="h-3\.5 w-3\.5 text-white"/);
 });
