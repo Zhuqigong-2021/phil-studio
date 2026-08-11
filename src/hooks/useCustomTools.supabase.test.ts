@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import React from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 
 import { CUSTOM_CATEGORIES_KEY, CUSTOM_TOOLS_KEY, PINNED_TOOLS_KEY } from "../lib/dashboard/custom-tools.ts";
 import { FAVORITES_STORAGE_KEY } from "../lib/dashboard/favorites.ts";
@@ -21,7 +23,7 @@ import {
   readCachedWorkspace,
   runGuardedSync,
   synchronizeWorkspace,
-  writeWorkspaceCache,
+  useCustomTools,
   type WorkspaceApi,
   type WorkspaceStorage,
 } from "./useCustomTools.ts";
@@ -64,6 +66,38 @@ function deferred<T>() {
     reject = rejectPromise;
   });
   return { promise, resolve, reject };
+}
+
+async function withBrowserWindow<T>(storage: WorkspaceStorage, task: () => Promise<T>): Promise<T> {
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  Object.defineProperty(globalThis, "window", {
+    configurable: true,
+    value: {
+      localStorage: storage,
+      dispatchEvent() {},
+      setTimeout() { return 0; },
+      clearTimeout() {},
+      addEventListener() {},
+      removeEventListener() {},
+    },
+  });
+  try {
+    return await task();
+  } finally {
+    if (previousWindow) Object.defineProperty(globalThis, "window", previousWindow);
+    else delete (globalThis as { window?: unknown }).window;
+  }
+}
+
+function renderCustomTools(api: WorkspaceApi) {
+  let result: ReturnType<typeof useCustomTools> | undefined;
+  function Probe() {
+    result = useCustomTools(api);
+    return React.createElement("div");
+  }
+  renderToStaticMarkup(React.createElement(Probe));
+  assert.ok(result);
+  return result;
 }
 
 test("reads the local cache first and later replaces it with the server snapshot", async () => {
@@ -134,38 +168,37 @@ test("sets the migration marker only after migration and refetch succeed and pre
 test("optimistic pin and favorite patches roll back the exact previous snapshot on failure", async () => {
   const initial = snapshot({ ...serverTool, favorite: false });
   const applied: WorkspaceSnapshot[] = [];
-  const storage = new MemoryStorage();
-  const apply = (next: WorkspaceSnapshot) => {
-    applied.push(next);
-    writeWorkspaceCache(storage, next);
-  };
   const failing = api({ patchTool: async () => { throw new Error("offline"); } });
 
   await assert.rejects(
-    () => createOptimisticToolPatch(initial, "custom-1", { pinned: false, favorite: true }, failing, apply),
+    () => createOptimisticToolPatch(initial, "custom-1", { pinned: false, favorite: true }, failing, (next) => applied.push(next)),
     /offline/,
   );
   assert.equal(applied[0].pinnedToolIds.includes("custom-1"), false);
   assert.equal(applied[0].tools[0].favorite, true);
   assert.deepEqual(applied.at(-1), initial);
-  assert.equal(JSON.parse(storage.getItem(FAVORITES_STORAGE_KEY) ?? "{}")[customTool.id], false);
 });
 
-test("confirmed favorite patches mirror the persisted favorite to the cache", async () => {
+test("setToolFavorite writes a confirmed server favorite to the cache", async () => {
   const storage = new MemoryStorage();
-  const initial = snapshot({ ...serverTool, favorite: false });
-  let current = initial;
-  const apply = (next: WorkspaceSnapshot) => {
-    current = next;
-    writeWorkspaceCache(storage, next);
-  };
+  const ap = TOOLS_RAW.find((tool) => tool.id === "ap");
+  assert.ok(ap);
+  await withBrowserWindow(storage, async () => {
+    const tools = renderCustomTools(api({ patchTool: async () => ({ ...ap, favorite: true }) }));
+    await tools.setToolFavorite("ap", false);
+  });
 
-  await createOptimisticToolPatch(
-    initial, customTool.id, { favorite: true }, api(), apply, () => current,
-  );
+  assert.equal(JSON.parse(storage.getItem(FAVORITES_STORAGE_KEY) ?? "{}").ap, true);
+});
 
-  assert.equal(current.tools[0].favorite, true);
-  assert.equal(JSON.parse(storage.getItem(FAVORITES_STORAGE_KEY) ?? "{}")[customTool.id], true);
+test("setToolFavorite restores the previous favorite in the cache after rejection", async () => {
+  const storage = new MemoryStorage();
+  await withBrowserWindow(storage, async () => {
+    const tools = renderCustomTools(api({ patchTool: async () => { throw new Error("offline"); } }));
+    await assert.rejects(() => tools.setToolFavorite("ap", false), /offline/);
+  });
+
+  assert.equal(JSON.parse(storage.getItem(FAVORITES_STORAGE_KEY) ?? "{}").ap, true);
 });
 
 test("workspace fetch adapter uses no-store and throws only a safe sync error", async () => {

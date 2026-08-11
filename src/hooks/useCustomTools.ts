@@ -104,7 +104,7 @@ export function readCachedWorkspace(
   };
 }
 
-export function writeWorkspaceCache(storage: WorkspaceStorage, snapshot: WorkspaceSnapshot): void {
+function writeWorkspaceCache(storage: WorkspaceStorage, snapshot: WorkspaceSnapshot): void {
   storage.setItem(CUSTOM_TOOLS_KEY, JSON.stringify(snapshot.tools.filter((tool) => !BUILT_IN_IDS.has(tool.id))));
   storage.setItem(CUSTOM_CATEGORIES_KEY, JSON.stringify(
     snapshot.categories.filter((category) => !DEFAULT_CATEGORY_KEYS.has(category.toLocaleLowerCase())),
