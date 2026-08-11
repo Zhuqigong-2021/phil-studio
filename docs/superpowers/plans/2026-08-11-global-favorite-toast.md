@@ -4,7 +4,7 @@
 
 **Goal:** Show a global, database-confirmed success or rollback-aware failure toast for every favorite and unfavorite action.
 
-**Architecture:** Keep `useCustomTools().setToolFavorite` as the single mutation boundary used by every surface. Wrap that mutation with a small notification helper that emits one typed browser event only after resolve or reject. Mount one `FavoriteToastHost` in the root layout; it listens for those events and manages one foreground toast plus one 220ms retiring background toast.
+**Architecture:** Keep `useCustomTools().setToolFavorite` as the single mutation boundary used by every surface. Wrap that mutation with a small notification helper that emits one typed browser event only after resolve or reject. Mount one `FavoriteToastHost` in the root layout; it listens for those events and manages one foreground toast plus one visibly displaced 320ms retiring background toast.
 
 **Tech Stack:** Next.js 16.2 App Router, React 19, TypeScript, existing CSS/Tailwind utilities, Node test runner.
 

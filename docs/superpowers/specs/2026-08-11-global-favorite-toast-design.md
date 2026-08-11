@@ -41,7 +41,7 @@ All favorite surfaces use this wrapper instead of silently swallowing the return
 - Match the dashboard glass material and indigo theme.
 - Use a compact panel with a restrained 10px corner radius and a small success/info/error icon.
 - Keep adequate contrast and maintain safe spacing from the top viewport edge on narrow screens.
-- Foreground entry uses a 180ms opacity fade. Retirement uses a 220ms blur, slight upward movement, scale to 94%, and fade-out.
+- Foreground entry uses a 260ms fade while moving upward from 14px below. Retirement uses a visible 320ms transition: the old toast moves upward through a blurred background state, then reaches -18px, scales to 93%, and fades out.
 
 ## Verification
 

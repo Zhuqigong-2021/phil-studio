@@ -10,7 +10,7 @@ import {
 } from "../../lib/dashboard/favorite-toast.ts";
 
 const DISMISS_AFTER_MS = 3000;
-const RETIRE_AFTER_MS = 220;
+const RETIRE_AFTER_MS = 320;
 
 const toneStyles = {
   success: {
@@ -85,7 +85,7 @@ export default function FavoriteToastHost() {
         return (
           <div
             aria-hidden="true"
-            className={`col-start-1 row-start-1 flex max-w-[min(420px,calc(100vw-2rem))] animate-[favorite-toast-retire_220ms_ease-in_both] items-center gap-3 rounded-[10px] border ${border} bg-[#17152d]/75 px-4 py-3 text-sm font-medium text-white backdrop-blur-xl ${glow} motion-reduce:animate-none`}
+            className={`favorite-toast-retiring z-0 col-start-1 row-start-1 flex max-w-[min(420px,calc(100vw-2rem))] items-center gap-3 rounded-[10px] border ${border} bg-[#17152d]/75 px-4 py-3 text-sm font-medium text-white backdrop-blur-xl ${glow}`}
           >
             {renderToastContent(retiringToast)}
           </div>
@@ -103,7 +103,7 @@ export default function FavoriteToastHost() {
             onKeyDown={(event) => {
               if (event.key === "Enter" || event.key === " ") dismissToast(toast.id);
             }}
-            className={`pointer-events-auto col-start-1 row-start-1 flex max-w-[min(420px,calc(100vw-2rem))] cursor-pointer animate-[favorite-toast-fade-in_180ms_ease-out_both] items-center gap-3 rounded-[10px] border ${border} bg-[#17152d]/75 px-4 py-3 text-sm font-medium text-white backdrop-blur-xl ${glow} motion-reduce:animate-none`}
+            className={`favorite-toast-enter pointer-events-auto z-10 col-start-1 row-start-1 flex max-w-[min(420px,calc(100vw-2rem))] cursor-pointer items-center gap-3 rounded-[10px] border ${border} bg-[#17152d]/75 px-4 py-3 text-sm font-medium text-white backdrop-blur-xl ${glow}`}
           >
             {renderToastContent(toast)}
           </div>
