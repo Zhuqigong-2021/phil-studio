@@ -41,7 +41,7 @@ test("root layout mounts one global accessible favorite toast host", async () =>
   assert.match(host, /rounded-full.*bg-indigo-500/);
   assert.match(host, /rounded-full.*bg-rose-500/);
   assert.match(host, /flex h-5 w-5 shrink-0/);
-  assert.match(host, /className="h-4 w-4 text-white" strokeWidth=\{3\}/);
+  assert.match(host, /className="h-\[15px\] w-\[15px\] text-white" strokeWidth=\{3\}/);
   assert.match(host, /import \{ Check, Minus, X \} from "lucide-react"/);
   assert.doesNotMatch(host, /CheckCircle2|AlertCircle|\bInfo\b/);
   assert.match(host, /animate-\[favorite-toast-fade-in_180ms_ease-out_both\]/);
