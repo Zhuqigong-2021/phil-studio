@@ -324,15 +324,20 @@ export function useCustomTools(api: WorkspaceApi = DEFAULT_WORKSPACE_API) {
       revisionRef.current += 1;
       setWorkspace(cached);
     };
+    const refreshFromServer = () => {
+      void retrySync();
+    };
     const initialRead = window.setTimeout(() => {
       refresh();
       void retrySync();
     }, 0);
+    window.addEventListener("focus", refreshFromServer);
     window.addEventListener("storage", refresh);
     window.addEventListener(CUSTOM_TOOLS_CHANGED_EVENT, refresh);
     window.addEventListener(RECENT_TOOLS_CHANGED_EVENT, refresh);
     return () => {
       window.clearTimeout(initialRead);
+      window.removeEventListener("focus", refreshFromServer);
       window.removeEventListener("storage", refresh);
       window.removeEventListener(CUSTOM_TOOLS_CHANGED_EVENT, refresh);
       window.removeEventListener(RECENT_TOOLS_CHANGED_EVENT, refresh);

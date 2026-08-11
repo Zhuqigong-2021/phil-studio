@@ -354,6 +354,16 @@ test("same-tab recent events refresh and clear recent state without a notificati
   assert.doesNotMatch(refreshBody, /dispatchEvent/);
 });
 
+test("returning to the dashboard refetches the authoritative Supabase snapshot", () => {
+  const source = readFileSync(new URL("./useCustomTools.ts", import.meta.url), "utf8");
+  const effectStart = source.indexOf("useEffect(() =>", source.indexOf("const retrySync ="));
+  const effectBody = source.slice(effectStart, source.indexOf("}, [retrySync]);", effectStart));
+
+  assert.match(effectBody, /const refreshFromServer = \(\) => \{\s*void retrySync\(\);\s*\}/);
+  assert.match(effectBody, /addEventListener\("focus", refreshFromServer\)/);
+  assert.match(effectBody, /removeEventListener\("focus", refreshFromServer\)/);
+});
+
 test("concurrent hook startup shares one migration and snapshot request", async () => {
   const storage = new MemoryStorage();
   const migration = deferred<WorkspaceSnapshot>();
