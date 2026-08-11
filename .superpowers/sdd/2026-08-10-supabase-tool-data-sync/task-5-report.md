@@ -34,3 +34,12 @@ DONE WITH EXPECTED TASK 6 BUILD HANDOFF
 - Node emits the existing experimental strip-types/module-type warnings.
 - Next.js emits the existing linked-worktree multiple-lockfile root warning.
 - Task 6 was not started.
+
+## Review remediation
+
+- Reproduced all three reported interleavings with controlled promises before changing production behavior.
+- Optimistic tool changes now merge against the latest workspace, confirm only the requested field, and roll back only fields still owned by the failed operation. Shared per-tool/per-field operation tokens prevent an older completion from changing a newer mutation.
+- Tool and category creation results now merge into the latest workspace after the await, so reverse-order successful creates are retained.
+- Synchronization now separates network work from cache publication. A generation and workspace-revision guard ignores older retry status/completions and prevents a pre-mutation snapshot from replacing newer user state or cache.
+- Consolidated Task 5 suite: PASS, 12/12.
+- Scoped ESLint and commit-range whitespace verification were rerun after remediation.

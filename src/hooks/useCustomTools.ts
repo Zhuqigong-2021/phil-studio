@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   CUSTOM_CATEGORIES_KEY,
   CUSTOM_TOOLS_CHANGED_EVENT,
@@ -107,15 +107,71 @@ function writeWorkspaceCache(storage: WorkspaceStorage, snapshot: WorkspaceSnaps
 export async function synchronizeWorkspace(
   storage: WorkspaceStorage,
   api: WorkspaceApi,
+  updateCache = true,
 ): Promise<WorkspaceSnapshot> {
   const requiresMigration = storage.getItem(SUPABASE_MIGRATED_KEY) === null;
   if (requiresMigration) {
     await api.migrate(migrationPayloadFromStorage(storage));
   }
   const snapshot = await api.fetchSnapshot();
-  writeWorkspaceCache(storage, snapshot);
+  if (updateCache) writeWorkspaceCache(storage, snapshot);
   if (requiresMigration) storage.setItem(SUPABASE_MIGRATED_KEY, "true");
   return snapshot;
+}
+
+export function mergeCreatedTool(current: WorkspaceSnapshot, tool: Tool, pin: boolean): WorkspaceSnapshot {
+  return {
+    ...current,
+    tools: [...current.tools.filter((item) => item.id !== tool.id), tool],
+    pinnedToolIds: pin ? [...new Set([...current.pinnedToolIds, tool.id])] : current.pinnedToolIds,
+  };
+}
+
+export function mergeCreatedCategory(current: WorkspaceSnapshot, category: string): WorkspaceSnapshot {
+  return { ...current, categories: mergeCategories(current.categories, [category]) };
+}
+
+export function createSyncGuard() {
+  let generation = 0;
+  const revisions = new Map<number, number>();
+  return {
+    begin(revision: number) {
+      generation += 1;
+      revisions.set(generation, revision);
+      return generation;
+    },
+    isLatest(id: number) {
+      return id === generation;
+    },
+    isCurrent(id: number, revision: number) {
+      return id === generation && revisions.get(id) === revision;
+    },
+  };
+}
+
+interface GuardedSyncHandlers<T> {
+  revision(): number;
+  start(): void;
+  success(value: T): void;
+  failure(): void;
+  finish(): void;
+}
+
+export async function runGuardedSync<T>(
+  guard: ReturnType<typeof createSyncGuard>,
+  task: () => Promise<T>,
+  handlers: GuardedSyncHandlers<T>,
+): Promise<void> {
+  const requestId = guard.begin(handlers.revision());
+  handlers.start();
+  try {
+    const value = await task();
+    if (guard.isCurrent(requestId, handlers.revision())) handlers.success(value);
+  } catch {
+    if (guard.isLatest(requestId)) handlers.failure();
+  } finally {
+    if (guard.isLatest(requestId)) handlers.finish();
+  }
 }
 
 export async function createOptimisticToolPatch(
@@ -124,29 +180,54 @@ export async function createOptimisticToolPatch(
   patch: Pick<ToolPatch, "favorite" | "pinned">,
   api: WorkspaceApi,
   apply: (snapshot: WorkspaceSnapshot) => void,
+  getCurrent: () => WorkspaceSnapshot = () => current,
+  versions: Map<string, symbol> = new Map(),
 ): Promise<WorkspaceSnapshot> {
+  const latest = getCurrent();
+  const previousFavorite = latest.tools.find((tool) => tool.id === id)?.favorite;
+  const previousPinned = latest.pinnedToolIds.includes(id);
+  const token = Symbol(id);
+  const fields = (["favorite", "pinned"] as const).filter((field) => patch[field] !== undefined);
+  for (const field of fields) versions.set(`${id}:${field}`, token);
+  const isLatest = (field: "favorite" | "pinned") => versions.get(`${id}:${field}`) === token;
   const optimistic: WorkspaceSnapshot = {
-    ...current,
-    tools: current.tools.map((tool) => tool.id === id && patch.favorite !== undefined
+    ...latest,
+    tools: latest.tools.map((tool) => tool.id === id && patch.favorite !== undefined
       ? { ...tool, favorite: patch.favorite }
       : tool),
     pinnedToolIds: patch.pinned === undefined
-      ? [...current.pinnedToolIds]
+      ? [...latest.pinnedToolIds]
       : patch.pinned
-        ? [...new Set([...current.pinnedToolIds, id])]
-        : current.pinnedToolIds.filter((toolId) => toolId !== id),
+        ? [...new Set([...latest.pinnedToolIds, id])]
+        : latest.pinnedToolIds.filter((toolId) => toolId !== id),
   };
   apply(optimistic);
   try {
     const persisted = await api.patchTool(id, patch);
+    const currentWorkspace = getCurrent();
     const confirmed = {
-      ...optimistic,
-      tools: optimistic.tools.map((tool) => tool.id === id ? persisted : tool),
+      ...currentWorkspace,
+      tools: currentWorkspace.tools.map((tool) => tool.id === id && patch.favorite !== undefined && isLatest("favorite")
+        ? { ...tool, favorite: persisted.favorite }
+        : tool),
     };
     apply(confirmed);
     return confirmed;
   } catch (error) {
-    apply(current);
+    const currentWorkspace = getCurrent();
+    const rollback = {
+      ...currentWorkspace,
+      tools: currentWorkspace.tools.map((tool) =>
+        tool.id === id && patch.favorite !== undefined && previousFavorite !== undefined && isLatest("favorite")
+          ? { ...tool, favorite: previousFavorite }
+          : tool),
+      pinnedToolIds: patch.pinned === undefined || !isLatest("pinned")
+        ? currentWorkspace.pinnedToolIds
+        : previousPinned
+          ? [...new Set([...currentWorkspace.pinnedToolIds, id])]
+          : currentWorkspace.pinnedToolIds.filter((toolId) => toolId !== id),
+    };
+    apply(rollback);
     throw error;
   }
 }
@@ -162,33 +243,44 @@ export function useCustomTools(api: WorkspaceApi = DEFAULT_WORKSPACE_API) {
   const [workspace, setWorkspace] = useState<WorkspaceSnapshot>(EMPTY_WORKSPACE);
   const [loading, setLoading] = useState(true);
   const [syncError, setSyncError] = useState<string | null>(null);
+  const workspaceRef = useRef(workspace);
+  const revisionRef = useRef(0);
+  const syncGuardRef = useRef(createSyncGuard());
+  const patchVersionsRef = useRef(new Map<string, symbol>());
 
   const notify = useCallback(() => {
     window.dispatchEvent(new Event(CUSTOM_TOOLS_CHANGED_EVENT));
   }, []);
 
   const applyWorkspace = useCallback((snapshot: WorkspaceSnapshot) => {
+    workspaceRef.current = snapshot;
+    revisionRef.current += 1;
     writeWorkspaceCache(window.localStorage, snapshot);
     setWorkspace(snapshot);
     notify();
   }, [notify]);
 
   const retrySync = useCallback(async () => {
-    setLoading(true);
-    setSyncError(null);
-    try {
-      const snapshot = await synchronizeWorkspace(window.localStorage, api);
-      setWorkspace(snapshot);
-      notify();
-    } catch {
-      setSyncError("Workspace synchronization failed.");
-    } finally {
-      setLoading(false);
-    }
-  }, [api, notify]);
+    await runGuardedSync(
+      syncGuardRef.current,
+      () => synchronizeWorkspace(window.localStorage, api, false),
+      {
+        revision: () => revisionRef.current,
+        start: () => { setLoading(true); setSyncError(null); },
+        success: applyWorkspace,
+        failure: () => setSyncError("Workspace synchronization failed."),
+        finish: () => setLoading(false),
+      },
+    );
+  }, [api, applyWorkspace]);
 
   useEffect(() => {
-    const refresh = () => setWorkspace(readCachedWorkspace(window.localStorage));
+    const refresh = () => {
+      const cached = readCachedWorkspace(window.localStorage);
+      workspaceRef.current = cached;
+      revisionRef.current += 1;
+      setWorkspace(cached);
+    };
     const initialRead = window.setTimeout(() => {
       refresh();
       void retrySync();
@@ -204,28 +296,28 @@ export function useCustomTools(api: WorkspaceApi = DEFAULT_WORKSPACE_API) {
 
   const addCategory = useCallback(async (name: string): Promise<AddCategoryResult> => {
     const category = await api.postCategory(name);
-    const categories = mergeCategories(workspace.categories, [category.name]);
-    applyWorkspace({ ...workspace, categories });
-    return { categories, category: category.name };
-  }, [api, applyWorkspace, workspace]);
+    const next = mergeCreatedCategory(workspaceRef.current, category.name);
+    applyWorkspace(next);
+    return { categories: next.categories, category: category.name };
+  }, [api, applyWorkspace]);
 
   const addTool = useCallback(async (draft: CustomToolDraft, pin: boolean): Promise<Tool> => {
     const tool = await api.postTool(draft, pin);
-    applyWorkspace({
-      ...workspace,
-      tools: [...workspace.tools.filter((item) => item.id !== tool.id), tool],
-      pinnedToolIds: pin ? [...new Set([...workspace.pinnedToolIds, tool.id])] : workspace.pinnedToolIds,
-    });
+    applyWorkspace(mergeCreatedTool(workspaceRef.current, tool, pin));
     return tool;
-  }, [api, applyWorkspace, workspace]);
+  }, [api, applyWorkspace]);
 
   const setToolPinned = useCallback(async (id: string, pinned: boolean): Promise<void> => {
-    await createOptimisticToolPatch(workspace, id, { pinned }, api, applyWorkspace);
-  }, [api, applyWorkspace, workspace]);
+    await createOptimisticToolPatch(
+      workspaceRef.current, id, { pinned }, api, applyWorkspace, () => workspaceRef.current, patchVersionsRef.current,
+    );
+  }, [api, applyWorkspace]);
 
   const setToolFavorite = useCallback(async (id: string, favorite: boolean): Promise<void> => {
-    await createOptimisticToolPatch(workspace, id, { favorite }, api, applyWorkspace);
-  }, [api, applyWorkspace, workspace]);
+    await createOptimisticToolPatch(
+      workspaceRef.current, id, { favorite }, api, applyWorkspace, () => workspaceRef.current, patchVersionsRef.current,
+    );
+  }, [api, applyWorkspace]);
 
   const customTools = useMemo(
     () => workspace.tools.filter((tool) => !BUILT_IN_IDS.has(tool.id)),

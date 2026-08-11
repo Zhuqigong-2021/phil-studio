@@ -13,7 +13,10 @@ import {
 import {
   SUPABASE_MIGRATED_KEY,
   createOptimisticToolPatch,
+  createSyncGuard,
+  mergeCreatedTool,
   readCachedWorkspace,
+  runGuardedSync,
   synchronizeWorkspace,
   type WorkspaceApi,
   type WorkspaceStorage,
@@ -47,6 +50,16 @@ function api(overrides: Partial<WorkspaceApi> = {}): WorkspaceApi {
     patchTool: async () => serverTool,
     ...overrides,
   };
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  let reject!: (reason?: unknown) => void;
+  const promise = new Promise<T>((resolvePromise, rejectPromise) => {
+    resolve = resolvePromise;
+    reject = rejectPromise;
+  });
+  return { promise, resolve, reject };
 }
 
 test("reads the local cache first and later replaces it with the server snapshot", async () => {
@@ -125,4 +138,81 @@ test("workspace fetch adapter uses no-store and throws only a safe sync error", 
     () => fetchWorkspaceSnapshot(async () => new Response("secret https://project.supabase.co", { status: 502 })),
     (error: unknown) => error instanceof WorkspaceSyncError && error.message === "Workspace synchronization failed.",
   );
+});
+
+test("an older optimistic failure rolls back only its own field after a newer mutation succeeds", async () => {
+  let current = snapshot({ ...serverTool, favorite: false });
+  const pin = deferred<typeof serverTool>();
+  const favorite = deferred<typeof serverTool>();
+  const apply = (next: WorkspaceSnapshot) => { current = next; };
+  const getCurrent = () => current;
+
+  const pinRequest = createOptimisticToolPatch(
+    current, customTool.id, { pinned: false }, api({ patchTool: async () => pin.promise }), apply, getCurrent,
+  );
+  const favoriteRequest = createOptimisticToolPatch(
+    current, customTool.id, { favorite: true }, api({ patchTool: async () => favorite.promise }), apply, getCurrent,
+  );
+  favorite.resolve({ ...serverTool, favorite: true });
+  await favoriteRequest;
+  pin.reject(new Error("offline"));
+  await assert.rejects(pinRequest, /offline/);
+
+  assert.equal(current.tools[0].favorite, true);
+  assert.equal(current.pinnedToolIds.includes(customTool.id), true);
+});
+
+test("reverse-order create completions merge into the latest workspace instead of replacing it", async () => {
+  let current = snapshot();
+  const first = deferred<typeof serverTool>();
+  const second = deferred<typeof serverTool>();
+  const firstTool = { ...serverTool, id: "created-first", name: "First" };
+  const secondTool = { ...serverTool, id: "created-second", name: "Second" };
+  const applyCreate = async (result: Promise<typeof serverTool>) => {
+    const created = await result;
+    current = mergeCreatedTool(current, created, false);
+  };
+  const firstRequest = applyCreate(first.promise);
+  const secondRequest = applyCreate(second.promise);
+  second.resolve(secondTool);
+  await secondRequest;
+  first.resolve(firstTool);
+  await firstRequest;
+
+  assert.deepEqual(current.tools.slice(-2).map((tool) => tool.id), [secondTool.id, firstTool.id]);
+});
+
+test("an older sync failure cannot overwrite a newer successful retry status or snapshot", async () => {
+  const guard = createSyncGuard();
+  const older = deferred<WorkspaceSnapshot>();
+  const newer = deferred<WorkspaceSnapshot>();
+  let revision = 0;
+  let loading = false;
+  let error: string | null = null;
+  let current = snapshot(customTool);
+  const handlers = {
+    revision: () => revision,
+    start: () => { loading = true; error = null; },
+    success: (next: WorkspaceSnapshot) => { current = next; },
+    failure: () => { error = "failed"; },
+    finish: () => { loading = false; },
+  };
+  const olderRequest = runGuardedSync(guard, () => older.promise, handlers);
+  const newerRequest = runGuardedSync(guard, () => newer.promise, handlers);
+  newer.resolve(snapshot(serverTool));
+  await newerRequest;
+  older.reject(new Error("offline"));
+  await olderRequest;
+
+  assert.equal(current.tools[0].name, serverTool.name);
+  assert.equal(error, null);
+  assert.equal(loading, false);
+
+  const stale = deferred<WorkspaceSnapshot>();
+  const staleRequest = runGuardedSync(guard, () => stale.promise, handlers);
+  revision += 1;
+  current = mergeCreatedTool(current, { ...serverTool, id: "new-tool" }, false);
+  stale.resolve(snapshot(customTool));
+  await staleRequest;
+  assert.equal(current.tools.some((tool) => tool.id === "new-tool"), true);
 });
