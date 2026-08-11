@@ -59,15 +59,15 @@ test("root layout mounts one global accessible favorite toast host", async () =>
   assert.match(host, /tabIndex=\{0\}/);
   assert.match(globals, /@keyframes favorite-toast-enter/);
   assert.match(globals, /@keyframes favorite-toast-retire/);
-  assert.match(globals, /transform:\s*translateY\(18px\)/);
+  assert.match(globals, /0%,\s*16%\s*\{[\s\S]*?transform:\s*translateY\(14px\) scale\(0\.98\)/);
   assert.match(globals, /transform:\s*translateY\(-32px\) scale\(0\.96\)/);
   assert.match(globals, /filter:\s*blur\(3px\)/);
   assert.match(globals, /transform:\s*translateY\(-44px\) scale\(0\.93\)/);
   assert.match(host, /favorite-toast-enter/);
   assert.match(host, /favorite-toast-retiring/);
   assert.match(host, /z-10/);
-  assert.match(globals, /\.favorite-toast-enter\s*\{\s*animation:\s*favorite-toast-enter 260ms/);
+  assert.match(globals, /\.favorite-toast-enter\s*\{\s*animation:\s*favorite-toast-enter 360ms/);
   assert.match(globals, /\.favorite-toast-retiring\s*\{\s*animation:\s*favorite-toast-retire 420ms/);
-  assert.match(globals, /from\s*\{\s*opacity:\s*0/);
+  assert.match(globals, /0%,\s*16%\s*\{\s*opacity:\s*0/);
   assert.match(globals, /to\s*\{\s*opacity:\s*1/);
 });
