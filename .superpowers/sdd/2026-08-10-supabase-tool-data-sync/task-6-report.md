@@ -31,3 +31,9 @@ DONE
 - Next.js prints the existing linked-worktree multiple-lockfile root warning.
 - Clearing recent history remains the existing local UI action because Task 4 exposes no server clear-recent endpoint.
 - Task 7 was not started.
+
+## Review remediation
+
+- Added a same-tab recent-event regression covering both prepending a recorded tool and clearing the local recent key while retaining the authoritative tool snapshot.
+- `useCustomTools` now subscribes to and cleans up `RECENT_TOOLS_CHANGED_EVENT`; the existing non-dispatching refresh merges the recent cache into authoritative state without a notification loop.
+- Consolidated Task 5/6 focused suite: PASS, 23/23. Scoped ESLint remains at zero errors, production build passes, and commit diff validation passes.

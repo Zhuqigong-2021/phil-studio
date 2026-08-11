@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import { CUSTOM_CATEGORIES_KEY, CUSTOM_TOOLS_KEY, PINNED_TOOLS_KEY } from "../lib/dashboard/custom-tools.ts";
@@ -245,4 +246,19 @@ test("same-tab legacy refresh preserves authoritative mutable built-in fields fo
   assert.equal(retained?.visible, false);
   assert.deepEqual(retained?.aliases, ["server-alias"]);
   assert.equal(retained?.favorite, true);
+});
+
+test("same-tab recent events refresh and clear recent state without a notification loop", () => {
+  const storage = new MemoryStorage();
+  const authoritative = snapshot();
+  storage.setItem(RECENT_TOOLS_STORAGE_KEY, JSON.stringify([{ id: customTool.id, openedAt: 456 }]));
+  assert.deepEqual(readCachedWorkspace(storage, authoritative).recentTools, [{ id: customTool.id, openedAt: 456 }]);
+  storage.removeItem(RECENT_TOOLS_STORAGE_KEY);
+  assert.deepEqual(readCachedWorkspace(storage, authoritative).recentTools, []);
+
+  const source = readFileSync(new URL("./useCustomTools.ts", import.meta.url), "utf8");
+  assert.match(source, /addEventListener\(RECENT_TOOLS_CHANGED_EVENT, refresh\)/);
+  assert.match(source, /removeEventListener\(RECENT_TOOLS_CHANGED_EVENT, refresh\)/);
+  const refreshBody = source.slice(source.indexOf("const refresh ="), source.indexOf("const initialRead ="));
+  assert.doesNotMatch(refreshBody, /dispatchEvent/);
 });

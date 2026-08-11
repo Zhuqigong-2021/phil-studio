@@ -15,7 +15,11 @@ import {
 } from "../lib/dashboard/custom-tools.ts";
 import { FAVORITES_STORAGE_KEY } from "../lib/dashboard/favorites.ts";
 import { TAGS, TOOLS_RAW } from "../lib/dashboard/mock-data.ts";
-import { parseStoredRecentTools, RECENT_TOOLS_STORAGE_KEY } from "../lib/dashboard/recent-tools.ts";
+import {
+  parseStoredRecentTools,
+  RECENT_TOOLS_CHANGED_EVENT,
+  RECENT_TOOLS_STORAGE_KEY,
+} from "../lib/dashboard/recent-tools.ts";
 import {
   buildMigrationPayload,
   fetchWorkspaceSnapshot,
@@ -294,10 +298,12 @@ export function useCustomTools(api: WorkspaceApi = DEFAULT_WORKSPACE_API) {
     }, 0);
     window.addEventListener("storage", refresh);
     window.addEventListener(CUSTOM_TOOLS_CHANGED_EVENT, refresh);
+    window.addEventListener(RECENT_TOOLS_CHANGED_EVENT, refresh);
     return () => {
       window.clearTimeout(initialRead);
       window.removeEventListener("storage", refresh);
       window.removeEventListener(CUSTOM_TOOLS_CHANGED_EVENT, refresh);
+      window.removeEventListener(RECENT_TOOLS_CHANGED_EVENT, refresh);
     };
   }, [retrySync]);
 
