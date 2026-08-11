@@ -33,16 +33,18 @@ A locally saved tool uses the existing `Tool` shape and includes:
 - `sourceType`;
 - `favorite`, initially `false`.
 
-The form's Pin to Quick Access value is not duplicated inside the tool record. After the tool is saved, its generated ID is added to the dashboard's existing Quick Access local-storage collection when Pin is enabled.
+The form's Pin to Quick Access value is not duplicated inside the tool record. The current dashboard has no persistent pin collection, so this feature introduces `phil-studio:pinned-tools:v1`, containing only pinned tool IDs. After the tool is saved, its generated ID is added to that collection when Pin is enabled.
 
 Aliases belong to the tool. They do not form a separate collection or table. In a future Supabase migration they map directly to `tools.aliases text[]`.
 
 ## Local Storage
 
-Use two versioned keys:
+Use these versioned keys:
 
 - `phil-studio:custom-categories:v1` for user-created category names;
 - `phil-studio:custom-tools:v1` for tools created through Add Tool.
+
+Quick Access pin membership uses a third versioned key, `phil-studio:pinned-tools:v1`, containing tool IDs only.
 
 Default categories remain defined in source code. The category list shown in the UI is the case-insensitive, de-duplicated union of defaults and custom categories.
 
