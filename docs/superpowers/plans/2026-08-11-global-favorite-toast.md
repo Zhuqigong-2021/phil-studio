@@ -85,7 +85,7 @@ Expected: FAIL because the host/controller does not exist and the layout has no 
 
 - [ ] **Step 3: Implement the host**
 
-Create a client component that subscribes/unsubscribes to the typed browser event, replaces the toast, clears/restarts a 3000 ms timer, and renders a fixed bottom-right glass panel. Use cyan/green for success, indigo for info, and red for error. Render `role="alert"` only for error and `role="status"` otherwise. Use CSS transition classes plus `motion-reduce:transition-none`; position above mobile navigation.
+Create a client component that subscribes/unsubscribes to the typed browser event, replaces the toast, clears/restarts a 3000 ms timer, and renders a fixed top-center glass panel with a 10px corner radius. Use cyan/green for success, indigo for info, and red for error. Render `role="alert"` only for error and `role="status"` otherwise. Use CSS transition classes plus `motion-reduce:transition-none`.
 
 - [ ] **Step 4: Mount once in root layout**
 

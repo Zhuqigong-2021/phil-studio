@@ -56,11 +56,11 @@ export default function FavoriteToastHost() {
 
   const { Icon, border, glow, icon } = toneStyles[toast.tone];
   return (
-    <div className="pointer-events-none fixed inset-x-4 bottom-20 z-[1000] flex justify-end sm:bottom-6 sm:left-auto sm:right-6">
+    <div className="pointer-events-none fixed left-1/2 top-5 z-[1000] -translate-x-1/2">
       <div
         role={toast.tone === "error" ? "alert" : "status"}
         aria-live={toast.tone === "error" ? "assertive" : "polite"}
-        className={`flex max-w-[min(420px,calc(100vw-2rem))] items-center gap-3 rounded-2xl border ${border} bg-[#17152d]/75 px-4 py-3 text-sm font-medium text-white backdrop-blur-xl ${glow} transition duration-200 motion-reduce:transition-none`}
+        className={`flex max-w-[min(420px,calc(100vw-2rem))] items-center gap-3 rounded-[10px] border ${border} bg-[#17152d]/75 px-4 py-3 text-sm font-medium text-white backdrop-blur-xl ${glow} transition duration-200 motion-reduce:transition-none`}
       >
         <Icon aria-hidden="true" className={`h-5 w-5 shrink-0 ${icon}`} strokeWidth={2} />
         <span>{toast.message}</span>

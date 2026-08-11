@@ -33,4 +33,8 @@ test("root layout mounts one global accessible favorite toast host", async () =>
   assert.match(host, /3000/);
   assert.match(host, /role=\{toast\.tone === "error" \? "alert" : "status"\}/);
   assert.match(host, /motion-reduce:transition-none/);
+  assert.match(host, /fixed left-1\/2 top-5/);
+  assert.match(host, /-translate-x-1\/2/);
+  assert.match(host, /rounded-\[10px\]/);
+  assert.doesNotMatch(host, /bottom-20|sm:bottom-6|rounded-2xl/);
 });

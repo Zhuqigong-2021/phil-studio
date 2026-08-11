@@ -20,7 +20,7 @@ Give an explicit result for every favorite or unfavorite action across the app. 
 | Favorite rejected | `Could not favorite {tool name}. Previous state restored.` | Error, red |
 | Unfavorite rejected | `Could not remove {tool name} from favorites. Previous state restored.` | Error, red |
 
-- Toasts appear in the bottom-right and dismiss automatically after about three seconds.
+- Toasts appear at the top center and dismiss automatically after about three seconds.
 - A new toast replaces the current toast; no queue is required for this personal workspace.
 - The toast uses `role="status"` for success and `role="alert"` for failure.
 - Reduced-motion users receive no entrance or exit animation.
@@ -38,8 +38,8 @@ All favorite surfaces use this wrapper instead of silently swallowing the return
 ## Visual treatment
 
 - Match the dashboard glass material and indigo theme.
-- Use a compact rounded panel with a small success/info/error icon.
-- Keep adequate contrast and avoid covering bottom navigation on narrow screens.
+- Use a compact panel with a restrained 10px corner radius and a small success/info/error icon.
+- Keep adequate contrast and maintain safe spacing from the top viewport edge on narrow screens.
 
 ## Verification
 
