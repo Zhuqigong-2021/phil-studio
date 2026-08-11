@@ -11,13 +11,15 @@ test("adds and removes pinned IDs without duplicates or mutation", () => {
   assert.deepEqual(original, ["built-in"]);
 });
 
-test("hook synchronizes all feature storage keys and same-tab changes", () => {
+test("hook preserves feature storage keys and starts deferred server synchronization", () => {
   const source = readFileSync(new URL("./useCustomTools.ts", import.meta.url), "utf8");
   assert.match(source, /CUSTOM_CATEGORIES_KEY/);
   assert.match(source, /CUSTOM_TOOLS_KEY/);
   assert.match(source, /PINNED_TOOLS_KEY/);
   assert.match(source, /CUSTOM_TOOLS_CHANGED_EVENT/);
   assert.match(source, /addEventListener\("storage"/);
-  assert.match(source, /setTimeout\(refresh, 0\)/);
-  assert.match(source, /crypto\.randomUUID/);
+  assert.match(source, /SUPABASE_MIGRATED_KEY/);
+  assert.match(source, /setTimeout\(\(\) =>/);
+  assert.match(source, /void retrySync\(\)/);
+  assert.doesNotMatch(source, /crypto\.randomUUID/);
 });

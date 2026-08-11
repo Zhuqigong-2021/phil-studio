@@ -226,3 +226,68 @@ export function validateToolPatch(value: unknown): ToolPatch {
   }
   return patch;
 }
+
+export class WorkspaceSyncError extends Error {
+  constructor() {
+    super("Workspace synchronization failed.");
+    this.name = "WorkspaceSyncError";
+  }
+}
+
+async function requestWorkspace<T>(
+  input: string,
+  init: RequestInit,
+  fetcher: typeof fetch,
+): Promise<T> {
+  let response: Response;
+  try {
+    response = await fetcher(input, { ...init, cache: "no-store" });
+  } catch {
+    throw new WorkspaceSyncError();
+  }
+  if (!response.ok) throw new WorkspaceSyncError();
+  try {
+    return await response.json() as T;
+  } catch {
+    throw new WorkspaceSyncError();
+  }
+}
+
+export function fetchWorkspaceSnapshot(fetcher: typeof fetch = fetch): Promise<WorkspaceSnapshot> {
+  return requestWorkspace<WorkspaceSnapshot>("/api/workspace-data", { method: "GET" }, fetcher);
+}
+
+export function migrateWorkspaceSnapshot(payload: LocalMigrationPayload, fetcher: typeof fetch = fetch): Promise<WorkspaceSnapshot> {
+  return requestWorkspace<WorkspaceSnapshot>("/api/workspace-data/migrate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  }, fetcher);
+}
+
+export async function postWorkspaceTool(draft: CustomToolDraft, pin: boolean, fetcher: typeof fetch = fetch): Promise<Tool> {
+  const result = await requestWorkspace<{ tool: Tool }>("/api/tools", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ draft, pin }),
+  }, fetcher);
+  return result.tool;
+}
+
+export async function postWorkspaceCategory(name: string, fetcher: typeof fetch = fetch): Promise<CategoryRecord> {
+  const result = await requestWorkspace<{ category: CategoryRecord }>("/api/categories", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  }, fetcher);
+  return result.category;
+}
+
+export async function patchWorkspaceTool(id: string, patch: ToolPatch, fetcher: typeof fetch = fetch): Promise<Tool> {
+  const result = await requestWorkspace<{ tool: Tool }>(`/api/tools/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  }, fetcher);
+  return result.tool;
+}

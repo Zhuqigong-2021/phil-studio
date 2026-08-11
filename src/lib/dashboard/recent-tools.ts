@@ -1,3 +1,5 @@
+import { patchWorkspaceTool } from "./workspace-data.ts";
+
 export const RECENT_TOOLS_STORAGE_KEY = "phil-studio:recent-tools";
 export const RECENT_TOOLS_CHANGED_EVENT = "phil-studio:recent-tools-changed";
 
@@ -6,30 +8,60 @@ export interface StoredRecentTool {
   openedAt: number;
 }
 
-export function readRecentTools(): StoredRecentTool[] {
-  if (typeof window === "undefined") return [];
-
+export function parseStoredRecentTools(raw: string | null): StoredRecentTool[] {
+  if (!raw) return [];
   try {
-    const value = JSON.parse(window.localStorage.getItem(RECENT_TOOLS_STORAGE_KEY) ?? "[]");
+    const value: unknown = JSON.parse(raw);
     if (!Array.isArray(value)) return [];
-
     return value.filter(
       (entry): entry is StoredRecentTool =>
-        typeof entry?.id === "string" && typeof entry?.openedAt === "number",
+        Boolean(entry) &&
+        typeof entry === "object" &&
+        typeof (entry as StoredRecentTool).id === "string" &&
+        typeof (entry as StoredRecentTool).openedAt === "number" &&
+        Number.isFinite((entry as StoredRecentTool).openedAt),
     );
   } catch {
     return [];
   }
 }
 
-export function recordRecentTool(id: string) {
+export function readRecentTools(): StoredRecentTool[] {
+  if (typeof window === "undefined") return [];
+
   try {
+    return parseStoredRecentTools(window.localStorage.getItem(RECENT_TOOLS_STORAGE_KEY));
+  } catch {
+    return [];
+  }
+}
+
+interface RecentToolDependencies {
+  storage: Pick<Storage, "getItem" | "setItem">;
+  now: () => number;
+  dispatch: () => void;
+  patchTool: (id: string, patch: { recordUse: true; usedAt: string }) => Promise<unknown>;
+}
+
+export function recordRecentTool(
+  id: string,
+  dependencies?: RecentToolDependencies,
+) {
+  try {
+    const storage = dependencies?.storage ?? window.localStorage;
+    const openedAt = dependencies?.now() ?? Date.now();
     const next = [
-      { id, openedAt: Date.now() },
-      ...readRecentTools().filter((entry) => entry.id !== id),
+      { id, openedAt },
+      ...parseStoredRecentTools(storage.getItem(RECENT_TOOLS_STORAGE_KEY)).filter((entry) => entry.id !== id),
     ];
-    window.localStorage.setItem(RECENT_TOOLS_STORAGE_KEY, JSON.stringify(next));
-    window.dispatchEvent(new Event(RECENT_TOOLS_CHANGED_EVENT));
+    storage.setItem(RECENT_TOOLS_STORAGE_KEY, JSON.stringify(next));
+    if (dependencies) {
+      dependencies.dispatch();
+    } else {
+      window.dispatchEvent(new Event(RECENT_TOOLS_CHANGED_EVENT));
+    }
+    const patch = dependencies?.patchTool ?? patchWorkspaceTool;
+    void patch(id, { recordUse: true, usedAt: new Date(openedAt).toISOString() }).catch(() => undefined);
   } catch {
     // Opening the tool should still work when browser storage is unavailable.
   }
