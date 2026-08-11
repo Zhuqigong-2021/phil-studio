@@ -130,6 +130,26 @@ export async function synchronizeWorkspace(
   return snapshot;
 }
 
+const workspaceSyncs = new WeakMap<object, WeakMap<object, Promise<WorkspaceSnapshot>>>();
+
+export function synchronizeWorkspaceOnce(
+  storage: WorkspaceStorage,
+  api: WorkspaceApi,
+): Promise<WorkspaceSnapshot> {
+  let apiSyncs = workspaceSyncs.get(storage);
+  if (!apiSyncs) {
+    apiSyncs = new WeakMap();
+    workspaceSyncs.set(storage, apiSyncs);
+  }
+  const active = apiSyncs.get(api);
+  if (active) return active;
+  const request = synchronizeWorkspace(storage, api, false).finally(() => {
+    apiSyncs?.delete(api);
+  });
+  apiSyncs.set(api, request);
+  return request;
+}
+
 export function mergeCreatedTool(current: WorkspaceSnapshot, tool: Tool, pin: boolean): WorkspaceSnapshot {
   return {
     ...current,
@@ -274,7 +294,7 @@ export function useCustomTools(api: WorkspaceApi = DEFAULT_WORKSPACE_API) {
   const retrySync = useCallback(async () => {
     await runGuardedSync(
       syncGuardRef.current,
-      () => synchronizeWorkspace(window.localStorage, api, false),
+      () => synchronizeWorkspaceOnce(window.localStorage, api),
       {
         revision: () => revisionRef.current,
         start: () => { setLoading(true); setSyncError(null); },

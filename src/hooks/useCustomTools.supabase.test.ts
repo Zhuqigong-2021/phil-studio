@@ -15,6 +15,7 @@ import {
 import {
   SUPABASE_MIGRATED_KEY,
   createOptimisticToolPatch,
+  synchronizeWorkspaceOnce,
   createSyncGuard,
   mergeCreatedTool,
   readCachedWorkspace,
@@ -261,4 +262,30 @@ test("same-tab recent events refresh and clear recent state without a notificati
   assert.match(source, /removeEventListener\(RECENT_TOOLS_CHANGED_EVENT, refresh\)/);
   const refreshBody = source.slice(source.indexOf("const refresh ="), source.indexOf("const initialRead ="));
   assert.doesNotMatch(refreshBody, /dispatchEvent/);
+});
+
+test("concurrent hook startup shares one migration and snapshot request", async () => {
+  const storage = new MemoryStorage();
+  const migration = deferred<WorkspaceSnapshot>();
+  let migrationCalls = 0;
+  let fetchCalls = 0;
+  const sharedApi = api({
+    migrate: async () => {
+      migrationCalls += 1;
+      return migration.promise;
+    },
+    fetchSnapshot: async () => {
+      fetchCalls += 1;
+      return snapshot();
+    },
+  });
+
+  const first = synchronizeWorkspaceOnce(storage, sharedApi);
+  const second = synchronizeWorkspaceOnce(storage, sharedApi);
+  assert.equal(migrationCalls, 1);
+  migration.resolve(snapshot());
+
+  const [firstSnapshot, secondSnapshot] = await Promise.all([first, second]);
+  assert.equal(fetchCalls, 1);
+  assert.equal(firstSnapshot, secondSnapshot);
 });
