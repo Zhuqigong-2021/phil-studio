@@ -35,7 +35,7 @@ export const TOOLS_RAW: Tool[] = [
   { id: "am", name: "Animation Maker", mono: "AM", accent: "cyan", tags: ["Design"], favorite: false, sourceType: "internal", iconKey: "clapperboard", iconType: "matching", url: "https://videoscribe-html.vercel.app/", checkStatus: "Working", checkColor: "#4ADE80" },
   { id: "mm", name: "Mindmap", mono: "MM", accent: "teal", tags: ["Productivity", "Learn"], favorite: false, sourceType: "internal", iconKey: "chart-network", iconType: "matching", url: "https://mindstudio-tool.vercel.app/", checkStatus: "Working", checkColor: "#4ADE80" },
   { id: "sm", name: "StudyMate", mono: "SM", accent: "teal", tags: ["ServiceNow", "Learn"], favorite: true, sourceType: "internal", iconKey: "graduation-cap", iconType: "matching", url: "https://study-mate-for-exam.vercel.app/", checkStatus: "Working", checkColor: "#4ADE80" },
-  { id: "no", name: "Notion", mono: "N", accent: "pink", tags: ["Productivity", "Work"], favorite: true, sourceType: "external", iconKey: "book-open-text", iconType: "matching", url: "https://app.notion.com/", checkStatus: "Working", checkColor: "#4ADE80" },
+  { id: "no", name: "Notion", mono: "N", accent: "slate", tags: ["Productivity", "Work"], favorite: true, sourceType: "external", iconKey: "book-open-text", iconType: "matching", url: "https://app.notion.com/", checkStatus: "Working", checkColor: "#4ADE80" },
   { id: "ai", name: "AI Agent Learning Notes", mono: "AI", accent: "violet", tags: ["AI", "Learn"], favorite: false, sourceType: "internal", iconKey: "brain-circuit", iconType: "matching", checkStatus: "Unknown", checkColor: "#7C8698" },
 ];
 

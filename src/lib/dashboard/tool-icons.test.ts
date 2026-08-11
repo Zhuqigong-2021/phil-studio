@@ -4,6 +4,7 @@ import dynamicIconImports from "lucide-react/dynamicIconImports.mjs";
 
 import {
   getToolIcon,
+  hasToolIcon,
   ICON_CATEGORIES,
   searchToolIcons,
   TOOL_ICONS,
@@ -87,6 +88,13 @@ test("falls back safely for an unknown key", () => {
   assert.equal(getToolIcon(undefined).key, "app-window");
 });
 
+test("distinguishes valid catalog keys from missing or unknown keys", () => {
+  assert.equal(hasToolIcon("palette"), true);
+  assert.equal(hasToolIcon("not-real"), false);
+  assert.equal(hasToolIcon(undefined), false);
+  assert.equal(hasToolIcon(null), false);
+});
+
 test("assigns catalog-valid matching icons to every built-in tool", () => {
   const expected = {
     ap: "palette",
@@ -111,4 +119,5 @@ test("assigns catalog-valid matching icons to every built-in tool", () => {
         TOOL_ICONS.some((icon) => icon.key === tool.iconKey),
     ),
   );
+  assert.equal(TOOLS_RAW.find((tool) => tool.id === "no")?.accent, "slate");
 });

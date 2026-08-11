@@ -631,6 +631,10 @@ export const DEFAULT_TOOL_ICON_KEY: ToolIconKey = "app-window";
 
 const iconsByKey = new Map(TOOL_ICONS.map((icon) => [icon.key, icon]));
 
+export function hasToolIcon(key: string | null | undefined): boolean {
+  return iconsByKey.has(key ?? "");
+}
+
 export function getToolIcon(key: string | null | undefined): ToolIconMetadata {
   return iconsByKey.get(key ?? "") ?? iconsByKey.get(DEFAULT_TOOL_ICON_KEY)!;
 }

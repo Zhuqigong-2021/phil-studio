@@ -87,7 +87,10 @@ import {
   TOOLS_RAW,
   QA_IDS,
 } from "@/lib/dashboard/mock-data";
-import { DEFAULT_TOOL_ICON_KEY } from "@/lib/dashboard/tool-icons";
+import {
+  DEFAULT_TOOL_ICON_KEY,
+  hasToolIcon,
+} from "@/lib/dashboard/tool-icons";
 import type { Accent, Tool } from "@/lib/dashboard/types";
 import { buildCategoryStats, matchesToolQuery } from "@/lib/dashboard/custom-tools";
 import { signOutFromApp } from "@/lib/auth/client";
@@ -702,14 +705,17 @@ function ToolTile({
       <div
         className="ui-tile-surface glass-shine-card flex items-center justify-center rounded-[12px] w-[70px] h-[66px]"
         style={{
-          background: `linear-gradient(135deg, rgba(255,255,255,0.09) 0%, rgba(255,255,255,0) 55%), ${bgColor}`,
+          background: `linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 55%), ${bgColor}`,
           border: `1px solid ${borderColor}`,
           boxShadow: `inset 0 1px 0 rgba(255,255,255,0.15), 0px 4px 14px 0px ${shadowColor}`,
         }}
       >
         {icon}
       </div>
-      <p className="text-[#f2f4fa] text-[12px] font-medium text-center leading-tight w-[96px]">
+      <p
+        title={label}
+        className="w-[70px] truncate whitespace-nowrap text-center text-[12px] font-medium leading-tight text-[#f2f4fa]"
+      >
         {label}
       </p>
     </Wrapper>
@@ -758,7 +764,10 @@ function QuickTile({
       >
         {icon}
       </div>
-      <p className="text-[#f1f3fa] text-[12px] font-medium text-center leading-tight">
+      <p
+        title={label}
+        className="w-[clamp(44px,5.5vh,64px)] truncate whitespace-nowrap text-center text-[12px] font-medium leading-tight text-[#f1f3fa]"
+      >
         {label}
       </p>
     </Wrapper>
@@ -1795,20 +1804,37 @@ function useToolViews(): DashboardToolView[] {
   return React.useMemo(() => {
     return tools.map((tool) => {
       const builtIn = builtInToolViews.find((view) => view.id === tool.id);
-      if (builtIn) return { ...builtIn, label: tool.name, href: tool.url, tool };
+      if (builtIn) {
+        return {
+          ...builtIn,
+          bg: `rgba(${ACCENT_RGB[tool.accent]},0.07)`,
+          icon: hasToolIcon(tool.iconKey) ? (
+            <DynamicToolIcon
+              iconKey={tool.iconKey!}
+              color={`rgb(${ACCENT_RGB[tool.accent]})`}
+              size={28}
+              strokeWidth={1.8}
+            />
+          ) : builtIn.icon,
+          label: tool.name,
+          href: tool.url,
+          tool,
+        };
+      }
       const rgb = ACCENT_RGB[tool.accent];
       return {
         id: tool.id,
         icon: (
           <DynamicToolIcon
             iconKey={tool.iconKey ?? DEFAULT_TOOL_ICON_KEY}
+            color={`rgb(${rgb})`}
             size={28}
             strokeWidth={1.8}
           />
         ),
         label: tool.name,
         border: `rgba(${rgb},0.45)`,
-        bg: `rgba(${rgb},0.13)`,
+        bg: `rgba(${rgb},0.07)`,
         shadow: `rgba(${rgb},0.18)`,
         href: tool.url,
         tool,
