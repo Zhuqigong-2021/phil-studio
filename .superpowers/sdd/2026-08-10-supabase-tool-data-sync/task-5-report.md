@@ -43,3 +43,6 @@ DONE WITH EXPECTED TASK 6 BUILD HANDOFF
 - Synchronization now separates network work from cache publication. A generation and workspace-revision guard ignores older retry status/completions and prevents a pre-mutation snapshot from replacing newer user state or cache.
 - Consolidated Task 5 suite: PASS, 12/12.
 - Scoped ESLint and commit-range whitespace verification were rerun after remediation.
+- Follow-up review reproduced the synchronous same-tab notification feedback path: legacy reconstruction replaced server-edited built-in metadata immediately after publication.
+- Legacy event refresh now overlays legacy favorite state onto the current authoritative built-in records instead of recreating those records from static defaults. Same-tab custom-tool compatibility remains, and the refresh handler still does not dispatch another event.
+- The focused regression retains server name, description, visibility, and aliases through the notification-equivalent refresh and a later mutation; consolidated suite now passes 13/13.

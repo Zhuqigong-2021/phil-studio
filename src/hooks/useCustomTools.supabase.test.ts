@@ -4,6 +4,7 @@ import test from "node:test";
 import { CUSTOM_CATEGORIES_KEY, CUSTOM_TOOLS_KEY, PINNED_TOOLS_KEY } from "../lib/dashboard/custom-tools.ts";
 import { FAVORITES_STORAGE_KEY } from "../lib/dashboard/favorites.ts";
 import { RECENT_TOOLS_STORAGE_KEY } from "../lib/dashboard/recent-tools.ts";
+import { TOOLS_RAW } from "../lib/dashboard/mock-data.ts";
 import {
   WorkspaceSyncError,
   fetchWorkspaceSnapshot,
@@ -215,4 +216,33 @@ test("an older sync failure cannot overwrite a newer successful retry status or 
   stale.resolve(snapshot(customTool));
   await staleRequest;
   assert.equal(current.tools.some((tool) => tool.id === "new-tool"), true);
+});
+
+test("same-tab legacy refresh preserves authoritative mutable built-in fields for later mutations", () => {
+  const storage = new MemoryStorage();
+  const builtIn = TOOLS_RAW[0];
+  const authoritativeBuiltIn = {
+    ...builtIn,
+    name: "Server-renamed built-in",
+    description: "Server description",
+    visible: false,
+    aliases: ["server-alias"],
+  };
+  const authoritative: WorkspaceSnapshot = {
+    tools: [authoritativeBuiltIn],
+    categories: ["Server category"],
+    pinnedToolIds: [],
+    recentTools: [],
+  };
+  storage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify({ [builtIn.id]: true }));
+
+  const afterOwnEvent = readCachedWorkspace(storage, authoritative);
+  const afterLaterCreate = mergeCreatedTool(afterOwnEvent, serverTool, false);
+  const retained = afterLaterCreate.tools.find((tool) => tool.id === builtIn.id);
+
+  assert.equal(retained?.name, authoritativeBuiltIn.name);
+  assert.equal(retained?.description, authoritativeBuiltIn.description);
+  assert.equal(retained?.visible, false);
+  assert.deepEqual(retained?.aliases, ["server-alias"]);
+  assert.equal(retained?.favorite, true);
 });

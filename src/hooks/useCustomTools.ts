@@ -80,10 +80,17 @@ function migrationPayloadFromStorage(storage: WorkspaceStorage): LocalMigrationP
   });
 }
 
-export function readCachedWorkspace(storage: WorkspaceStorage): WorkspaceSnapshot {
+export function readCachedWorkspace(
+  storage: WorkspaceStorage,
+  authoritative?: WorkspaceSnapshot,
+): WorkspaceSnapshot {
   const favoriteOverrides = parseFavoriteOverrides(storage.getItem(FAVORITES_STORAGE_KEY));
+  const authoritativeById = new Map(authoritative?.tools.map((tool) => [tool.id, tool]));
   const tools = [...TOOLS_RAW, ...parseStoredTools(storage.getItem(CUSTOM_TOOLS_KEY))]
-    .map((tool) => ({ ...tool, favorite: favoriteOverrides[tool.id] ?? tool.favorite }));
+    .map((tool) => {
+      const source = BUILT_IN_IDS.has(tool.id) ? authoritativeById.get(tool.id) ?? tool : tool;
+      return { ...source, favorite: favoriteOverrides[tool.id] ?? source.favorite };
+    });
   return {
     tools,
     categories: mergeCategories(TAGS, parseStoredCategories(storage.getItem(CUSTOM_CATEGORIES_KEY))),
@@ -276,7 +283,7 @@ export function useCustomTools(api: WorkspaceApi = DEFAULT_WORKSPACE_API) {
 
   useEffect(() => {
     const refresh = () => {
-      const cached = readCachedWorkspace(window.localStorage);
+      const cached = readCachedWorkspace(window.localStorage, workspaceRef.current);
       workspaceRef.current = cached;
       revisionRef.current += 1;
       setWorkspace(cached);
