@@ -154,7 +154,46 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      patch_workspace_tool: {
+        Args: {
+          p_category_ids?: string[]
+          p_increment_use?: boolean
+          p_owner_email: string
+          p_patch?: Json
+          p_tool_id: string
+          p_used_at?: string
+        }
+        Returns: {
+          aliases: string[]
+          check_color: string
+          check_status: string
+          created_at: string
+          description: string
+          icon_color: string
+          icon_key: string | null
+          icon_type: string
+          id: string
+          is_favorite: boolean
+          is_pinned: boolean
+          last_checked_at: string | null
+          last_used_at: string | null
+          mono: string
+          name: string
+          owner_email: string
+          sort_order: number
+          source_type: string
+          updated_at: string
+          url: string | null
+          use_count: number
+          visible: boolean
+        }
+        SetofOptions: {
+          from: "*"
+          to: "tools"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
     }
     Enums: {
       [_ in never]: never
