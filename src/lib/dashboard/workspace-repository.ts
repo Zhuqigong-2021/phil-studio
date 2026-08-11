@@ -279,7 +279,7 @@ export async function createWorkspaceTool(
 export async function patchWorkspaceTool(ownerEmail: string, id: string, input: ToolPatch, port?: WorkspaceDatabasePort): Promise<Tool> {
   const database = await resolvePort(port);
   const patch = validateToolPatch(input);
-  const update: TablesUpdate<"tools"> = { updated_at: new Date().toISOString() };
+  const update: TablesUpdate<"tools"> = {};
   if (patch.name !== undefined) update.name = patch.name.trim();
   if (patch.url !== undefined) update.url = patch.url;
   if (patch.description !== undefined) update.description = patch.description.trim();

@@ -38,7 +38,7 @@ class MemoryPort implements WorkspaceDatabasePort {
   failRelationships = false;
   failAtomicPatch = false;
   deletedToolIds: string[] = [];
-  atomicPatchCalls: Array<{ ownerEmail: string; id: string; incrementUse: boolean }> = [];
+  atomicPatchCalls: Array<{ ownerEmail: string; id: string; patch: TablesUpdate<"tools">; incrementUse: boolean }> = [];
 
   async listTools(ownerEmail: string) {
     this.ownerQueries.push({ table: "tools", ownerEmail });
@@ -116,7 +116,7 @@ class MemoryPort implements WorkspaceDatabasePort {
     incrementUse: boolean,
     usedAt: string | null,
   ) {
-    this.atomicPatchCalls.push({ ownerEmail, id, incrementUse });
+    this.atomicPatchCalls.push({ ownerEmail, id, patch, incrementUse });
     const index = this.tools.findIndex((row) => row.owner_email === ownerEmail && row.id === id);
     if (index < 0) return null;
     if (this.failAtomicPatch) throw new Error("atomic patch failed");
@@ -233,6 +233,15 @@ test("recording recent use increments use_count and updates the timestamp", asyn
 
   assert.equal(port.tools[0].use_count, 5);
   assert.equal(port.tools[0].last_used_at, "2026-08-10T04:00:00.000Z");
+});
+
+test("favorite patches send only RPC-allowlisted fields and leave updated_at to the database", async () => {
+  const port = new MemoryPort();
+  port.tools.push(toolRow({ id: "no", is_favorite: true }));
+
+  await patchWorkspaceTool(OWNER, "no", { favorite: false }, port);
+
+  assert.deepEqual(port.atomicPatchCalls[0]?.patch, { is_favorite: false });
 });
 
 test("concurrent recent-use updates delegate increments to the atomic database operation", async () => {
