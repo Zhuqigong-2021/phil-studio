@@ -2660,6 +2660,9 @@ function emptyAddToolForm() {
 }
 
 function AddToolModalDark({ onClose }: { onClose: () => void }) {
+  const ADD_TOOL_SECONDARY_BACKGROUND = "rgba(99, 102, 241, 0.14)";
+  const ADD_TOOL_SECONDARY_BORDER = "1px solid rgba(129, 140, 248, 0.34)";
+  const ADD_TOOL_SECONDARY_TEXT = "#e0e7ff";
   const reduceMotion = Boolean(useReducedMotion());
   const overlayMotion = getOverlayMotion(reduceMotion);
   const popoverMotion = getPopoverMotion(reduceMotion);
@@ -2757,13 +2760,13 @@ function AddToolModalDark({ onClose }: { onClose: () => void }) {
             style={{
               width: 28,
               height: 28,
-              background: "rgba(255,255,255,0.06)",
-              border: "1px solid rgba(160,110,255,0.2)",
+              background: ADD_TOOL_SECONDARY_BACKGROUND,
+              border: ADD_TOOL_SECONDARY_BORDER,
+              color: ADD_TOOL_SECONDARY_TEXT,
             }}
           >
             <X
               style={{ width: 14, height: 14 }}
-              className="text-[#9aa3be]"
               strokeWidth={2}
             />
           </button>
@@ -2792,10 +2795,11 @@ function AddToolModalDark({ onClose }: { onClose: () => void }) {
                 type="button"
                 onClick={getDetails}
                 disabled={status === "suggesting"}
-                className="h-[40px] px-4 rounded-[11px] text-[#f2f4fa] text-[13px] font-semibold flex-shrink-0"
+                className="h-[40px] px-4 rounded-[11px] text-[13px] font-semibold flex-shrink-0"
                 style={{
-                  background: "rgba(160,110,255,0.16)",
-                  border: "1px solid rgba(160,110,255,0.3)",
+                  background: ADD_TOOL_SECONDARY_BACKGROUND,
+                  border: ADD_TOOL_SECONDARY_BORDER,
+                  color: ADD_TOOL_SECONDARY_TEXT,
                   opacity: status === "suggesting" ? 0.6 : 1,
                   cursor: status === "suggesting" ? "default" : "pointer",
                 }}
@@ -2890,8 +2894,8 @@ function AddToolModalDark({ onClose }: { onClose: () => void }) {
                     style={{
                       background: active
                         ? "linear-gradient(120deg, rgba(140,80,220,0.55), rgba(103,232,249,0.28))"
-                        : "rgba(255,255,255,0.06)",
-                      color: active ? "#f5f7ff" : "#9aa3be",
+                        : ADD_TOOL_SECONDARY_BACKGROUND,
+                      color: ADD_TOOL_SECONDARY_TEXT,
                     }}
                   >
                     {tag}
@@ -2929,10 +2933,11 @@ function AddToolModalDark({ onClose }: { onClose: () => void }) {
               <button
                 type="button"
                 onClick={addAlias}
-                className="h-[36px] px-3 rounded-[10px] text-[#f2f4fa] text-[12px] font-semibold flex-shrink-0"
+                className="h-[36px] px-3 rounded-[10px] text-[12px] font-semibold flex-shrink-0"
                 style={{
-                  background: "rgba(160,110,255,0.16)",
-                  border: "1px solid rgba(160,110,255,0.3)",
+                  background: ADD_TOOL_SECONDARY_BACKGROUND,
+                  border: ADD_TOOL_SECONDARY_BORDER,
+                  color: ADD_TOOL_SECONDARY_TEXT,
                 }}
               >
                 Add
@@ -2984,7 +2989,7 @@ function AddToolModalDark({ onClose }: { onClose: () => void }) {
             </div>
             <div
               className="flex rounded-[10px] p-[2px] gap-[2px] w-fit"
-              style={{ background: "rgba(255,255,255,0.05)" }}
+              style={{ background: ADD_TOOL_SECONDARY_BACKGROUND }}
             >
               <div
                 onClick={() => setForm((f) => ({ ...f, source: "internal" }))}
@@ -2992,9 +2997,9 @@ function AddToolModalDark({ onClose }: { onClose: () => void }) {
                 style={{
                   background:
                     form.source === "internal"
-                      ? "rgba(103,232,249,0.18)"
+                      ? "rgba(99, 102, 241, 0.34)"
                       : "transparent",
-                  color: form.source === "internal" ? "#f5f7ff" : "#9aa3be",
+                  color: ADD_TOOL_SECONDARY_TEXT,
                 }}
               >
                 Owned
@@ -3005,9 +3010,9 @@ function AddToolModalDark({ onClose }: { onClose: () => void }) {
                 style={{
                   background:
                     form.source === "external"
-                      ? "rgba(103,232,249,0.18)"
+                      ? "rgba(99, 102, 241, 0.34)"
                       : "transparent",
-                  color: form.source === "external" ? "#f5f7ff" : "#9aa3be",
+                  color: ADD_TOOL_SECONDARY_TEXT,
                 }}
               >
                 Third-party
@@ -3058,10 +3063,11 @@ function AddToolModalDark({ onClose }: { onClose: () => void }) {
           <button
             type="button"
             onClick={onClose}
-            className="flex-1 h-[42px] rounded-[11px] text-[#f2f4fa] text-[13px] font-semibold"
+            className="flex-1 h-[42px] rounded-[11px] text-[13px] font-semibold"
             style={{
-              background: "rgba(255,255,255,0.05)",
-              border: "1px solid rgba(160,110,255,0.2)",
+              background: ADD_TOOL_SECONDARY_BACKGROUND,
+              border: ADD_TOOL_SECONDARY_BORDER,
+              color: ADD_TOOL_SECONDARY_TEXT,
             }}
           >
             Cancel

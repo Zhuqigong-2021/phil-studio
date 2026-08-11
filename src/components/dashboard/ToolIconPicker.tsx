@@ -11,6 +11,7 @@ import {
   type ToolIconKey,
 } from "@/lib/dashboard/tool-icons";
 import type { Accent } from "@/lib/dashboard/types";
+import DynamicToolIcon from "./DynamicToolIcon";
 import styles from "./ToolIconPicker.module.css";
 
 interface ToolIconPickerProps {
@@ -34,7 +35,6 @@ export default function ToolIconPicker({
     useState<ToolIconCategory>("Popular");
 
   const selected = getToolIcon(iconKey);
-  const SelectedIcon = selected.Icon;
   const rgb = ACCENT_RGB[accent];
   const visibleIcons = useMemo(
     () => searchToolIcons(query, query.trim() ? "all" : activeCategory),
@@ -56,7 +56,12 @@ export default function ToolIconPicker({
             color: ACCENTS[accent],
           }}
         >
-          <SelectedIcon size={21} strokeWidth={1.9} aria-hidden="true" />
+          <DynamicToolIcon
+            iconKey={selected.key}
+            size={21}
+            strokeWidth={1.9}
+            aria-hidden="true"
+          />
           <span>{selected.label}</span>
           {open ? (
             <ChevronUp size={15} aria-hidden="true" />
@@ -88,7 +93,7 @@ export default function ToolIconPicker({
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               aria-label="Search icons"
-              placeholder="Search 100 icons..."
+              placeholder="Search 500 icons..."
             />
           </label>
 
@@ -116,7 +121,6 @@ export default function ToolIconPicker({
               {visibleIcons.length ? (
                 <div className={styles.iconGrid}>
                   {visibleIcons.map((definition) => {
-                    const Icon = definition.Icon;
                     const isSelected = definition.key === selected.key;
                     return (
                       <button
@@ -129,7 +133,12 @@ export default function ToolIconPicker({
                         title={definition.label}
                         style={isSelected ? { color: ACCENTS[accent] } : undefined}
                       >
-                        <Icon size={20} strokeWidth={1.8} aria-hidden="true" />
+                        <DynamicToolIcon
+                          iconKey={definition.key}
+                          size={20}
+                          strokeWidth={1.8}
+                          aria-hidden="true"
+                        />
                       </button>
                     );
                   })}

@@ -52,6 +52,9 @@ export default function AddToolModal({ state }: { state: ShellState }) {
 }
 
 function AddToolForm({ closeAddTool }: { closeAddTool: () => void }) {
+  const ADD_TOOL_SECONDARY_BACKGROUND = "rgba(99, 102, 241, 0.14)";
+  const ADD_TOOL_SECONDARY_BORDER = "1px solid rgba(129, 140, 248, 0.34)";
+  const ADD_TOOL_SECONDARY_TEXT = "#e0e7ff";
   const [form, setForm] = useState(emptyForm);
   const [status, setStatus] = useState<Status>("idle");
   const [saving, setSaving] = useState(false);
@@ -126,8 +129,8 @@ function AddToolForm({ closeAddTool }: { closeAddTool: () => void }) {
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 22px", borderBottom: "1px solid rgba(125,190,255,.14)", flexShrink: 0 }}>
           <div style={{ fontSize: 17, fontWeight: 650 }}>Add Tool</div>
-          <button onClick={closeAddTool} aria-label="Close" style={{ width: 28, height: 28, borderRadius: 8, background: "rgba(255,255,255,0.06)", border: "1px solid rgba(186,230,253,0.16)", color: "#A9B2C3", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#A9B2C3" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+          <button onClick={closeAddTool} aria-label="Close" style={{ width: 28, height: 28, borderRadius: 8, background: ADD_TOOL_SECONDARY_BACKGROUND, border: ADD_TOOL_SECONDARY_BORDER, color: ADD_TOOL_SECONDARY_TEXT, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
           </button>
         </div>
 
@@ -145,7 +148,7 @@ function AddToolForm({ closeAddTool }: { closeAddTool: () => void }) {
               <button
                 onClick={getDetails}
                 disabled={status === "suggesting"}
-                style={{ height: 40, padding: "0 16px", borderRadius: 11, background: "rgba(255,255,255,.08)", border: "1px solid rgba(125,190,255,.22)", color: "#F2F6FF", fontSize: 13, fontWeight: 600, cursor: status === "suggesting" ? "default" : "pointer", flexShrink: 0, opacity: status === "suggesting" ? 0.6 : 1 }}
+                style={{ height: 40, padding: "0 16px", borderRadius: 11, background: ADD_TOOL_SECONDARY_BACKGROUND, border: ADD_TOOL_SECONDARY_BORDER, color: ADD_TOOL_SECONDARY_TEXT, fontSize: 13, fontWeight: 600, cursor: status === "suggesting" ? "default" : "pointer", flexShrink: 0, opacity: status === "suggesting" ? 0.6 : 1 }}
               >
                 Get details
               </button>
@@ -201,7 +204,7 @@ function AddToolForm({ closeAddTool }: { closeAddTool: () => void }) {
                   <div
                     key={tag}
                     onClick={() => toggleTag(tag)}
-                    style={{ padding: "6px 12px", borderRadius: 10, fontSize: 12, fontWeight: 500, cursor: "pointer", background: active ? "linear-gradient(120deg, rgba(59,130,246,.45), rgba(103,232,249,.30))" : "rgba(255,255,255,.06)", color: active ? "#F5F7FF" : "#A9B2C3" }}
+                    style={{ padding: "6px 12px", borderRadius: 10, fontSize: 12, fontWeight: 500, cursor: "pointer", background: active ? "linear-gradient(120deg, rgba(59,130,246,.45), rgba(139,92,246,.36))" : ADD_TOOL_SECONDARY_BACKGROUND, color: ADD_TOOL_SECONDARY_TEXT }}
                   >
                     {tag}
                   </div>
@@ -227,7 +230,7 @@ function AddToolForm({ closeAddTool }: { closeAddTool: () => void }) {
                 disabled={form.aliases.length >= 10}
                 style={{ flex: 1, minWidth: 0, height: 36, borderRadius: 10, background: "rgba(255,255,255,.04)", border: "1px solid rgba(186,230,253,0.16)", padding: "0 12px", fontSize: 12, color: "#F2F6FF", outline: "none" }}
               />
-              <button onClick={addAlias} style={{ height: 36, padding: "0 12px", borderRadius: 10, background: "rgba(255,255,255,.08)", border: "1px solid rgba(125,190,255,.22)", color: "#F2F6FF", fontSize: 12, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
+              <button onClick={addAlias} style={{ height: 36, padding: "0 12px", borderRadius: 10, background: ADD_TOOL_SECONDARY_BACKGROUND, border: ADD_TOOL_SECONDARY_BORDER, color: ADD_TOOL_SECONDARY_TEXT, fontSize: 12, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
                 Add
               </button>
             </div>
@@ -248,11 +251,11 @@ function AddToolForm({ closeAddTool }: { closeAddTool: () => void }) {
           {/* Source */}
           <div>
             <div style={{ fontSize: 11, fontWeight: 600, color: "#A9B2C3", marginBottom: 6 }}>Source</div>
-            <div style={{ display: "flex", background: "rgba(255,255,255,0.05)", borderRadius: 10, padding: 2, gap: 2, width: "fit-content" }}>
-              <div onClick={() => setForm((f) => ({ ...f, source: "internal" }))} style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", background: form.source === "internal" ? "rgba(103,232,249,.18)" : "transparent", color: form.source === "internal" ? "#F5F7FF" : "#A9B2C3" }}>
+            <div style={{ display: "flex", background: ADD_TOOL_SECONDARY_BACKGROUND, borderRadius: 10, padding: 2, gap: 2, width: "fit-content" }}>
+              <div onClick={() => setForm((f) => ({ ...f, source: "internal" }))} style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", background: form.source === "internal" ? "rgba(99, 102, 241, 0.34)" : "transparent", color: ADD_TOOL_SECONDARY_TEXT }}>
                 Owned
               </div>
-              <div onClick={() => setForm((f) => ({ ...f, source: "external" }))} style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", background: form.source === "external" ? "rgba(103,232,249,.18)" : "transparent", color: form.source === "external" ? "#F5F7FF" : "#A9B2C3" }}>
+              <div onClick={() => setForm((f) => ({ ...f, source: "external" }))} style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", background: form.source === "external" ? "rgba(99, 102, 241, 0.34)" : "transparent", color: ADD_TOOL_SECONDARY_TEXT }}>
                 Third-party
               </div>
             </div>
@@ -272,7 +275,7 @@ function AddToolForm({ closeAddTool }: { closeAddTool: () => void }) {
         </div>
 
         <div style={{ display: "flex", gap: 10, padding: "16px 22px", borderTop: "1px solid rgba(125,190,255,.14)", flexShrink: 0 }}>
-          <button onClick={closeAddTool} style={{ flex: 1, height: 42, borderRadius: 11, background: "rgba(255,255,255,.05)", border: "1px solid rgba(186,230,253,0.16)", color: "#F2F6FF", fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+          <button onClick={closeAddTool} style={{ flex: 1, height: 42, borderRadius: 11, background: ADD_TOOL_SECONDARY_BACKGROUND, border: ADD_TOOL_SECONDARY_BORDER, color: ADD_TOOL_SECONDARY_TEXT, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
             Cancel
           </button>
           <button onClick={handleSave} disabled={saving} style={{ flex: 1, height: 42, borderRadius: 11, background: "linear-gradient(120deg,#3B82F6,#8B5CF6)", border: "none", color: "#fff", fontSize: 13, fontWeight: 600, cursor: saving ? "default" : "pointer", opacity: saving ? 0.7 : 1 }}>
