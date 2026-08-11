@@ -3,8 +3,10 @@ import test from "node:test";
 
 import {
   buildMigrationPayload,
+  deleteWorkspaceToolRequest,
   toolRowToTool,
   validateToolPatch,
+  WorkspaceSyncError,
 } from "./workspace-data.ts";
 
 const toolRow = {
@@ -150,4 +152,24 @@ test("validates each supported scalar patch field independently", () => {
     name: "Notes", description: "Description", iconKey: "notebook",
     accent: "teal", sourceType: "internal",
   });
+});
+
+test("sends encoded tool ids through DELETE and accepts an empty 204 response", async () => {
+  let input = "";
+  let method = "";
+  await deleteWorkspaceToolRequest("mind map/2026", async (receivedInput, init) => {
+    input = String(receivedInput);
+    method = init?.method ?? "";
+    return new Response(null, { status: 204 });
+  });
+
+  assert.equal(input, "/api/tools/mind%20map%2F2026");
+  assert.equal(method, "DELETE");
+});
+
+test("propagates a parsed API error from tool deletion", async () => {
+  await assert.rejects(
+    () => deleteWorkspaceToolRequest("missing", async () => Response.json({ error: "Tool was not found." }, { status: 404 })),
+    (error: unknown) => error instanceof WorkspaceSyncError && error.message === "Tool was not found.",
+  );
 });

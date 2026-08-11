@@ -1,5 +1,5 @@
 import { OwnerAuthorizationError, requireOwnerEmail } from "../../../../lib/dashboard/owner-session.ts";
-import { patchWorkspaceTool } from "../../../../lib/dashboard/workspace-repository.ts";
+import { deleteWorkspaceTool, patchWorkspaceTool, WorkspaceToolNotFoundError } from "../../../../lib/dashboard/workspace-repository.ts";
 import { validateToolPatch, type ToolPatch } from "../../../../lib/dashboard/workspace-data.ts";
 import type { Tool } from "../../../../lib/dashboard/types.ts";
 
@@ -12,8 +12,14 @@ interface ToolPatchDependencies {
   patchTool: (ownerEmail: string, id: string, patch: ToolPatch) => Promise<Tool>;
 }
 
+interface ToolDeleteDependencies {
+  authorize: () => Promise<string>;
+  deleteTool: (ownerEmail: string, id: string) => Promise<void>;
+}
+
 function failureResponse(error: unknown): Response {
   if (error instanceof OwnerAuthorizationError) return Response.json({ error: error.status === 401 ? "Authentication is required." : "Access is forbidden." }, { status: error.status });
+  if (error instanceof WorkspaceToolNotFoundError) return Response.json({ error: "Tool was not found." }, { status: 404 });
   if (error instanceof Error && error.name === "SupabaseConfigurationError") return Response.json({ error: "Workspace service is unavailable." }, { status: 503 });
   return Response.json({ error: "Workspace data is unavailable." }, { status: 502 });
 }
@@ -37,8 +43,26 @@ export function createToolPatchHandler(dependencies: ToolPatchDependencies) {
   };
 }
 
+export function createToolDeleteHandler(dependencies: ToolDeleteDependencies) {
+  return async function deleteTool(_request: Request, context: PatchContext): Promise<Response> {
+    try {
+      const ownerEmail = await dependencies.authorize();
+      const { id } = await context.params;
+      await dependencies.deleteTool(ownerEmail, id);
+      return new Response(null, { status: 204 });
+    } catch (error) {
+      return failureResponse(error);
+    }
+  };
+}
+
 const patchTool = createToolPatchHandler({ authorize: requireOwnerEmail, patchTool: patchWorkspaceTool });
+const deleteTool = createToolDeleteHandler({ authorize: requireOwnerEmail, deleteTool: deleteWorkspaceTool });
 
 export async function PATCH(request: Request, context: RouteContext<"/api/tools/[id]">): Promise<Response> {
   return patchTool(request, context);
+}
+
+export async function DELETE(request: Request, context: RouteContext<"/api/tools/[id]">): Promise<Response> {
+  return deleteTool(request, context);
 }

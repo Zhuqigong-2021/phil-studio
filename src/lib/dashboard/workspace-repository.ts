@@ -32,6 +32,9 @@ export interface WorkspaceDatabasePort {
   insertTool(row: TablesInsert<"tools">): Promise<ToolRow>;
   updateTool(ownerEmail: string, id: string, patch: TablesUpdate<"tools">): Promise<ToolRow | null>;
   deleteTool(ownerEmail: string, id: string): Promise<void>;
+  findOwnedTool(ownerEmail: string, id: string): Promise<ToolRow | null>;
+  deleteToolRelationships(toolId: string): Promise<void>;
+  deleteOwnedTool(ownerEmail: string, id: string): Promise<void>;
   upsertRelationships(rows: Array<{ tool_id: string; category_id: string }>): Promise<void>;
   patchToolAtomic(
     ownerEmail: string,
@@ -102,6 +105,19 @@ async function createSupabasePort(): Promise<WorkspaceDatabasePort> {
       const { error } = await client.from("tools").delete().eq("owner_email", ownerEmail).eq("id", id);
       throwOnError(error);
     },
+    async findOwnedTool(ownerEmail, id) {
+      const { data, error } = await client.from("tools").select("*").eq("owner_email", ownerEmail).eq("id", id).maybeSingle();
+      throwOnError(error);
+      return data;
+    },
+    async deleteToolRelationships(toolId) {
+      const { error } = await client.from("tool_categories").delete().eq("tool_id", toolId);
+      throwOnError(error);
+    },
+    async deleteOwnedTool(ownerEmail, id) {
+      const { error } = await client.from("tools").delete().eq("owner_email", ownerEmail).eq("id", id);
+      throwOnError(error);
+    },
     async upsertRelationships(rows) {
       if (!rows.length) return;
       const { error } = await client.from("tool_categories").upsert(rows, { onConflict: "tool_id,category_id", ignoreDuplicates: true });
@@ -137,6 +153,13 @@ async function createSupabasePort(): Promise<WorkspaceDatabasePort> {
 
 async function resolvePort(port?: WorkspaceDatabasePort): Promise<WorkspaceDatabasePort> {
   return port ?? createSupabasePort();
+}
+
+export class WorkspaceToolNotFoundError extends Error {
+  constructor(id: string) {
+    super(`Tool was not found: ${id}.`);
+    this.name = "WorkspaceToolNotFoundError";
+  }
 }
 
 function toolInsert(ownerEmail: string, tool: Tool, mutable: Partial<TablesInsert<"tools">> = {}): TablesInsert<"tools"> {
@@ -274,6 +297,18 @@ export async function createWorkspaceTool(
     await database.deleteTool(ownerEmail, id);
     throw error;
   }
+}
+
+export async function deleteWorkspaceTool(
+  ownerEmail: string,
+  id: string,
+  port?: WorkspaceDatabasePort,
+): Promise<void> {
+  const database = await resolvePort(port);
+  const tool = await database.findOwnedTool(ownerEmail, id);
+  if (!tool) throw new WorkspaceToolNotFoundError(id);
+  await database.deleteToolRelationships(tool.id);
+  await database.deleteOwnedTool(ownerEmail, tool.id);
 }
 
 export async function patchWorkspaceTool(ownerEmail: string, id: string, input: ToolPatch, port?: WorkspaceDatabasePort): Promise<Tool> {

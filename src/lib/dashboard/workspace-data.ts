@@ -228,8 +228,8 @@ export function validateToolPatch(value: unknown): ToolPatch {
 }
 
 export class WorkspaceSyncError extends Error {
-  constructor() {
-    super("Workspace synchronization failed.");
+  constructor(message = "Workspace synchronization failed.") {
+    super(message);
     this.name = "WorkspaceSyncError";
   }
 }
@@ -245,7 +245,16 @@ async function requestWorkspace<T>(
   } catch {
     throw new WorkspaceSyncError();
   }
-  if (!response.ok) throw new WorkspaceSyncError();
+  if (!response.ok) {
+    try {
+      const body = await response.json() as { error?: unknown };
+      if (typeof body.error === "string" && body.error) throw new WorkspaceSyncError(body.error);
+    } catch (error) {
+      if (error instanceof WorkspaceSyncError) throw error;
+    }
+    throw new WorkspaceSyncError();
+  }
+  if (response.status === 204) return undefined as T;
   try {
     return await response.json() as T;
   } catch {
@@ -290,4 +299,8 @@ export async function patchWorkspaceTool(id: string, patch: ToolPatch, fetcher: 
     body: JSON.stringify(patch),
   }, fetcher);
   return result.tool;
+}
+
+export async function deleteWorkspaceToolRequest(id: string, fetcher: typeof fetch = fetch): Promise<void> {
+  await requestWorkspace<void>(`/api/tools/${encodeURIComponent(id)}`, { method: "DELETE" }, fetcher);
 }
