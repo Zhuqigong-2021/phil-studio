@@ -30,4 +30,15 @@ test("adapts the category sidebar for narrow screens", async () => {
   assert.match(styles, /overflow-x:\s*auto/);
   assert.match(styles, /overflow-y:\s*hidden/);
   assert.match(styles, /min-(?:width|height):\s*44px/);
+  assert.match(styles, /scrollbar-width:\s*none/);
+  assert.match(styles, /::-webkit-scrollbar[\s\S]*?display:\s*none/);
+});
+
+test("uses indigo surfaces for ordinary picker controls", async () => {
+  const styles = await readFile(stylesUrl, "utf8");
+
+  assert.match(styles, /rgba\(99,\s*102,\s*241,\s*0\.1\)/);
+  assert.match(styles, /rgba\(129,\s*140,\s*248,\s*0\.3\)/);
+  assert.match(styles, /#c7d2fe/i);
+  assert.doesNotMatch(styles, /#a9b2c3/i);
 });
