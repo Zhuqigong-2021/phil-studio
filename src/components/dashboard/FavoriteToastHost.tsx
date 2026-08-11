@@ -62,8 +62,8 @@ export default function FavoriteToastHost() {
         aria-live={toast.tone === "error" ? "assertive" : "polite"}
         className={`flex max-w-[min(420px,calc(100vw-2rem))] animate-[favorite-toast-fade-in_180ms_ease-out_both] items-center gap-3 rounded-[10px] border ${border} bg-[#17152d]/75 px-4 py-3 text-sm font-medium text-white backdrop-blur-xl ${glow} motion-reduce:animate-none`}
       >
-        <span className={`flex h-6 w-6 shrink-0 items-center justify-center ${iconBackground}`}>
-          <Icon aria-hidden="true" className="h-3.5 w-3.5 text-white" strokeWidth={2.5} />
+        <span className={`flex h-5 w-5 shrink-0 items-center justify-center ${iconBackground}`}>
+          <Icon aria-hidden="true" className="h-4 w-4 text-white" strokeWidth={3} />
         </span>
         <span>{toast.message}</span>
       </div>
