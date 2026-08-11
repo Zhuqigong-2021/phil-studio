@@ -8,6 +8,22 @@ export interface FavoriteToastDetail {
   message: string;
 }
 
+export interface FavoriteToastState {
+  current: FavoriteToastDetail | null;
+}
+
+export type FavoriteToastAction =
+  | { type: "show"; detail: FavoriteToastDetail }
+  | { type: "dismiss"; id: number };
+
+export function reduceFavoriteToast(
+  state: FavoriteToastState,
+  action: FavoriteToastAction,
+): FavoriteToastState {
+  if (action.type === "show") return { current: action.detail };
+  return state.current?.id === action.id ? { current: null } : state;
+}
+
 interface FavoriteMutationOptions {
   toolName: string;
   favorite: boolean;

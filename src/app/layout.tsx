@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Inter } from "next/font/google";
+import FavoriteToastHost from "@/components/dashboard/FavoriteToastHost";
 import "./globals.css";
 import "./visual-editor.generated.css";
 
@@ -35,6 +36,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         {children}
+        <FavoriteToastHost />
       </body>
     </html>
   );
