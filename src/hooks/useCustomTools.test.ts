@@ -6,6 +6,8 @@ import type { WorkspaceSnapshot } from "../lib/dashboard/workspace-data.ts";
 import {
   createFavoritePendingTracker,
   deleteWorkspaceToolAndRefresh,
+  refreshWorkspaceTools,
+  runFavoriteMutationWithPending,
   updateWorkspaceToolAndRefresh,
   type WorkspaceApi,
 } from "./useCustomTools.ts";
@@ -70,6 +72,19 @@ test("deletes with the injected API then applies its fresh snapshot", async () =
   assert.deepEqual(applied, [next]);
 });
 
+test("refreshes tools from the injected API and applies its fresh snapshot", async () => {
+  const next = { ...snapshot, categories: ["Fresh"] };
+  const applied: WorkspaceSnapshot[] = [];
+
+  const result = await refreshWorkspaceTools(
+    workspaceApi({ fetchSnapshot: async () => next }),
+    (value) => applied.push(value),
+  );
+
+  assert.equal(result, next);
+  assert.deepEqual(applied, [next]);
+});
+
 test("leaves committed workspace state untouched when an update fails", async () => {
   const applied: WorkspaceSnapshot[] = [];
 
@@ -86,13 +101,68 @@ test("leaves committed workspace state untouched when an update fails", async ()
   assert.deepEqual(applied, []);
 });
 
-test("tracks a favorite request once and removes its pending id in finally", () => {
+test("leaves committed workspace state untouched when a delete fails", async () => {
+  const applied: WorkspaceSnapshot[] = [];
+  let fetched = false;
+
+  await assert.rejects(
+    () => deleteWorkspaceToolAndRefresh(
+      workspaceApi({
+        deleteTool: async () => { throw new Error("offline"); },
+        fetchSnapshot: async () => { fetched = true; return snapshot; },
+      }),
+      "tool-1",
+      (value) => applied.push(value),
+    ),
+    /offline/,
+  );
+
+  assert.equal(fetched, false);
+  assert.deepEqual(applied, []);
+});
+
+test("runs one favorite mutation while exposing and clearing the pending id on success", async () => {
   const pending = createFavoritePendingTracker();
-  assert.equal(pending.begin("tool-1"), true);
-  assert.equal(pending.begin("tool-1"), false);
-  assert.deepEqual(pending.ids(), ["tool-1"]);
-  pending.finish("tool-1");
-  assert.deepEqual(pending.ids(), []);
+  const pendingStates: string[][] = [];
+  let resolveMutation!: () => void;
+  const mutation = new Promise<void>((resolve) => { resolveMutation = resolve; });
+  let mutationCalls = 0;
+  const first = runFavoriteMutationWithPending({
+    id: "tool-1",
+    pending,
+    setPendingIds: (ids) => pendingStates.push(ids),
+    mutate: async () => { mutationCalls += 1; await mutation; },
+  });
+
+  assert.deepEqual(pendingStates, [["tool-1"]]);
+  assert.equal(await runFavoriteMutationWithPending({
+    id: "tool-1",
+    pending,
+    setPendingIds: (ids) => pendingStates.push(ids),
+    mutate: async () => { mutationCalls += 1; },
+  }), false);
+  assert.equal(mutationCalls, 1);
+
+  resolveMutation();
+  assert.equal(await first, true);
+  assert.deepEqual(pendingStates, [["tool-1"], []]);
+});
+
+test("clears the favorite pending id in finally when the mutation fails", async () => {
+  const pending = createFavoritePendingTracker();
+  const pendingStates: string[][] = [];
+
+  await assert.rejects(
+    () => runFavoriteMutationWithPending({
+      id: "tool-1",
+      pending,
+      setPendingIds: (ids) => pendingStates.push(ids),
+      mutate: async () => { throw new Error("offline"); },
+    }),
+    /offline/,
+  );
+
+  assert.deepEqual(pendingStates, [["tool-1"], []]);
 });
 
 test("adds and removes pinned IDs without duplicates or mutation", () => {

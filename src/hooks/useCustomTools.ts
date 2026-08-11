@@ -65,6 +65,15 @@ const DEFAULT_WORKSPACE_API: WorkspaceApi = {
   deleteTool: deleteWorkspaceToolRequest,
 };
 
+export async function refreshWorkspaceTools(
+  api: WorkspaceApi,
+  apply: (snapshot: WorkspaceSnapshot) => void,
+): Promise<WorkspaceSnapshot> {
+  const snapshot = await api.fetchSnapshot();
+  apply(snapshot);
+  return snapshot;
+}
+
 export async function updateWorkspaceToolAndRefresh(
   api: WorkspaceApi,
   id: string,
@@ -103,6 +112,30 @@ export function createFavoritePendingTracker() {
       return [...pendingIds];
     },
   };
+}
+
+interface FavoriteMutationWithPendingOptions {
+  id: string;
+  pending: ReturnType<typeof createFavoritePendingTracker>;
+  setPendingIds(ids: string[]): void;
+  mutate(): Promise<void>;
+}
+
+export async function runFavoriteMutationWithPending({
+  id,
+  pending,
+  setPendingIds,
+  mutate,
+}: FavoriteMutationWithPendingOptions): Promise<boolean> {
+  if (!pending.begin(id)) return false;
+  setPendingIds(pending.ids());
+  try {
+    await mutate();
+    return true;
+  } finally {
+    pending.finish(id);
+    setPendingIds(pending.ids());
+  }
 }
 
 const BUILT_IN_IDS = new Set(TOOLS_RAW.map((tool) => tool.id));
@@ -363,10 +396,10 @@ export function useCustomTools(api: WorkspaceApi = DEFAULT_WORKSPACE_API) {
     setLoading(true);
     setSyncError(null);
     try {
-      const snapshot = await api.fetchSnapshot();
-      hasAuthoritativeWorkspaceRef.current = true;
-      applyWorkspace(snapshot);
-      return snapshot;
+      return await refreshWorkspaceTools(api, (snapshot) => {
+        hasAuthoritativeWorkspaceRef.current = true;
+        applyWorkspace(snapshot);
+      });
     } catch (error) {
       setSyncError("Workspace synchronization failed.");
       throw error;
@@ -439,24 +472,24 @@ export function useCustomTools(api: WorkspaceApi = DEFAULT_WORKSPACE_API) {
   }, [api, applyWorkspace]);
 
   const setToolFavorite = useCallback(async (id: string, favorite: boolean): Promise<void> => {
-    if (!favoritePendingRef.current.begin(id)) return;
-    setFavoritePendingIds(favoritePendingRef.current.ids());
     const toolName = workspaceRef.current.tools.find((tool) => tool.id === id)?.name ?? "Tool";
-    try {
-      await runFavoriteMutationWithToast({
-        toolName,
-        favorite,
-        mutate: async () => {
-          await createOptimisticToolPatch(
-            workspaceRef.current, id, { favorite }, api, applyWorkspace, () => workspaceRef.current, patchVersionsRef.current,
-          );
-        },
-        publish: publishFavoriteToast,
-      });
-    } finally {
-      favoritePendingRef.current.finish(id);
-      setFavoritePendingIds(favoritePendingRef.current.ids());
-    }
+    await runFavoriteMutationWithPending({
+      id,
+      pending: favoritePendingRef.current,
+      setPendingIds: setFavoritePendingIds,
+      mutate: async () => {
+        await runFavoriteMutationWithToast({
+          toolName,
+          favorite,
+          mutate: async () => {
+            await createOptimisticToolPatch(
+              workspaceRef.current, id, { favorite }, api, applyWorkspace, () => workspaceRef.current, patchVersionsRef.current,
+            );
+          },
+          publish: publishFavoriteToast,
+        });
+      },
+    });
   }, [api, applyWorkspace]);
 
   const customTools = useMemo(
