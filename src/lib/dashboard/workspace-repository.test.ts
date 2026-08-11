@@ -276,6 +276,21 @@ test("favorite patches send only RPC-allowlisted fields and leave updated_at to 
   assert.deepEqual(port.atomicPatchCalls[0]?.patch, { is_favorite: false });
 });
 
+test("creates and patches custom hexadecimal tool colors without changing named accents", async () => {
+  const port = new MemoryPort();
+
+  await createWorkspaceTool(OWNER, {
+    name: "Custom", url: "https://example.com", description: "", iconKey: "globe",
+    accent: "#22D3EE", tags: [], aliases: [], sourceType: "external",
+  }, false, port, "custom-color");
+  port.tools.push(toolRow({ id: "named-accent", icon_color: "teal" }));
+
+  await patchWorkspaceTool(OWNER, "named-accent", { accent: "#22d3ee" }, port);
+
+  assert.equal(port.tools.find((tool) => tool.id === "custom-color")?.icon_color, "#22D3EE");
+  assert.deepEqual(port.atomicPatchCalls.at(-1)?.patch, { icon_color: "#22D3EE" });
+});
+
 test("concurrent recent-use updates delegate increments to the atomic database operation", async () => {
   const port = new MemoryPort();
   port.tools.push(toolRow({ id: "ap", use_count: 4 }));

@@ -6,24 +6,28 @@ const pageUrl = new URL("./page.tsx", import.meta.url);
 
 test("built-in tools prefer a valid icon key and retain their legacy icon as fallback", async () => {
   const source = await readFile(pageUrl, "utf8");
+  const toolViews = source.slice(source.indexOf("function useToolViews"), source.indexOf("function GlobalSearchBar"));
   const builtInBranch = source.slice(
     source.indexOf("if (builtIn)"),
-    source.indexOf("const rgb = ACCENT_RGB", source.indexOf("if (builtIn)")),
+    source.indexOf("return {\n        id: tool.id", source.indexOf("if (builtIn)")),
   );
 
+  assert.match(toolViews, /const rgb = toolColorRgb\(tool\.accent\);/);
   assert.match(builtInBranch, /hasToolIcon\(tool\.iconKey\)/);
   assert.match(builtInBranch, /<DynamicToolIcon/);
-  assert.match(builtInBranch, /color=\{`rgb\(\$\{ACCENT_RGB\[tool\.accent\]\}\)`\}/);
+  assert.match(builtInBranch, /color=\{`rgb\(\$\{rgb\}\)`\}/);
   assert.match(builtInBranch, /:\s*builtIn\.icon/);
 });
 
 test("custom tool catalog icons use their selected accent color", async () => {
   const source = await readFile(pageUrl, "utf8");
+  const toolViews = source.slice(source.indexOf("function useToolViews"), source.indexOf("function GlobalSearchBar"));
   const customBranch = source.slice(
-    source.indexOf("const rgb = ACCENT_RGB", source.indexOf("if (builtIn)")),
-    source.indexOf("};", source.indexOf("const rgb = ACCENT_RGB", source.indexOf("if (builtIn)"))) + 2,
+    source.indexOf("return {\n        id: tool.id", source.indexOf("if (builtIn)")),
+    source.indexOf("};", source.indexOf("return {\n        id: tool.id", source.indexOf("if (builtIn)"))) + 2,
   );
 
+  assert.match(toolViews, /const rgb = toolColorRgb\(tool\.accent\);/);
   assert.match(customBranch, /color=\{`rgb\(\$\{rgb\}\)`\}/);
 });
 
