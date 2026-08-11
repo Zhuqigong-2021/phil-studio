@@ -185,6 +185,16 @@ export function matchesToolQuery(tool: Tool, query: string): boolean {
     .includes(normalized);
 }
 
+export function selectPinnedTools<T extends { id: string }>(
+  tools: readonly T[],
+  pinnedIds: readonly string[],
+): T[] {
+  const byId = new Map(tools.map((tool) => [tool.id, tool]));
+  return [...new Set(pinnedIds)]
+    .map((id) => byId.get(id))
+    .filter((tool): tool is T => Boolean(tool));
+}
+
 export function buildCategoryStats(
   tools: readonly Tool[],
   categories: readonly string[],

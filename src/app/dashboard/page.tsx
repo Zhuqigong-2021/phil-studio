@@ -85,14 +85,13 @@ import { TRACKS, type Track } from "@/lib/dashboard/music";
 import {
   ACCENT_RGB,
   TOOLS_RAW,
-  QA_IDS,
 } from "@/lib/dashboard/mock-data";
 import {
   DEFAULT_TOOL_ICON_KEY,
   hasToolIcon,
 } from "@/lib/dashboard/tool-icons";
 import type { Accent, Tool } from "@/lib/dashboard/types";
-import { buildCategoryStats, matchesToolQuery } from "@/lib/dashboard/custom-tools";
+import { buildCategoryStats, matchesToolQuery, selectPinnedTools } from "@/lib/dashboard/custom-tools";
 import { signOutFromApp } from "@/lib/auth/client";
 import { recordRecentTool } from "@/lib/dashboard/recent-tools";
 import { useDailyTasks } from "@/hooks/useDailyTasks";
@@ -3192,7 +3191,7 @@ function HeroSection() {
   // out of that column and becomes its own full-width row underneath.
   const [stackQuickAccess, setStackQuickAccess] = React.useState(false);
   const toolViews = useToolViews();
-  const { pinnedToolIds, recentTools } = useDashboardWorkspace();
+  const { pinnedToolIds } = useDashboardWorkspace();
 
   React.useEffect(() => {
     const update = () => {
@@ -3207,17 +3206,9 @@ function HeroSection() {
     return () => window.removeEventListener("resize", update);
   }, []);
 
-  // Most-recently-opened tool takes the slot right after "Add Tool", pushing the
-  // rest back — falls back to QA_IDS defaults to fill any remaining slots. No cap: once
-  // there are more tiles than fit, the row scrolls horizontally instead of hiding any.
   const quickAccessTools = React.useMemo(() => {
-    const ids = [
-      ...new Set([...pinnedToolIds, ...recentTools.map((r) => r.id), ...QA_IDS]),
-    ];
-    return ids
-      .map((id) => toolViews.find((t) => t.id === id))
-      .filter((t): t is DashboardToolView => Boolean(t));
-  }, [pinnedToolIds, recentTools, toolViews]);
+    return selectPinnedTools(toolViews, pinnedToolIds);
+  }, [pinnedToolIds, toolViews]);
 
   const quickAccessPanel = (
     <GlassPanel

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import * as customTools from "./custom-tools.ts";
 import {
   addCategoryToList,
   appendCustomTool,
@@ -10,6 +11,19 @@ import {
   parseStoredToolIds,
   parseStoredTools,
 } from "./custom-tools.ts";
+
+test("Quick Access selects only database-pinned tools in pinned order", () => {
+  const selectPinnedTools = (customTools as unknown as {
+    selectPinnedTools?: <T extends { id: string }>(tools: readonly T[], pinnedIds: readonly string[]) => T[];
+  }).selectPinnedTools;
+  assert.equal(typeof selectPinnedTools, "function", "selectPinnedTools is not implemented");
+
+  const tools = [{ id: "recent" }, { id: "pinned-2" }, { id: "default" }, { id: "pinned-1" }];
+  assert.deepEqual(selectPinnedTools!(tools, ["pinned-1", "missing", "pinned-2", "pinned-1"]), [
+    { id: "pinned-1" },
+    { id: "pinned-2" },
+  ]);
+});
 
 test("merges default and custom categories without case-insensitive duplicates", () => {
   assert.deepEqual(mergeCategories(["AI", "Work"], [" ai ", "ServiceNow"]), [

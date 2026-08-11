@@ -57,7 +57,6 @@ export const RECENT: RecentEntry[] = [
   { id: "cv", time: "1 week ago" },
 ];
 
-export const QA_IDS = ["cv", "mm", "ai", "am"];
 export const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 const DOT_DAYS: Record<number, string> = {

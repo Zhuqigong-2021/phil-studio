@@ -2,10 +2,10 @@
 
 import { useCallback, useMemo, useState } from "react";
 import {
-  QA_IDS,
   WEEKDAYS,
   decorate,
 } from "@/lib/dashboard/mock-data";
+import { selectPinnedTools } from "@/lib/dashboard/custom-tools";
 import type { DecoratedTool, PanelId, ViewMode } from "@/lib/dashboard/types";
 import { buildCommandResults, buildToolResults, useShellState } from "./useShellState";
 import { clearRecentTools } from "@/lib/dashboard/recent-tools";
@@ -162,9 +162,8 @@ export function useDashboardState() {
   );
 
   const qaTools = useMemo(() => {
-    const ids = [...pinnedToolIds, ...storedRecentTools.map((entry) => entry.id), ...QA_IDS];
-    return [...new Set(ids)].map((id) => byId[id]).filter(Boolean).slice(0, QA_IDS.length);
-  }, [byId, pinnedToolIds, storedRecentTools]);
+    return selectPinnedTools(tools, pinnedToolIds);
+  }, [pinnedToolIds, tools]);
 
   const recentTools = useMemo(
     () =>
