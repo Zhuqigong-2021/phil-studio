@@ -21,6 +21,7 @@ import {
   readCachedWorkspace,
   runGuardedSync,
   synchronizeWorkspace,
+  writeWorkspaceCache,
   type WorkspaceApi,
   type WorkspaceStorage,
 } from "./useCustomTools.ts";
@@ -136,9 +137,7 @@ test("optimistic pin and favorite patches roll back the exact previous snapshot 
   const storage = new MemoryStorage();
   const apply = (next: WorkspaceSnapshot) => {
     applied.push(next);
-    storage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify({
-      [customTool.id]: next.tools[0].favorite,
-    }));
+    writeWorkspaceCache(storage, next);
   };
   const failing = api({ patchTool: async () => { throw new Error("offline"); } });
 
@@ -158,9 +157,7 @@ test("confirmed favorite patches mirror the persisted favorite to the cache", as
   let current = initial;
   const apply = (next: WorkspaceSnapshot) => {
     current = next;
-    storage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify({
-      [customTool.id]: next.tools[0].favorite,
-    }));
+    writeWorkspaceCache(storage, next);
   };
 
   await createOptimisticToolPatch(
@@ -290,6 +287,23 @@ test("same-tab legacy refresh preserves authoritative mutable built-in fields fo
   assert.equal(retained?.visible, false);
   assert.deepEqual(retained?.aliases, ["server-alias"]);
   assert.equal(retained?.favorite, true);
+});
+
+test("startup refresh keeps cached favorites until the first successful sync", () => {
+  const storage = new MemoryStorage();
+  storage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify({ ap: false }));
+  assert.equal(readCachedWorkspace(storage).tools.find((tool) => tool.id === "ap")?.favorite, false);
+
+  const source = readFileSync(new URL("./useCustomTools.ts", import.meta.url), "utf8");
+  assert.match(source, /const hasAuthoritativeWorkspaceRef = useRef\(false\)/);
+  const refreshBody = source.slice(source.indexOf("const refresh ="), source.indexOf("const initialRead ="));
+  assert.match(
+    refreshBody,
+    /readCachedWorkspace\(\s*window\.localStorage,\s*hasAuthoritativeWorkspaceRef\.current \? workspaceRef\.current : undefined,\s*\)/,
+  );
+  const retrySyncStart = source.indexOf("const retrySync =");
+  const retrySyncBody = source.slice(retrySyncStart, source.indexOf("useEffect(()", retrySyncStart));
+  assert.match(retrySyncBody, /hasAuthoritativeWorkspaceRef\.current = true;\s*applyWorkspace\(snapshot\)/);
 });
 
 test("same-tab recent events refresh and clear recent state without a notification loop", () => {

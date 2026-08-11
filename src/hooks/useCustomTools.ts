@@ -104,7 +104,7 @@ export function readCachedWorkspace(
   };
 }
 
-function writeWorkspaceCache(storage: WorkspaceStorage, snapshot: WorkspaceSnapshot): void {
+export function writeWorkspaceCache(storage: WorkspaceStorage, snapshot: WorkspaceSnapshot): void {
   storage.setItem(CUSTOM_TOOLS_KEY, JSON.stringify(snapshot.tools.filter((tool) => !BUILT_IN_IDS.has(tool.id))));
   storage.setItem(CUSTOM_CATEGORIES_KEY, JSON.stringify(
     snapshot.categories.filter((category) => !DEFAULT_CATEGORY_KEYS.has(category.toLocaleLowerCase())),
@@ -277,6 +277,7 @@ export function useCustomTools(api: WorkspaceApi = DEFAULT_WORKSPACE_API) {
   const [syncError, setSyncError] = useState<string | null>(null);
   const workspaceRef = useRef(workspace);
   const revisionRef = useRef(0);
+  const hasAuthoritativeWorkspaceRef = useRef(false);
   const syncGuardRef = useRef(createSyncGuard());
   const patchVersionsRef = useRef(new Map<string, symbol>());
 
@@ -299,7 +300,10 @@ export function useCustomTools(api: WorkspaceApi = DEFAULT_WORKSPACE_API) {
       {
         revision: () => revisionRef.current,
         start: () => { setLoading(true); setSyncError(null); },
-        success: applyWorkspace,
+        success: (snapshot) => {
+          hasAuthoritativeWorkspaceRef.current = true;
+          applyWorkspace(snapshot);
+        },
         failure: () => setSyncError("Workspace synchronization failed."),
         finish: () => setLoading(false),
       },
@@ -308,7 +312,10 @@ export function useCustomTools(api: WorkspaceApi = DEFAULT_WORKSPACE_API) {
 
   useEffect(() => {
     const refresh = () => {
-      const cached = readCachedWorkspace(window.localStorage, workspaceRef.current);
+      const cached = readCachedWorkspace(
+        window.localStorage,
+        hasAuthoritativeWorkspaceRef.current ? workspaceRef.current : undefined,
+      );
       workspaceRef.current = cached;
       revisionRef.current += 1;
       setWorkspace(cached);
