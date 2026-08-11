@@ -23,16 +23,16 @@ test("new favorite results replace the current toast and obsolete dismissals can
 });
 
 test("root layout mounts one global accessible favorite toast host", async () => {
-  const [layout, host] = await Promise.all([
+  const [layout, host, globals] = await Promise.all([
     readFile(new URL("../../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("./FavoriteToastHost.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../../app/globals.css", import.meta.url), "utf8"),
   ]);
 
   assert.equal((layout.match(/<FavoriteToastHost\s*\/>/g) ?? []).length, 1);
   assert.match(host, /FAVORITE_TOAST_EVENT/);
   assert.match(host, /3000/);
   assert.match(host, /role=\{toast\.tone === "error" \? "alert" : "status"\}/);
-  assert.match(host, /motion-reduce:transition-none/);
   assert.match(host, /fixed left-1\/2 top-5/);
   assert.match(host, /-translate-x-1\/2/);
   assert.match(host, /rounded-\[10px\]/);
@@ -41,4 +41,11 @@ test("root layout mounts one global accessible favorite toast host", async () =>
   assert.match(host, /rounded-full.*bg-indigo-500/);
   assert.match(host, /rounded-full.*bg-rose-500/);
   assert.match(host, /className="h-3\.5 w-3\.5 text-white"/);
+  assert.match(host, /import \{ Check, Minus, X \} from "lucide-react"/);
+  assert.doesNotMatch(host, /CheckCircle2|AlertCircle|\bInfo\b/);
+  assert.match(host, /animate-\[favorite-toast-fade-in_180ms_ease-out_both\]/);
+  assert.match(host, /motion-reduce:animate-none/);
+  assert.match(globals, /@keyframes favorite-toast-fade-in/);
+  assert.match(globals, /from\s*\{\s*opacity:\s*0/);
+  assert.match(globals, /to\s*\{\s*opacity:\s*1/);
 });
