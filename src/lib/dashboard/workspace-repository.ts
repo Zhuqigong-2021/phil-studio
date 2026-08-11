@@ -33,7 +33,14 @@ export interface WorkspaceDatabasePort {
   updateTool(ownerEmail: string, id: string, patch: TablesUpdate<"tools">): Promise<ToolRow | null>;
   deleteTool(ownerEmail: string, id: string): Promise<void>;
   upsertRelationships(rows: Array<{ tool_id: string; category_id: string }>): Promise<void>;
-  replaceRelationships?(toolId: string, categoryIds: readonly string[]): Promise<void>;
+  patchToolAtomic(
+    ownerEmail: string,
+    id: string,
+    patch: TablesUpdate<"tools">,
+    categoryIds: readonly string[] | null,
+    incrementUse: boolean,
+    usedAt: string | null,
+  ): Promise<ToolRow | null>;
 }
 
 function throwOnError(error: { message: string } | null): void {
@@ -100,12 +107,30 @@ async function createSupabasePort(): Promise<WorkspaceDatabasePort> {
       const { error } = await client.from("tool_categories").upsert(rows, { onConflict: "tool_id,category_id", ignoreDuplicates: true });
       throwOnError(error);
     },
-    async replaceRelationships(toolId, categoryIds) {
-      const { error: deleteError } = await client.from("tool_categories").delete().eq("tool_id", toolId);
-      throwOnError(deleteError);
-      if (!categoryIds.length) return;
-      const { error } = await client.from("tool_categories").insert(categoryIds.map((category_id) => ({ tool_id: toolId, category_id })));
+    async patchToolAtomic(ownerEmail, id, patch, categoryIds, incrementUse, usedAt) {
+      type AtomicPatchRpc = {
+        rpc(
+          name: "patch_workspace_tool",
+          args: {
+            p_owner_email: string;
+            p_tool_id: string;
+            p_patch: TablesUpdate<"tools">;
+            p_category_ids: readonly string[] | null;
+            p_increment_use: boolean;
+            p_used_at: string | null;
+          },
+        ): PromiseLike<{ data: ToolRow | null; error: { message: string } | null }>;
+      };
+      const { data, error } = await (client as unknown as AtomicPatchRpc).rpc("patch_workspace_tool", {
+        p_owner_email: ownerEmail,
+        p_tool_id: id,
+        p_patch: patch,
+        p_category_ids: categoryIds,
+        p_increment_use: incrementUse,
+        p_used_at: usedAt,
+      });
       throwOnError(error);
+      return data;
     },
   };
 }
@@ -219,7 +244,14 @@ export async function migrateLocalWorkspace(ownerEmail: string, input: LocalMigr
   await database.upsertTools(rows, { onConflict: "id", ignoreDuplicates: false });
   for (const tool of payload.tools) {
     const ownedCategories = await verifyOwnedRelationships(database, ownerEmail, tool.id, tool.tags);
-    await database.upsertRelationships(ownedCategories.map((category) => ({ tool_id: tool.id, category_id: category.id })));
+    await database.patchToolAtomic(
+      ownerEmail,
+      tool.id,
+      {},
+      ownedCategories.map((category) => category.id),
+      false,
+      null,
+    );
   }
   return getWorkspaceSnapshot(ownerEmail, database);
 }
@@ -247,8 +279,6 @@ export async function createWorkspaceTool(
 export async function patchWorkspaceTool(ownerEmail: string, id: string, input: ToolPatch, port?: WorkspaceDatabasePort): Promise<Tool> {
   const database = await resolvePort(port);
   const patch = validateToolPatch(input);
-  const current = await database.findTool(ownerEmail, id);
-  if (!current) throw new Error("Tool was not found for this owner.");
   const update: TablesUpdate<"tools"> = { updated_at: new Date().toISOString() };
   if (patch.name !== undefined) update.name = patch.name.trim();
   if (patch.url !== undefined) update.url = patch.url;
@@ -260,17 +290,22 @@ export async function patchWorkspaceTool(ownerEmail: string, id: string, input: 
   if (patch.favorite !== undefined) update.is_favorite = patch.favorite;
   if (patch.pinned !== undefined) update.is_pinned = patch.pinned;
   if (patch.visible !== undefined) update.visible = patch.visible;
-  if (patch.recordUse) {
-    update.last_used_at = patch.usedAt ?? new Date().toISOString();
-    update.use_count = current.use_count + 1;
+  let categories: CategoryRow[] | null = null;
+  if (patch.tags !== undefined) {
+    categories = await verifyOwnedRelationships(database, ownerEmail, id, patch.tags);
   }
-  const updated = await database.updateTool(ownerEmail, id, update);
+  const usedAt = patch.recordUse ? (patch.usedAt ?? new Date().toISOString()) : null;
+  const updated = await database.patchToolAtomic(
+    ownerEmail,
+    id,
+    update,
+    categories?.map((category) => category.id) ?? null,
+    patch.recordUse === true,
+    usedAt,
+  );
   if (!updated) throw new Error("Tool was not found for this owner.");
   let categoryNames: string[] = [];
-  if (patch.tags !== undefined) {
-    const categories = await verifyOwnedRelationships(database, ownerEmail, id, patch.tags);
-    if (!database.replaceRelationships) throw new Error("Relationship replacement is unavailable.");
-    await database.replaceRelationships(id, categories.map((category) => category.id));
+  if (categories) {
     categoryNames = categories.map((category) => category.name);
   } else {
     const categories = await database.listCategories(ownerEmail);

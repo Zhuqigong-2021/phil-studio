@@ -52,6 +52,7 @@ export interface ToolPatch {
 
 const ACCENTS = new Set<Accent>(["violet", "blue", "pink", "orange", "cyan", "teal", "slate"]);
 const ICON_TYPES = new Set<IconType>(["official", "matching", "monogram"]);
+const SOURCE_TYPES = new Set<SourceType>(["internal", "external"]);
 const PATCH_KEYS = new Set<keyof ToolPatch>([
   "name", "url", "description", "iconKey", "accent", "tags", "aliases", "sourceType",
   "favorite", "pinned", "visible", "recordUse", "usedAt",
@@ -176,7 +177,28 @@ export function validateToolPatch(value: unknown): ToolPatch {
     if (!PATCH_KEYS.has(key as keyof ToolPatch)) throw new Error(`Unknown tool patch key: ${key}.`);
   }
   const patch = { ...input } as ToolPatch;
+  if (patch.name !== undefined) {
+    if (typeof patch.name !== "string") throw new Error("Tool name must be a string.");
+    patch.name = patch.name.trim();
+    if (!patch.name) throw new Error("Tool name is required.");
+    if (patch.name.length > 60) throw new Error("Tool names must be 60 characters or fewer.");
+  }
+  if (patch.description !== undefined) {
+    if (typeof patch.description !== "string") throw new Error("Tool description must be a string.");
+    patch.description = patch.description.trim();
+    if (patch.description.length > 160) throw new Error("Tool descriptions must be 160 characters or fewer.");
+  }
+  if (patch.iconKey !== undefined && typeof patch.iconKey !== "string") {
+    throw new Error("Tool icon key must be a string.");
+  }
+  if (patch.accent !== undefined && (typeof patch.accent !== "string" || !ACCENTS.has(patch.accent))) {
+    throw new Error("Tool accent is invalid.");
+  }
+  if (patch.sourceType !== undefined && (typeof patch.sourceType !== "string" || !SOURCE_TYPES.has(patch.sourceType))) {
+    throw new Error("Tool source is invalid.");
+  }
   if (patch.aliases !== undefined) {
+    if (!Array.isArray(patch.aliases)) throw new Error("Tool aliases must be an array of strings.");
     const sample = normalizedTool({
       id: "validation", name: "Validation", url: "https://example.com", description: "",
       mono: "VA", accent: "blue", tags: patch.tags ?? [], aliases: patch.aliases,
@@ -185,6 +207,7 @@ export function validateToolPatch(value: unknown): ToolPatch {
     patch.aliases = sample.aliases;
   }
   if (patch.url !== undefined) {
+    if (typeof patch.url !== "string") throw new Error("Tool URL must be a string.");
     const sample = normalizedTool({
       id: "validation", name: patch.name ?? "Validation", url: patch.url,
       description: patch.description ?? "", mono: "VA", accent: patch.accent ?? "blue",
@@ -197,9 +220,9 @@ export function validateToolPatch(value: unknown): ToolPatch {
   for (const key of ["favorite", "pinned", "visible", "recordUse"] as const) {
     if (patch[key] !== undefined && typeof patch[key] !== "boolean") throw new Error(`${key} must be boolean.`);
   }
-  if (patch.usedAt !== undefined && Number.isNaN(Date.parse(patch.usedAt))) {
-    throw new Error("usedAt must be a valid date.");
+  if (patch.usedAt !== undefined) {
+    if (typeof patch.usedAt !== "string") throw new Error("usedAt must be a string.");
+    if (Number.isNaN(Date.parse(patch.usedAt))) throw new Error("usedAt must be a valid date.");
   }
   return patch;
 }
-

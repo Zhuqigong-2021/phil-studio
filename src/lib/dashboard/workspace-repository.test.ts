@@ -36,7 +36,9 @@ class MemoryPort implements WorkspaceDatabasePort {
   ownerQueries: Array<{ table: "tools" | "categories"; ownerEmail: string }> = [];
   toolUpserts: Array<{ rows: TablesInsert<"tools">[]; options: { onConflict: "id"; ignoreDuplicates: boolean } }> = [];
   failRelationships = false;
+  failAtomicPatch = false;
   deletedToolIds: string[] = [];
+  atomicPatchCalls: Array<{ ownerEmail: string; id: string; incrementUse: boolean }> = [];
 
   async listTools(ownerEmail: string) {
     this.ownerQueries.push({ table: "tools", ownerEmail });
@@ -106,6 +108,36 @@ class MemoryPort implements WorkspaceDatabasePort {
       }
     }
   }
+  async patchToolAtomic(
+    ownerEmail: string,
+    id: string,
+    patch: TablesUpdate<"tools">,
+    categoryIds: readonly string[] | null,
+    incrementUse: boolean,
+    usedAt: string | null,
+  ) {
+    this.atomicPatchCalls.push({ ownerEmail, id, incrementUse });
+    const index = this.tools.findIndex((row) => row.owner_email === ownerEmail && row.id === id);
+    if (index < 0) return null;
+    if (this.failAtomicPatch) throw new Error("atomic patch failed");
+    if (categoryIds && categoryIds.some((categoryId) => !this.categories.some(
+      (category) => category.owner_email === ownerEmail && category.id === categoryId,
+    ))) throw new Error("category ownership failed");
+    await Promise.resolve();
+    this.tools[index] = {
+      ...this.tools[index],
+      ...patch,
+      ...(incrementUse ? {
+        use_count: this.tools[index].use_count + 1,
+        last_used_at: usedAt,
+      } : {}),
+    };
+    if (categoryIds) {
+      this.relationships = this.relationships.filter((row) => row.tool_id !== id);
+      this.relationships.push(...categoryIds.map((category_id) => ({ tool_id: id, category_id, created_at: NOW })));
+    }
+    return this.tools[index];
+  }
 }
 
 test("owner-scopes every tool/category query and assembles a snapshot after all query groups succeed", async () => {
@@ -156,6 +188,24 @@ test("repeating a local migration is idempotent", async () => {
   assert.equal(port.relationships.filter((row) => row.tool_id === "custom-1").length, 1);
 });
 
+test("migration removes stale relationships so the payload is authoritative", async () => {
+  const port = new MemoryPort();
+  const base = {
+    tools: [{
+      id: "custom-1", name: "Custom", url: "https://example.com/", description: "",
+      mono: "CU", accent: "blue" as const, tags: ["Work", "AI"], aliases: [],
+      favorite: false, sourceType: "external" as const, iconKey: "globe", iconType: "matching" as const,
+    }],
+    categories: [], pinnedToolIds: [], favoriteOverrides: {}, recentTools: [],
+  };
+  await migrateLocalWorkspace(OWNER, base, port);
+  const changed = { ...base, tools: [{ ...base.tools[0], tags: ["Work"] }] };
+
+  const snapshot = await migrateLocalWorkspace(OWNER, changed, port);
+
+  assert.deepEqual(snapshot.tools.find((tool) => tool.id === "custom-1")?.tags, ["Work"]);
+});
+
 test("verifies relationship ownership and compensates when creating relationships fails", async () => {
   const port = new MemoryPort();
   port.categories.push({ id: "owned", owner_email: OWNER, name: "Work", sort_order: 0, created_at: NOW, updated_at: NOW });
@@ -183,6 +233,39 @@ test("recording recent use increments use_count and updates the timestamp", asyn
 
   assert.equal(port.tools[0].use_count, 5);
   assert.equal(port.tools[0].last_used_at, "2026-08-10T04:00:00.000Z");
+});
+
+test("concurrent recent-use updates delegate increments to the atomic database operation", async () => {
+  const port = new MemoryPort();
+  port.tools.push(toolRow({ id: "ap", use_count: 4 }));
+
+  await Promise.all([
+    patchWorkspaceTool(OWNER, "ap", { recordUse: true, usedAt: "2026-08-10T04:00:00.000Z" }, port),
+    patchWorkspaceTool(OWNER, "ap", { recordUse: true, usedAt: "2026-08-10T05:00:00.000Z" }, port),
+  ]);
+
+  assert.equal(port.tools[0].use_count, 6);
+  assert.equal(port.atomicPatchCalls.filter((call) => call.incrementUse).length, 2);
+  assert.equal(port.atomicPatchCalls.every((call) => call.ownerEmail === OWNER), true);
+});
+
+test("failed tag replacement leaves both tool fields and relationships unchanged", async () => {
+  const port = new MemoryPort();
+  port.tools.push(toolRow({ id: "ap", name: "Before" }));
+  port.categories.push(
+    { id: "work", owner_email: OWNER, name: "Work", sort_order: 0, created_at: NOW, updated_at: NOW },
+    { id: "ai", owner_email: OWNER, name: "AI", sort_order: 1, created_at: NOW, updated_at: NOW },
+  );
+  port.relationships.push({ tool_id: "ap", category_id: "work", created_at: NOW });
+  port.failAtomicPatch = true;
+
+  await assert.rejects(
+    () => patchWorkspaceTool(OWNER, "ap", { name: "After", tags: ["AI"] }, port),
+    /atomic patch failed/,
+  );
+
+  assert.equal(port.tools[0].name, "Before");
+  assert.deepEqual(port.relationships.map((row) => row.category_id), ["work"]);
 });
 
 test("rejects owner category duplicates through a case-insensitive lookup", async () => {

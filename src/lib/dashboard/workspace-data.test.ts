@@ -123,3 +123,31 @@ test("rejects patch keys outside the mutable tool allowlist", () => {
   assert.throws(() => validateToolPatch({ id: "replacement" }), /unknown.*id/i);
 });
 
+test("validates each supported scalar patch field independently", () => {
+  const invalidPatches: Array<[Record<string, unknown>, RegExp]> = [
+    [{ name: 123 }, /name.*string/i],
+    [{ name: "   " }, /name.*required/i],
+    [{ name: "x".repeat(61) }, /60 characters/i],
+    [{ description: 123 }, /description.*string/i],
+    [{ description: "x".repeat(161) }, /160 characters/i],
+    [{ iconKey: 123 }, /icon key.*string/i],
+    [{ accent: "invalid" }, /accent.*invalid/i],
+    [{ sourceType: "invalid" }, /source.*invalid/i],
+    [{ usedAt: 123 }, /usedAt.*string/i],
+  ];
+
+  for (const [patch, message] of invalidPatches) {
+    assert.throws(
+      () => validateToolPatch(patch),
+      (error: unknown) => error instanceof Error && !(error instanceof TypeError) && message.test(error.message),
+    );
+  }
+
+  assert.deepEqual(validateToolPatch({
+    name: " Notes ", description: " Description ", iconKey: "notebook",
+    accent: "teal", sourceType: "internal",
+  }), {
+    name: "Notes", description: "Description", iconKey: "notebook",
+    accent: "teal", sourceType: "internal",
+  });
+});
