@@ -289,3 +289,62 @@ test("concurrent hook startup shares one migration and snapshot request", async 
   assert.equal(fetchCalls, 1);
   assert.equal(firstSnapshot, secondSnapshot);
 });
+
+test("a rejected shared startup is removed so a later retry can succeed", async () => {
+  const storage = new MemoryStorage();
+  let migrationCalls = 0;
+  const sharedApi = api({
+    migrate: async () => {
+      migrationCalls += 1;
+      if (migrationCalls === 1) throw new Error("temporary outage");
+      return snapshot();
+    },
+  });
+
+  const first = synchronizeWorkspaceOnce(storage, sharedApi);
+  const second = synchronizeWorkspaceOnce(storage, sharedApi);
+  await Promise.all([assert.rejects(first, /temporary outage/), assert.rejects(second, /temporary outage/)]);
+  await synchronizeWorkspaceOnce(storage, sharedApi);
+
+  assert.equal(migrationCalls, 2);
+  assert.equal(storage.getItem(SUPABASE_MIGRATED_KEY), "true");
+});
+
+test("the same storage keeps distinct API clients isolated", async () => {
+  const storage = new MemoryStorage();
+  let firstCalls = 0;
+  let secondCalls = 0;
+  const firstApi = api({ migrate: async () => { firstCalls += 1; return snapshot(); } });
+  const secondApi = api({ migrate: async () => { secondCalls += 1; return snapshot(); } });
+
+  await Promise.all([
+    synchronizeWorkspaceOnce(storage, firstApi),
+    synchronizeWorkspaceOnce(storage, secondApi),
+  ]);
+
+  assert.equal(firstCalls, 1);
+  assert.equal(secondCalls, 1);
+});
+
+test("the same API keeps distinct storage payloads and markers isolated", async () => {
+  const firstStorage = new MemoryStorage();
+  const secondStorage = new MemoryStorage();
+  firstStorage.setItem(CUSTOM_CATEGORIES_KEY, JSON.stringify(["First only"]));
+  secondStorage.setItem(CUSTOM_CATEGORIES_KEY, JSON.stringify(["Second only"]));
+  const migratedCategories: string[][] = [];
+  const sharedApi = api({
+    migrate: async (payload) => {
+      migratedCategories.push(payload.categories);
+      return snapshot();
+    },
+  });
+
+  await Promise.all([
+    synchronizeWorkspaceOnce(firstStorage, sharedApi),
+    synchronizeWorkspaceOnce(secondStorage, sharedApi),
+  ]);
+
+  assert.deepEqual(migratedCategories, [["First only"], ["Second only"]]);
+  assert.equal(firstStorage.getItem(SUPABASE_MIGRATED_KEY), "true");
+  assert.equal(secondStorage.getItem(SUPABASE_MIGRATED_KEY), "true");
+});
