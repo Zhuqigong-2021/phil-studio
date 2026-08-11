@@ -17,9 +17,12 @@ test("dashboard uses one workspace snapshot for counts, favorites, and mutations
   assert.match(source, /function DashboardPageContent\(\)/);
   assert.match(source, /<DashboardWorkspaceProvider>\s*<DashboardPageContent \/>\s*<\/DashboardWorkspaceProvider>/);
 
-  assert.match(source, /const \{ tools, categories, setToolFavorite \} = useDashboardWorkspace\(\)/);
+  assert.match(source, /favoritePendingIds/);
+  assert.match(source, /if \(favoritePendingIds\.includes\(id\)\) return/);
+  assert.match(source, /disabled=\{favoritePendingIds\.includes\(t\.id\)\}/);
+  assert.match(source, /LoaderCircle/);
   assert.match(source, /const categoryCount = categories\.length/);
-  assert.match(source, /toolViews\.filter\(\(view\) => view\.tool\.favorite\)/);
+  assert.match(source, /view\.tool\.favorite \|\| favoritePendingIds\.includes\(view\.id\)/);
   assert.match(source, /const favoriteCount = favoriteTools\.length/);
   assert.match(source, /categoryCount=\{categoryCount\}/);
   assert.match(source, /favoriteCount=\{favoriteCount\}/);

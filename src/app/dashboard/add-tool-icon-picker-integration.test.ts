@@ -43,18 +43,16 @@ function assertIndigoControlContract(source: string) {
 test("the shared Add Tool modal uses the controlled icon picker", async () => {
   const source = await readFile(sharedModalUrl, "utf8");
 
+  assert.match(source, /import "@\/app\/dashboard\/dashboard\.css"/);
   assertPickerContract(source);
   assertIndigoControlContract(source);
 });
 
-test("the active Dashboard Add Tool modal uses the shared icon picker", async () => {
+test("the Dashboard uses the canonical shared Add Tool modal", async () => {
   const source = await readFile(dashboardUrl, "utf8");
-  const modalStart = source.indexOf("function AddToolModalDark");
-  const modalEnd = source.indexOf("function HeroSection", modalStart);
-  const modalSource = source.slice(modalStart, modalEnd);
 
-  assert.ok(modalStart >= 0);
-  assertPickerContract(source);
-  assertIndigoControlContract(modalSource);
-  assert.doesNotMatch(modalSource, /monoFromName/);
+  assert.match(source, /import AddToolModal from/);
+  assert.match(source, /<AddToolModal/);
+  assert.doesNotMatch(source, /function AddToolModalDark/);
+  assert.doesNotMatch(source, /<ToolIconPicker/);
 });

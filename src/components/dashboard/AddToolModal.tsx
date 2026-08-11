@@ -1,14 +1,34 @@
 "use client";
 
-import { useRef, useState } from "react";
+import "@/app/dashboard/dashboard.css";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+import { LoaderCircle, X } from "lucide-react";
+import { useRef, useState, type CSSProperties } from "react";
+import type { useCustomTools } from "@/hooks/useCustomTools";
+import {
+  createAddToolSubmissionGuard,
+  runAddToolSubmission,
+} from "@/lib/dashboard/add-tool-submission";
+import { getListItemMotion, getOverlayMotion, getPopoverMotion } from "@/lib/dashboard/motion-system";
+import { publishDatabaseToast } from "@/lib/dashboard/tool-mutations";
 import { DEFAULT_TOOL_ICON_KEY } from "@/lib/dashboard/tool-icons";
 import type { Accent } from "@/lib/dashboard/types";
-import type { ShellState } from "@/hooks/useShellState";
-import { useCustomTools } from "@/hooks/useCustomTools";
 import CategorySelector from "./CategorySelector";
 import ToolIconPicker from "./ToolIconPicker";
 
-type Status = "idle" | "suggesting" | "ready" | "error";
+type AddToolStatus = "idle" | "suggesting" | "ready" | "error";
+
+export type AddToolWorkspace = Pick<
+  ReturnType<typeof useCustomTools>,
+  "categories" | "addCategory" | "addTool"
+>;
+
+const addToolStatusCopy: Record<AddToolStatus, string> = {
+  idle: "",
+  suggesting: "Getting details…",
+  ready: "Details ready",
+  error: "Couldn't get details. You can enter them manually.",
+};
 
 function suggestNameFromUrl(url: string): string {
   try {
@@ -18,21 +38,14 @@ function suggestNameFromUrl(url: string): string {
     return base
       .split(/[-_]/)
       .filter(Boolean)
-      .map((w) => w[0].toUpperCase() + w.slice(1))
+      .map((word) => word[0].toUpperCase() + word.slice(1))
       .join(" ");
   } catch {
     return "";
   }
 }
 
-const statusCopy: Record<Status, string> = {
-  idle: "",
-  suggesting: "Getting details…",
-  ready: "Details ready",
-  error: "Couldn’t get details. You can enter them manually.",
-};
-
-function emptyForm() {
+function emptyAddToolForm() {
   return {
     url: "",
     name: "",
@@ -47,21 +60,42 @@ function emptyForm() {
   };
 }
 
-export default function AddToolModal({ state }: { state: ShellState }) {
-  if (!state.addToolOpen) return null;
-  return <AddToolForm closeAddTool={state.closeAddTool} />;
+export default function AddToolModal({
+  open,
+  onClose,
+  workspace,
+}: {
+  open: boolean;
+  onClose: () => void;
+  workspace: AddToolWorkspace;
+}) {
+  return (
+    <AnimatePresence>
+      {open && <AddToolForm closeAddTool={onClose} workspace={workspace} />}
+    </AnimatePresence>
+  );
 }
 
-function AddToolForm({ closeAddTool }: { closeAddTool: () => void }) {
+function AddToolForm({
+  closeAddTool,
+  workspace,
+}: {
+  closeAddTool: () => void;
+  workspace: AddToolWorkspace;
+}) {
   const ADD_TOOL_SECONDARY_BACKGROUND = "rgba(99, 102, 241, 0.14)";
   const ADD_TOOL_SECONDARY_BORDER = "1px solid rgba(129, 140, 248, 0.34)";
   const ADD_TOOL_SECONDARY_TEXT = "#e0e7ff";
-  const [form, setForm] = useState(emptyForm);
-  const [status, setStatus] = useState<Status>("idle");
+  const reduceMotion = Boolean(useReducedMotion());
+  const overlayMotion = getOverlayMotion(reduceMotion);
+  const popoverMotion = getPopoverMotion(reduceMotion);
+  const listItemMotion = getListItemMotion(reduceMotion);
+  const [form, setForm] = useState(emptyAddToolForm);
+  const [status, setStatus] = useState<AddToolStatus>("idle");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
-  const savingRef = useRef(false);
-  const { categories, addCategory, addTool } = useCustomTools();
+  const submissionGuard = useRef(createAddToolSubmissionGuard());
+  const { categories, addCategory, addTool } = workspace;
 
   const getDetails = () => {
     if (!form.url.trim()) {
@@ -75,148 +109,201 @@ function AddToolForm({ closeAddTool }: { closeAddTool: () => void }) {
         setStatus("error");
         return;
       }
-      setForm((f) => ({ ...f, name: f.name || suggested }));
+      setForm((current) => ({ ...current, name: current.name || suggested }));
       setStatus("ready");
     }, 600);
   };
 
   const toggleTag = (tag: string) => {
-    setForm((f) => {
-      const next = new Set(f.tags);
+    setForm((current) => {
+      const next = new Set(current.tags);
       if (next.has(tag)) next.delete(tag);
       else next.add(tag);
-      return { ...f, tags: next };
+      return { ...current, tags: next };
     });
   };
 
   const addAlias = () => {
     const value = form.aliasInput.trim();
     if (!value) return;
-    setForm((f) =>
-      f.aliases.some((alias) => alias.toLocaleLowerCase() === value.toLocaleLowerCase())
-        ? { ...f, aliasInput: "" }
-        : { ...f, aliases: [...f.aliases, value], aliasInput: "" },
+    setForm((current) =>
+      current.aliases.some((alias) => alias.toLocaleLowerCase() === value.toLocaleLowerCase())
+        ? { ...current, aliasInput: "" }
+        : { ...current, aliases: [...current.aliases, value], aliasInput: "" },
     );
   };
 
   const removeAlias = (alias: string) => {
-    setForm((f) => ({ ...f, aliases: f.aliases.filter((a) => a !== alias) }));
+    setForm((current) => ({
+      ...current,
+      aliases: current.aliases.filter((item) => item !== alias),
+    }));
   };
 
   const handleSave = async () => {
-    if (savingRef.current) return;
-    savingRef.current = true;
-    setSaving(true);
-    setSaveError("");
-    try {
-      await addTool(
-        {
-          name: form.name,
-          url: form.url,
-          description: form.description,
-          iconKey: form.iconKey,
-          accent: form.accent,
-          tags: [...form.tags],
-          aliases: form.aliases,
-          sourceType: form.source,
-        },
-        form.pin,
-      );
-      closeAddTool();
-    } catch (reason) {
-      setSaveError(reason instanceof Error ? reason.message : "Could not save tool.");
-    } finally {
-      savingRef.current = false;
-      setSaving(false);
-    }
+    await runAddToolSubmission({
+      guard: submissionGuard.current,
+      toolName: form.name,
+      save: async () => {
+        await addTool(
+          {
+            name: form.name,
+            url: form.url,
+            description: form.description,
+            iconKey: form.iconKey,
+            accent: form.accent,
+            tags: [...form.tags],
+            aliases: form.aliases,
+            sourceType: form.source,
+          },
+          form.pin,
+        );
+      },
+      setPending: setSaving,
+      setError: setSaveError,
+      close: closeAddTool,
+      publish: publishDatabaseToast,
+    });
+  };
+
+  const fieldClass =
+    "w-full box-border h-[40px] rounded-[11px] px-3 text-[13px] text-[#f2f4fa] outline-none bg-[rgba(255,255,255,0.05)]";
+  const fieldStyle: CSSProperties = {
+    border: "1px solid rgba(160,110,255,0.2)",
   };
 
   return (
-    <div
+    <motion.div
+      {...overlayMotion.backdrop}
       onClick={closeAddTool}
-      style={{ position: "fixed", inset: 0, zIndex: 90, background: "rgba(2,6,23,.6)", display: "flex", alignItems: "flex-start", justifyContent: "center", padding: "8vh 16px" }}
+      className="dashboard-motion-root dashboard-overlay-backdrop fixed inset-0 z-[90] flex items-start justify-center"
+      style={{ background: "rgba(2,6,23,0.6)", padding: "8vh 16px" }}
     >
-      <div
-        onClick={(e) => e.stopPropagation()}
+      <motion.div
+        {...overlayMotion.surface}
+        onClick={(event) => event.stopPropagation()}
+        className="glass-shine-card rounded-2xl overflow-hidden flex flex-col"
         style={{
           width: "min(600px,100%)",
           maxHeight: "84vh",
-          display: "flex",
-          flexDirection: "column",
-          borderRadius: 20,
-          background: "rgba(15,26,64,.94)",
+          background: "rgba(20,16,48,0.94)",
           backdropFilter: "blur(20px) saturate(170%) brightness(1.2)",
-          WebkitBackdropFilter: "blur(20px) saturate(170%) brightness(1.2)",
-          border: "1px solid rgba(125,190,255,.24)",
-          boxShadow: "0 24px 60px rgba(0,4,20,.35)",
-          overflow: "hidden",
-          color: "#F2F6FF",
+          border: "1px solid rgba(160,110,255,0.24)",
+          boxShadow: "0 24px 60px rgba(0,4,20,0.4)",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "18px 22px", borderBottom: "1px solid rgba(125,190,255,.14)", flexShrink: 0 }}>
-          <div style={{ fontSize: 17, fontWeight: 650 }}>Add Tool</div>
-          <button onClick={closeAddTool} aria-label="Close" style={{ width: 28, height: 28, borderRadius: 8, background: ADD_TOOL_SECONDARY_BACKGROUND, border: ADD_TOOL_SECONDARY_BORDER, color: ADD_TOOL_SECONDARY_TEXT, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+        <div
+          className="flex items-center justify-between px-[22px] py-[18px] flex-shrink-0"
+          style={{ borderBottom: "1px solid rgba(160,110,255,0.14)" }}
+        >
+          <div className="text-[#f2f4fa] text-[17px] font-semibold">Add Tool</div>
+          <button
+            type="button"
+            onClick={closeAddTool}
+            aria-label="Close"
+            className="flex items-center justify-center rounded-[8px]"
+            style={{
+              width: 28,
+              height: 28,
+              background: ADD_TOOL_SECONDARY_BACKGROUND,
+              border: ADD_TOOL_SECONDARY_BORDER,
+              color: ADD_TOOL_SECONDARY_TEXT,
+            }}
+          >
+            <X style={{ width: 14, height: 14 }} strokeWidth={2} />
           </button>
         </div>
 
-        <div className="noscroll" style={{ flex: 1, overflowY: "auto", padding: 22, display: "flex", flexDirection: "column", gap: 16 }}>
-          {/* Tool URL + Get details */}
+        <div
+          className="flex-1 overflow-y-auto p-[22px] flex flex-col gap-4 [&::-webkit-scrollbar]:hidden"
+          style={{ scrollbarWidth: "none" }}
+        >
           <div>
-            <div style={{ fontSize: 11, fontWeight: 600, color: "#A9B2C3", marginBottom: 6 }}>Tool URL</div>
-            <div style={{ display: "flex", gap: 8 }}>
+            <div className="text-[11px] font-semibold text-[#9aa3be] mb-[6px]">Tool URL</div>
+            <div className="flex gap-2">
               <input
                 value={form.url}
-                onChange={(e) => setForm((f) => ({ ...f, url: e.target.value }))}
+                onChange={(event) => setForm((current) => ({ ...current, url: event.target.value }))}
                 placeholder="https://example.com"
-                style={{ flex: 1, minWidth: 0, height: 40, borderRadius: 11, background: "rgba(255,255,255,.04)", border: "1px solid rgba(186,230,253,0.16)", padding: "0 12px", fontSize: 13, color: "#F2F6FF", outline: "none" }}
+                className={fieldClass}
+                style={fieldStyle}
               />
               <button
+                type="button"
                 onClick={getDetails}
                 disabled={status === "suggesting"}
-                style={{ height: 40, padding: "0 16px", borderRadius: 11, background: ADD_TOOL_SECONDARY_BACKGROUND, border: ADD_TOOL_SECONDARY_BORDER, color: ADD_TOOL_SECONDARY_TEXT, fontSize: 13, fontWeight: 600, cursor: status === "suggesting" ? "default" : "pointer", flexShrink: 0, opacity: status === "suggesting" ? 0.6 : 1 }}
+                className="h-[40px] px-4 rounded-[11px] text-[13px] font-semibold flex-shrink-0"
+                style={{
+                  background: ADD_TOOL_SECONDARY_BACKGROUND,
+                  border: ADD_TOOL_SECONDARY_BORDER,
+                  color: ADD_TOOL_SECONDARY_TEXT,
+                  opacity: status === "suggesting" ? 0.6 : 1,
+                  cursor: status === "suggesting" ? "default" : "pointer",
+                }}
               >
                 Get details
               </button>
             </div>
-            {status !== "idle" && (
-              <div style={{ fontSize: 12, marginTop: 6, color: status === "error" ? "#F59E0B" : status === "ready" ? "#4ADE80" : "#A9B2C3" }}>
-                {statusCopy[status]}
-              </div>
-            )}
+            <AnimatePresence mode="wait" initial={false}>
+              {status !== "idle" && (
+                <motion.div
+                  key={status}
+                  {...popoverMotion}
+                  className="text-[12px] mt-[6px]"
+                  style={{
+                    color:
+                      status === "error"
+                        ? "#f0b429"
+                        : status === "ready"
+                          ? "#4ade80"
+                          : "#9aa3be",
+                  }}
+                >
+                  {addToolStatusCopy[status]}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
-          {/* Icon and accent picker */}
           <ToolIconPicker
             iconKey={form.iconKey}
             accent={form.accent}
-            onIconChange={(iconKey) => setForm((f) => ({ ...f, iconKey }))}
-            onAccentChange={(accent) => setForm((f) => ({ ...f, accent }))}
+            onIconChange={(iconKey) => setForm((current) => ({ ...current, iconKey }))}
+            onAccentChange={(accent) => setForm((current) => ({ ...current, accent }))}
           />
 
-          {/* Name */}
           <div>
-            <div style={{ fontSize: 11, fontWeight: 600, color: "#A9B2C3", marginBottom: 6 }}>Name</div>
+            <div className="text-[11px] font-semibold text-[#9aa3be] mb-[6px]">Name</div>
             <input
               value={form.name}
-              onChange={(e) => setForm((f) => ({ ...f, name: e.target.value.slice(0, 60) }))}
+              onChange={(event) => setForm((current) => ({
+                ...current,
+                name: event.target.value.slice(0, 60),
+              }))}
               placeholder="Tool name"
-              style={{ width: "100%", boxSizing: "border-box", height: 40, borderRadius: 11, background: "rgba(255,255,255,.04)", border: "1px solid rgba(186,230,253,0.16)", padding: "0 12px", fontSize: 13, color: "#F2F6FF", outline: "none" }}
+              className={fieldClass}
+              style={fieldStyle}
             />
           </div>
 
-          {/* Description */}
           <div>
-            <div style={{ fontSize: 11, fontWeight: 600, color: "#A9B2C3", marginBottom: 6, display: "flex", justifyContent: "space-between" }}>
+            <div className="text-[11px] font-semibold text-[#9aa3be] mb-[6px] flex justify-between">
               <span>Description</span>
-              <span style={{ color: "#7C8698", fontWeight: 500 }}>{form.description.length}/160</span>
+              <span className="text-[#7c8698] font-medium">{form.description.length}/160</span>
             </div>
             <textarea
               value={form.description}
-              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value.slice(0, 160) }))}
+              onChange={(event) => setForm((current) => ({
+                ...current,
+                description: event.target.value.slice(0, 160),
+              }))}
               placeholder="Short description (optional)"
               rows={2}
-              style={{ width: "100%", boxSizing: "border-box", borderRadius: 11, background: "rgba(255,255,255,.04)", border: "1px solid rgba(186,230,253,0.16)", padding: "10px 12px", fontSize: 13, color: "#F2F6FF", outline: "none", resize: "none", fontFamily: "inherit" }}
+              className="w-full box-border rounded-[11px] px-3 py-[10px] text-[13px] text-[#f2f4fa] outline-none resize-none bg-[rgba(255,255,255,0.05)]"
+              style={{
+                border: "1px solid rgba(160,110,255,0.2)",
+                fontFamily: "inherit",
+              }}
             />
           </div>
 
@@ -227,77 +314,174 @@ function AddToolForm({ closeAddTool }: { closeAddTool: () => void }) {
             onCreate={async (name) => (await addCategory(name)).category}
           />
 
-          {/* Aliases */}
           <div>
-            <div style={{ fontSize: 11, fontWeight: 600, color: "#A9B2C3", marginBottom: 6 }}>Aliases</div>
-            <div style={{ display: "flex", gap: 8 }}>
+            <div className="text-[11px] font-semibold text-[#9aa3be] mb-[6px]">Aliases</div>
+            <div className="flex gap-2">
               <input
                 value={form.aliasInput}
-                onChange={(e) => setForm((f) => ({ ...f, aliasInput: e.target.value.slice(0, 32) }))}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === ",") {
-                    e.preventDefault();
+                onChange={(event) => setForm((current) => ({
+                  ...current,
+                  aliasInput: event.target.value.slice(0, 32),
+                }))}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === ",") {
+                    event.preventDefault();
                     addAlias();
                   }
                 }}
                 placeholder="Add an alias and press Enter"
                 disabled={form.aliases.length >= 10}
-                style={{ flex: 1, minWidth: 0, height: 36, borderRadius: 10, background: "rgba(255,255,255,.04)", border: "1px solid rgba(186,230,253,0.16)", padding: "0 12px", fontSize: 12, color: "#F2F6FF", outline: "none" }}
+                className="flex-1 min-w-0 h-[36px] rounded-[10px] px-3 text-[12px] text-[#f2f4fa] outline-none bg-[rgba(255,255,255,0.05)]"
+                style={{ border: "1px solid rgba(160,110,255,0.2)" }}
               />
-              <button onClick={addAlias} style={{ height: 36, padding: "0 12px", borderRadius: 10, background: ADD_TOOL_SECONDARY_BACKGROUND, border: ADD_TOOL_SECONDARY_BORDER, color: ADD_TOOL_SECONDARY_TEXT, fontSize: 12, fontWeight: 600, cursor: "pointer", flexShrink: 0 }}>
+              <button
+                type="button"
+                onClick={addAlias}
+                className="h-[36px] px-3 rounded-[10px] text-[12px] font-semibold flex-shrink-0"
+                style={{
+                  background: ADD_TOOL_SECONDARY_BACKGROUND,
+                  border: ADD_TOOL_SECONDARY_BORDER,
+                  color: ADD_TOOL_SECONDARY_TEXT,
+                }}
+              >
                 Add
               </button>
             </div>
             {form.aliases.length > 0 && (
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
-                {form.aliases.map((alias) => (
-                  <span key={alias} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 6px 4px 10px", borderRadius: 9, fontSize: 11, fontWeight: 600, background: "rgba(103,232,249,.14)", color: "#67E8F9" }}>
-                    {alias}
-                    <button onClick={() => removeAlias(alias)} aria-label={`Remove alias ${alias}`} style={{ width: 16, height: 16, border: "none", background: "rgba(255,255,255,.1)", borderRadius: "50%", color: "#67E8F9", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0, fontSize: 10, lineHeight: 1 }}>
-                      ×
-                    </button>
-                  </span>
-                ))}
+              <div className="flex gap-[6px] flex-wrap mt-2">
+                <AnimatePresence initial={false}>
+                  {form.aliases.map((alias) => (
+                    <motion.span
+                      key={alias}
+                      layout={!reduceMotion}
+                      {...listItemMotion}
+                      className="flex items-center gap-[6px] rounded-[9px] pl-[10px] pr-[4px] py-[4px] text-[11px] font-semibold"
+                      style={{ background: "rgba(103,232,249,0.14)", color: "#67e8f9" }}
+                    >
+                      {alias}
+                      <button
+                        type="button"
+                        onClick={() => removeAlias(alias)}
+                        aria-label={`Remove alias ${alias}`}
+                        className="flex items-center justify-center rounded-full"
+                        style={{
+                          width: 16,
+                          height: 16,
+                          border: "none",
+                          background: "rgba(255,255,255,0.1)",
+                          color: "#67e8f9",
+                          fontSize: 10,
+                          lineHeight: 1,
+                        }}
+                      >
+                        ×
+                      </button>
+                    </motion.span>
+                  ))}
+                </AnimatePresence>
               </div>
             )}
           </div>
 
-          {/* Source */}
           <div>
-            <div style={{ fontSize: 11, fontWeight: 600, color: "#A9B2C3", marginBottom: 6 }}>Source</div>
-            <div style={{ display: "flex", background: ADD_TOOL_SECONDARY_BACKGROUND, borderRadius: 10, padding: 2, gap: 2, width: "fit-content" }}>
-              <div onClick={() => setForm((f) => ({ ...f, source: "internal" }))} style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", background: form.source === "internal" ? "rgba(99, 102, 241, 0.34)" : "transparent", color: ADD_TOOL_SECONDARY_TEXT }}>
+            <div className="text-[11px] font-semibold text-[#9aa3be] mb-[6px]">Source</div>
+            <div
+              className="flex rounded-[10px] p-[2px] gap-[2px] w-fit"
+              style={{ background: ADD_TOOL_SECONDARY_BACKGROUND }}
+            >
+              <div
+                onClick={() => setForm((current) => ({ ...current, source: "internal" }))}
+                className="ui-choice rounded-[8px] px-[14px] py-[6px] text-[12px] font-semibold cursor-pointer"
+                style={{
+                  background: form.source === "internal" ? "rgba(99, 102, 241, 0.34)" : "transparent",
+                  color: ADD_TOOL_SECONDARY_TEXT,
+                }}
+              >
                 Owned
               </div>
-              <div onClick={() => setForm((f) => ({ ...f, source: "external" }))} style={{ padding: "6px 14px", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", background: form.source === "external" ? "rgba(99, 102, 241, 0.34)" : "transparent", color: ADD_TOOL_SECONDARY_TEXT }}>
+              <div
+                onClick={() => setForm((current) => ({ ...current, source: "external" }))}
+                className="ui-choice rounded-[8px] px-[14px] py-[6px] text-[12px] font-semibold cursor-pointer"
+                style={{
+                  background: form.source === "external" ? "rgba(99, 102, 241, 0.34)" : "transparent",
+                  color: ADD_TOOL_SECONDARY_TEXT,
+                }}
+              >
                 Third-party
               </div>
             </div>
           </div>
 
-          {/* Pin to Quick Access */}
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", borderRadius: 11, background: "rgba(255,255,255,.03)" }}>
-            <span style={{ fontSize: 12, fontWeight: 600 }}>Pin to Quick Access</span>
+          <div
+            className="flex items-center justify-between rounded-[11px] px-3 py-[10px]"
+            style={{ background: "rgba(255,255,255,0.03)" }}
+          >
+            <span className="text-[12px] font-semibold text-[#f2f4fa]">Pin to Quick Access</span>
             <button
-              onClick={() => setForm((f) => ({ ...f, pin: !f.pin }))}
+              type="button"
+              onClick={() => setForm((current) => ({ ...current, pin: !current.pin }))}
               aria-label="Toggle pin to Quick Access"
-              style={{ width: 32, height: 19, borderRadius: 10, background: form.pin ? "rgba(59,130,246,.5)" : "rgba(255,255,255,.12)", position: "relative", flexShrink: 0, border: "none", cursor: "pointer", padding: 0 }}
+              className="relative flex-shrink-0 rounded-[10px]"
+              style={{
+                width: 32,
+                height: 19,
+                background: form.pin ? "rgba(160,110,255,0.55)" : "rgba(255,255,255,0.12)",
+                border: "none",
+              }}
             >
-              <div style={{ width: 15, height: 15, borderRadius: "50%", background: "#fff", position: "absolute", top: 2, left: form.pin ? "15px" : "2px", transition: "left .15s" }} />
+              <div
+                className="absolute rounded-full bg-white"
+                style={{
+                  width: 15,
+                  height: 15,
+                  top: 2,
+                  left: form.pin ? 15 : 2,
+                  transition: "left 0.15s",
+                }}
+              />
             </button>
           </div>
-          {saveError ? <div role="alert" style={{ color: "#FDA4AF", fontSize: 12 }}>{saveError}</div> : null}
+          {saveError ? <div role="alert" className="text-[12px] text-[#fda4af]">{saveError}</div> : null}
         </div>
 
-        <div style={{ display: "flex", gap: 10, padding: "16px 22px", borderTop: "1px solid rgba(125,190,255,.14)", flexShrink: 0 }}>
-          <button onClick={closeAddTool} style={{ flex: 1, height: 42, borderRadius: 11, background: ADD_TOOL_SECONDARY_BACKGROUND, border: ADD_TOOL_SECONDARY_BORDER, color: ADD_TOOL_SECONDARY_TEXT, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+        <div
+          className="flex gap-[10px] px-[22px] py-4 flex-shrink-0"
+          style={{ borderTop: "1px solid rgba(160,110,255,0.14)" }}
+        >
+          <button
+            type="button"
+            onClick={closeAddTool}
+            className="flex-1 h-[42px] rounded-[11px] text-[13px] font-semibold"
+            style={{
+              background: ADD_TOOL_SECONDARY_BACKGROUND,
+              border: ADD_TOOL_SECONDARY_BORDER,
+              color: ADD_TOOL_SECONDARY_TEXT,
+            }}
+          >
             Cancel
           </button>
-          <button onClick={handleSave} disabled={saving} style={{ flex: 1, height: 42, borderRadius: 11, background: "linear-gradient(120deg,#3B82F6,#8B5CF6)", border: "none", color: "#fff", fontSize: 13, fontWeight: 600, cursor: saving ? "default" : "pointer", opacity: saving ? 0.7 : 1 }}>
-            {saving ? "Saving…" : "Save tool"}
+          <button
+            type="button"
+            onClick={() => void handleSave()}
+            disabled={saving}
+            aria-busy={saving}
+            className="flex-1 h-[42px] rounded-[11px] text-white text-[13px] font-semibold flex items-center justify-center gap-2"
+            style={{
+              background: "linear-gradient(120deg, #7255db, #a86cff)",
+              border: "none",
+              opacity: saving ? 0.7 : 1,
+              cursor: saving ? "default" : "pointer",
+            }}
+          >
+            {saving ? (
+              <span role="status" className="flex items-center justify-center gap-2">
+                <LoaderCircle className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden="true" />
+                Saving…
+              </span>
+            ) : "Save tool"}
           </button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

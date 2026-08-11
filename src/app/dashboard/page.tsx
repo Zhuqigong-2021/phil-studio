@@ -26,8 +26,8 @@ import { useAudioAnalyser } from "@/hooks/useAudioAnalyser";
 import { useLyricsTimeline } from "@/hooks/useLyricsTimeline";
 import MagicRings from "@/components/dashboard/MagicRings";
 import SideRays from "@/components/dashboard/SideRays";
-import ToolIconPicker from "@/components/dashboard/ToolIconPicker";
-import CategorySelector from "@/components/dashboard/CategorySelector";
+import AddToolModal from "@/components/dashboard/AddToolModal";
+import DatabaseToastViewport from "@/components/dashboard/DatabaseToastViewport";
 import DynamicToolIcon from "@/components/dashboard/DynamicToolIcon";
 import type { IconType } from "react-icons";
 import {
@@ -80,6 +80,7 @@ import {
   Volume2,
   VolumeX,
   Trash2,
+  LoaderCircle,
 } from "lucide-react";
 import { TRACKS, type Track } from "@/lib/dashboard/music";
 import {
@@ -90,7 +91,7 @@ import {
   DEFAULT_TOOL_ICON_KEY,
   hasToolIcon,
 } from "@/lib/dashboard/tool-icons";
-import type { Accent, Tool } from "@/lib/dashboard/types";
+import type { Tool } from "@/lib/dashboard/types";
 import { buildCategoryStats, matchesToolQuery, selectPinnedTools } from "@/lib/dashboard/custom-tools";
 import { signOutFromApp } from "@/lib/auth/client";
 import { recordRecentTool } from "@/lib/dashboard/recent-tools";
@@ -1691,7 +1692,7 @@ function CommandPaletteDark({
   onClose: () => void;
   inputRef: React.RefObject<HTMLInputElement | null>;
 }) {
-  const { setToolFavorite } = useDashboardWorkspace();
+  const { setToolFavorite, favoritePendingIds } = useDashboardWorkspace();
 
   return (
     <div
@@ -1743,6 +1744,7 @@ function CommandPaletteDark({
             results.map((t) => {
               const Link = t.href ? "a" : "div";
               const isFavorite = t.tool.favorite;
+              const favoritePending = favoritePendingIds.includes(t.id);
               return (
                 <div
                   key={t.label}
@@ -1777,24 +1779,32 @@ function CommandPaletteDark({
                   <button
                     type="button"
                     aria-label={
-                      isFavorite
+                      favoritePending
+                        ? `Updating ${t.label} favorite`
+                        : isFavorite
                         ? `Remove ${t.label} from favorites`
                         : `Add ${t.label} to favorites`
                     }
+                    disabled={favoritePendingIds.includes(t.id)}
                     onClick={() =>
                       void setToolFavorite(t.id, !isFavorite).catch(() => undefined)
                     }
                     className="flex-shrink-0 flex items-center justify-center transition-transform hover:scale-110 cursor-pointer"
                     style={{ width: 22, height: 22 }}
                   >
-                    <Star
-                      className={
-                        isFavorite ? "text-[#facc15]" : "text-[#5c6580]"
-                      }
-                      style={{ width: 16, height: 16 }}
-                      fill={isFavorite ? "#facc15" : "none"}
-                      strokeWidth={1.6}
-                    />
+                    {favoritePending ? (
+                      <LoaderCircle
+                        className="h-4 w-4 animate-spin text-[#a5b4fc] motion-reduce:animate-none"
+                        aria-hidden="true"
+                      />
+                    ) : (
+                      <Star
+                        className={isFavorite ? "text-[#facc15]" : "text-[#5c6580]"}
+                        style={{ width: 16, height: 16 }}
+                        fill={isFavorite ? "#facc15" : "none"}
+                        strokeWidth={1.6}
+                      />
+                    )}
                   </button>
                 </div>
               );
@@ -2699,488 +2709,6 @@ function WeatherTimeRow() {
 
 // ─── Hero section ──────────────────────────────────────────────────────────────
 
-// ─── Add Tool modal — ported from src/components/dashboard/AddToolModal.tsx ─────
-
-type AddToolStatus = "idle" | "suggesting" | "ready" | "error";
-
-const addToolStatusCopy: Record<AddToolStatus, string> = {
-  idle: "",
-  suggesting: "Getting details…",
-  ready: "Details ready",
-  error: "Couldn't get details. You can enter them manually.",
-};
-
-function suggestNameFromUrl(url: string): string {
-  try {
-    const withScheme = /^https?:\/\//i.test(url) ? url : `https://${url}`;
-    const host = new URL(withScheme).hostname.replace(/^www\./, "");
-    const base = host.split(".")[0] || host;
-    return base
-      .split(/[-_]/)
-      .filter(Boolean)
-      .map((w) => w[0].toUpperCase() + w.slice(1))
-      .join(" ");
-  } catch {
-    return "";
-  }
-}
-
-function emptyAddToolForm() {
-  return {
-    url: "",
-    name: "",
-    description: "",
-    tags: new Set<string>(),
-    aliasInput: "",
-    aliases: [] as string[],
-    source: "internal" as "internal" | "external",
-    iconKey: DEFAULT_TOOL_ICON_KEY,
-    accent: "blue" as Accent,
-    pin: false,
-  };
-}
-
-function AddToolModalDark({ onClose }: { onClose: () => void }) {
-  const ADD_TOOL_SECONDARY_BACKGROUND = "rgba(99, 102, 241, 0.14)";
-  const ADD_TOOL_SECONDARY_BORDER = "1px solid rgba(129, 140, 248, 0.34)";
-  const ADD_TOOL_SECONDARY_TEXT = "#e0e7ff";
-  const reduceMotion = Boolean(useReducedMotion());
-  const overlayMotion = getOverlayMotion(reduceMotion);
-  const popoverMotion = getPopoverMotion(reduceMotion);
-  const listItemMotion = getListItemMotion(reduceMotion);
-  const [form, setForm] = React.useState(emptyAddToolForm);
-  const [status, setStatus] = React.useState<AddToolStatus>("idle");
-  const [saving, setSaving] = React.useState(false);
-  const [saveError, setSaveError] = React.useState("");
-  const savingRef = React.useRef(false);
-  const { categories, addCategory, addTool } = useDashboardWorkspace();
-
-  const getDetails = () => {
-    if (!form.url.trim()) {
-      setStatus("error");
-      return;
-    }
-    setStatus("suggesting");
-    setTimeout(() => {
-      const suggested = suggestNameFromUrl(form.url);
-      if (!suggested) {
-        setStatus("error");
-        return;
-      }
-      setForm((f) => ({ ...f, name: f.name || suggested }));
-      setStatus("ready");
-    }, 600);
-  };
-
-  const toggleTag = (tag: string) => {
-    setForm((f) => {
-      const next = new Set(f.tags);
-      if (next.has(tag)) next.delete(tag);
-      else next.add(tag);
-      return { ...f, tags: next };
-    });
-  };
-
-  const addAlias = () => {
-    const value = form.aliasInput.trim();
-    if (!value) return;
-    setForm((f) =>
-      f.aliases.some((alias) => alias.toLocaleLowerCase() === value.toLocaleLowerCase())
-        ? { ...f, aliasInput: "" }
-        : { ...f, aliases: [...f.aliases, value], aliasInput: "" },
-    );
-  };
-
-  const removeAlias = (alias: string) => {
-    setForm((f) => ({ ...f, aliases: f.aliases.filter((a) => a !== alias) }));
-  };
-
-  const handleSave = async () => {
-    if (savingRef.current) return;
-    savingRef.current = true;
-    setSaving(true);
-    setSaveError("");
-    try {
-      await addTool(
-        {
-          name: form.name,
-          url: form.url,
-          description: form.description,
-          iconKey: form.iconKey,
-          accent: form.accent,
-          tags: [...form.tags],
-          aliases: form.aliases,
-          sourceType: form.source,
-        },
-        form.pin,
-      );
-      onClose();
-    } catch (reason) {
-      setSaveError(reason instanceof Error ? reason.message : "Could not save tool.");
-    } finally {
-      savingRef.current = false;
-      setSaving(false);
-    }
-  };
-
-  const fieldClass =
-    "w-full box-border h-[40px] rounded-[11px] px-3 text-[13px] text-[#f2f4fa] outline-none bg-[rgba(255,255,255,0.05)]";
-  const fieldStyle: React.CSSProperties = {
-    border: "1px solid rgba(160,110,255,0.2)",
-  };
-
-  return (
-    <motion.div
-      {...overlayMotion.backdrop}
-      onClick={onClose}
-      className="dashboard-motion-root dashboard-overlay-backdrop fixed inset-0 z-[90] flex items-start justify-center"
-      style={{ background: "rgba(2,6,23,0.6)", padding: "8vh 16px" }}
-    >
-      <motion.div
-        {...overlayMotion.surface}
-        onClick={(e) => e.stopPropagation()}
-        className="glass-shine-card rounded-2xl overflow-hidden flex flex-col"
-        style={{
-          width: "min(600px,100%)",
-          maxHeight: "84vh",
-          background: "rgba(20,16,48,0.94)",
-          backdropFilter: "blur(20px) saturate(170%) brightness(1.2)",
-          border: "1px solid rgba(160,110,255,0.24)",
-          boxShadow: "0 24px 60px rgba(0,4,20,0.4)",
-        }}
-      >
-        <div
-          className="flex items-center justify-between px-[22px] py-[18px] flex-shrink-0"
-          style={{ borderBottom: "1px solid rgba(160,110,255,0.14)" }}
-        >
-          <div className="text-[#f2f4fa] text-[17px] font-semibold">
-            Add Tool
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="flex items-center justify-center rounded-[8px]"
-            style={{
-              width: 28,
-              height: 28,
-              background: ADD_TOOL_SECONDARY_BACKGROUND,
-              border: ADD_TOOL_SECONDARY_BORDER,
-              color: ADD_TOOL_SECONDARY_TEXT,
-            }}
-          >
-            <X
-              style={{ width: 14, height: 14 }}
-              strokeWidth={2}
-            />
-          </button>
-        </div>
-
-        <div
-          className="flex-1 overflow-y-auto p-[22px] flex flex-col gap-4 [&::-webkit-scrollbar]:hidden"
-          style={{ scrollbarWidth: "none" }}
-        >
-          {/* Tool URL + Get details */}
-          <div>
-            <div className="text-[11px] font-semibold text-[#9aa3be] mb-[6px]">
-              Tool URL
-            </div>
-            <div className="flex gap-2">
-              <input
-                value={form.url}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, url: e.target.value }))
-                }
-                placeholder="https://example.com"
-                className={fieldClass}
-                style={fieldStyle}
-              />
-              <button
-                type="button"
-                onClick={getDetails}
-                disabled={status === "suggesting"}
-                className="h-[40px] px-4 rounded-[11px] text-[13px] font-semibold flex-shrink-0"
-                style={{
-                  background: ADD_TOOL_SECONDARY_BACKGROUND,
-                  border: ADD_TOOL_SECONDARY_BORDER,
-                  color: ADD_TOOL_SECONDARY_TEXT,
-                  opacity: status === "suggesting" ? 0.6 : 1,
-                  cursor: status === "suggesting" ? "default" : "pointer",
-                }}
-              >
-                Get details
-              </button>
-            </div>
-            <AnimatePresence mode="wait" initial={false}>
-            {status !== "idle" && (
-              <motion.div
-                key={status}
-                {...popoverMotion}
-                className="text-[12px] mt-[6px]"
-                style={{
-                  color:
-                    status === "error"
-                      ? "#f0b429"
-                      : status === "ready"
-                        ? "#4ade80"
-                        : "#9aa3be",
-                }}
-              >
-                {addToolStatusCopy[status]}
-              </motion.div>
-            )}
-            </AnimatePresence>
-          </div>
-
-          {/* Icon and accent picker */}
-          <ToolIconPicker
-            iconKey={form.iconKey}
-            accent={form.accent}
-            onIconChange={(iconKey) => setForm((f) => ({ ...f, iconKey }))}
-            onAccentChange={(accent) => setForm((f) => ({ ...f, accent }))}
-          />
-
-          {/* Name */}
-          <div>
-            <div className="text-[11px] font-semibold text-[#9aa3be] mb-[6px]">
-              Name
-            </div>
-            <input
-              value={form.name}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, name: e.target.value.slice(0, 60) }))
-              }
-              placeholder="Tool name"
-              className={fieldClass}
-              style={fieldStyle}
-            />
-          </div>
-
-          {/* Description */}
-          <div>
-            <div className="text-[11px] font-semibold text-[#9aa3be] mb-[6px] flex justify-between">
-              <span>Description</span>
-              <span className="text-[#7c8698] font-medium">
-                {form.description.length}/160
-              </span>
-            </div>
-            <textarea
-              value={form.description}
-              onChange={(e) =>
-                setForm((f) => ({
-                  ...f,
-                  description: e.target.value.slice(0, 160),
-                }))
-              }
-              placeholder="Short description (optional)"
-              rows={2}
-              className="w-full box-border rounded-[11px] px-3 py-[10px] text-[13px] text-[#f2f4fa] outline-none resize-none bg-[rgba(255,255,255,0.05)]"
-              style={{
-                border: "1px solid rgba(160,110,255,0.2)",
-                fontFamily: "inherit",
-              }}
-            />
-          </div>
-
-          <CategorySelector
-            categories={categories}
-            selected={form.tags}
-            onToggle={toggleTag}
-            onCreate={async (name) => (await addCategory(name)).category}
-          />
-
-          {/* Aliases */}
-          <div>
-            <div className="text-[11px] font-semibold text-[#9aa3be] mb-[6px]">
-              Aliases
-            </div>
-            <div className="flex gap-2">
-              <input
-                value={form.aliasInput}
-                onChange={(e) =>
-                  setForm((f) => ({
-                    ...f,
-                    aliasInput: e.target.value.slice(0, 32),
-                  }))
-                }
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === ",") {
-                    e.preventDefault();
-                    addAlias();
-                  }
-                }}
-                placeholder="Add an alias and press Enter"
-                disabled={form.aliases.length >= 10}
-                className="flex-1 min-w-0 h-[36px] rounded-[10px] px-3 text-[12px] text-[#f2f4fa] outline-none bg-[rgba(255,255,255,0.05)]"
-                style={{ border: "1px solid rgba(160,110,255,0.2)" }}
-              />
-              <button
-                type="button"
-                onClick={addAlias}
-                className="h-[36px] px-3 rounded-[10px] text-[12px] font-semibold flex-shrink-0"
-                style={{
-                  background: ADD_TOOL_SECONDARY_BACKGROUND,
-                  border: ADD_TOOL_SECONDARY_BORDER,
-                  color: ADD_TOOL_SECONDARY_TEXT,
-                }}
-              >
-                Add
-              </button>
-            </div>
-            {form.aliases.length > 0 && (
-              <div className="flex gap-[6px] flex-wrap mt-2">
-                <AnimatePresence initial={false}>
-                {form.aliases.map((alias) => (
-                  <motion.span
-                    key={alias}
-                    layout={!reduceMotion}
-                    {...listItemMotion}
-                    className="flex items-center gap-[6px] rounded-[9px] pl-[10px] pr-[4px] py-[4px] text-[11px] font-semibold"
-                    style={{
-                      background: "rgba(103,232,249,0.14)",
-                      color: "#67e8f9",
-                    }}
-                  >
-                    {alias}
-                    <button
-                      type="button"
-                      onClick={() => removeAlias(alias)}
-                      aria-label={`Remove alias ${alias}`}
-                      className="flex items-center justify-center rounded-full"
-                      style={{
-                        width: 16,
-                        height: 16,
-                        border: "none",
-                        background: "rgba(255,255,255,0.1)",
-                        color: "#67e8f9",
-                        fontSize: 10,
-                        lineHeight: 1,
-                      }}
-                    >
-                      ×
-                    </button>
-                  </motion.span>
-                ))}
-                </AnimatePresence>
-              </div>
-            )}
-          </div>
-
-          {/* Source */}
-          <div>
-            <div className="text-[11px] font-semibold text-[#9aa3be] mb-[6px]">
-              Source
-            </div>
-            <div
-              className="flex rounded-[10px] p-[2px] gap-[2px] w-fit"
-              style={{ background: ADD_TOOL_SECONDARY_BACKGROUND }}
-            >
-              <div
-                onClick={() => setForm((f) => ({ ...f, source: "internal" }))}
-                className="ui-choice rounded-[8px] px-[14px] py-[6px] text-[12px] font-semibold cursor-pointer"
-                style={{
-                  background:
-                    form.source === "internal"
-                      ? "rgba(99, 102, 241, 0.34)"
-                      : "transparent",
-                  color: ADD_TOOL_SECONDARY_TEXT,
-                }}
-              >
-                Owned
-              </div>
-              <div
-                onClick={() => setForm((f) => ({ ...f, source: "external" }))}
-                className="ui-choice rounded-[8px] px-[14px] py-[6px] text-[12px] font-semibold cursor-pointer"
-                style={{
-                  background:
-                    form.source === "external"
-                      ? "rgba(99, 102, 241, 0.34)"
-                      : "transparent",
-                  color: ADD_TOOL_SECONDARY_TEXT,
-                }}
-              >
-                Third-party
-              </div>
-            </div>
-          </div>
-
-          {/* Pin to Quick Access */}
-          <div
-            className="flex items-center justify-between rounded-[11px] px-3 py-[10px]"
-            style={{ background: "rgba(255,255,255,0.03)" }}
-          >
-            <span className="text-[12px] font-semibold text-[#f2f4fa]">
-              Pin to Quick Access
-            </span>
-            <button
-              type="button"
-              onClick={() => setForm((f) => ({ ...f, pin: !f.pin }))}
-              aria-label="Toggle pin to Quick Access"
-              className="relative flex-shrink-0 rounded-[10px]"
-              style={{
-                width: 32,
-                height: 19,
-                background: form.pin
-                  ? "rgba(160,110,255,0.55)"
-                  : "rgba(255,255,255,0.12)",
-                border: "none",
-              }}
-            >
-              <div
-                className="absolute rounded-full bg-white"
-                style={{
-                  width: 15,
-                  height: 15,
-                  top: 2,
-                  left: form.pin ? 15 : 2,
-                  transition: "left 0.15s",
-                }}
-              />
-            </button>
-          </div>
-          {saveError ? (
-            <div role="alert" className="text-[12px] text-[#fda4af]">
-              {saveError}
-            </div>
-          ) : null}
-        </div>
-
-        <div
-          className="flex gap-[10px] px-[22px] py-4 flex-shrink-0"
-          style={{ borderTop: "1px solid rgba(160,110,255,0.14)" }}
-        >
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex-1 h-[42px] rounded-[11px] text-[13px] font-semibold"
-            style={{
-              background: ADD_TOOL_SECONDARY_BACKGROUND,
-              border: ADD_TOOL_SECONDARY_BORDER,
-              color: ADD_TOOL_SECONDARY_TEXT,
-            }}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={() => void handleSave()}
-            disabled={saving}
-            className="flex-1 h-[42px] rounded-[11px] text-white text-[13px] font-semibold"
-            style={{
-              background: "linear-gradient(120deg, #7255db, #a86cff)",
-              border: "none",
-              opacity: saving ? 0.7 : 1,
-              cursor: saving ? "default" : "pointer",
-            }}
-          >
-            {saving ? "Saving…" : "Save tool"}
-          </button>
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-}
-
 function HeroSection() {
   const [heroPt, setHeroPt] = React.useState("7vh");
   const [addToolOpen, setAddToolOpen] = React.useState(false);
@@ -3191,7 +2719,8 @@ function HeroSection() {
   // out of that column and becomes its own full-width row underneath.
   const [stackQuickAccess, setStackQuickAccess] = React.useState(false);
   const toolViews = useToolViews();
-  const { pinnedToolIds } = useDashboardWorkspace();
+  const workspace = useDashboardWorkspace();
+  const { pinnedToolIds } = workspace;
 
   React.useEffect(() => {
     const update = () => {
@@ -3313,11 +2842,11 @@ function HeroSection() {
 
       {typeof document !== "undefined"
         ? createPortal(
-            <AnimatePresence>
-              {addToolOpen && (
-                <AddToolModalDark onClose={() => setAddToolOpen(false)} />
-              )}
-            </AnimatePresence>,
+            <AddToolModal
+              open={addToolOpen}
+              onClose={() => setAddToolOpen(false)}
+              workspace={workspace}
+            />,
             document.body,
           )
         : null}
@@ -5213,9 +4742,11 @@ function CategoriesPanel() {
 
 function FavoritesPanel({
   favoriteTools,
+  favoritePendingIds,
   onToggleFavorite,
 }: {
   favoriteTools: DashboardToolView[];
+  favoritePendingIds: string[];
   onToggleFavorite: (id: string) => void;
 }) {
   const reduceMotion = Boolean(useReducedMotion());
@@ -5289,16 +4820,26 @@ function FavoritesPanel({
               )}
               <button
                 type="button"
-                aria-label={`Remove ${t.label} from favorites`}
+                aria-label={favoritePendingIds.includes(t.id)
+                  ? `Updating ${t.label} favorite`
+                  : `Remove ${t.label} from favorites`}
+                disabled={favoritePendingIds.includes(t.id)}
                 onClick={() => onToggleFavorite(t.id)}
                 className="flex-shrink-0 flex items-center justify-center transition-transform hover:scale-110"
               >
-                <Star
-                  className="text-[#facc15]"
-                  style={{ width: 18, height: 18 }}
-                  fill="#facc15"
-                  strokeWidth={1.5}
-                />
+                {favoritePendingIds.includes(t.id) ? (
+                  <LoaderCircle
+                    className="h-[18px] w-[18px] animate-spin text-[#a5b4fc] motion-reduce:animate-none"
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <Star
+                    className="text-[#facc15]"
+                    style={{ width: 18, height: 18 }}
+                    fill="#facc15"
+                    strokeWidth={1.5}
+                  />
+                )}
               </button>
             </motion.div>
             ))}
@@ -5317,6 +4858,7 @@ function BottomRow({
   updateTask,
   deleteTask,
   favoriteTools,
+  favoritePendingIds,
   onToggleFavorite,
   focusEntries,
   focusSession,
@@ -5332,6 +4874,7 @@ function BottomRow({
   updateTask: (id: string, title: string) => boolean;
   deleteTask: (id: string) => void;
   favoriteTools: DashboardToolView[];
+  favoritePendingIds: string[];
   onToggleFavorite: (id: string) => void;
   focusEntries: FocusEntry[];
   focusSession: FocusSession | null;
@@ -5383,6 +4926,7 @@ function BottomRow({
         ) : active === "favorites" ? (
           <FavoritesPanel
             favoriteTools={favoriteTools}
+            favoritePendingIds={favoritePendingIds}
             onToggleFavorite={onToggleFavorite}
           />
         ) : active === "music" ? (
@@ -5432,7 +4976,7 @@ function DashboardPageContent() {
   const narrowNav = useBelowWidth(MOBILE_NAV_BREAKPOINT);
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const toolViews = useToolViews();
-  const { tools, categories, setToolFavorite } = useDashboardWorkspace();
+  const { tools, categories, setToolFavorite, favoritePendingIds } = useDashboardWorkspace();
   const categoryCount = categories.length;
 
   const [activeStat, setActiveStat] = React.useState<StatKey>("recent");
@@ -5444,14 +4988,15 @@ function DashboardPageContent() {
 
   const toggleFavorite = React.useCallback(
     (id: string) => {
+      if (favoritePendingIds.includes(id)) return;
       const currentFavorite = tools.find((tool) => tool.id === id)?.favorite ?? false;
       void setToolFavorite(id, !currentFavorite).catch(() => undefined);
     },
-    [setToolFavorite, tools],
+    [favoritePendingIds, setToolFavorite, tools],
   );
   const favoriteTools = React.useMemo(
-    () => toolViews.filter((view) => view.tool.favorite),
-    [toolViews],
+    () => toolViews.filter((view) => view.tool.favorite || favoritePendingIds.includes(view.id)),
+    [favoritePendingIds, toolViews],
   );
   const favoriteCount = favoriteTools.length;
 
@@ -5672,6 +5217,7 @@ function DashboardPageContent() {
             updateTask={updateTask}
             deleteTask={deleteTask}
             favoriteTools={favoriteTools}
+            favoritePendingIds={favoritePendingIds}
             onToggleFavorite={toggleFavorite}
             focusEntries={focusEntries}
             focusSession={focusSession}
@@ -5705,8 +5251,9 @@ function DashboardPageContent() {
               )}
             </AnimatePresence>,
             document.body,
-          )
-        : null}
+            )
+          : null}
+      <DatabaseToastViewport />
     </div>
   );
 }

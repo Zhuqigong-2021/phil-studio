@@ -10,7 +10,7 @@ test("Add Tool overlay is portaled outside the GSAP-transformed hero section", (
 
   assert.match(
     heroSource,
-    /createPortal\(\s*<AnimatePresence>[\s\S]*?<AddToolModalDark[\s\S]*?document\.body,\s*\)/,
+    /createPortal\([\s\S]*?<AddToolModal[\s\S]*?document\.body,\s*\)/,
   );
 });
 

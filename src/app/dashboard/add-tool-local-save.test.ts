@@ -2,18 +2,34 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-const source = readFileSync(new URL("./page.tsx", import.meta.url), "utf8");
-const modalStart = source.indexOf("function AddToolModalDark");
-const modalEnd = source.indexOf("function HeroSection", modalStart);
-const modal = source.slice(modalStart, modalEnd);
+const dashboard = readFileSync(new URL("./page.tsx", import.meta.url), "utf8");
+const modal = readFileSync(
+  new URL("../../components/dashboard/AddToolModal.tsx", import.meta.url),
+  "utf8",
+);
+const shell = readFileSync(
+  new URL("../../components/dashboard/SecondaryPageShell.tsx", import.meta.url),
+  "utf8",
+);
 
-test("active Add Tool awaits dynamic categories and server persistence", () => {
+test("Dashboard and Manage render the same canonical Add Tool modal", () => {
+  assert.match(dashboard, /import AddToolModal from/);
+  assert.match(dashboard, /<AddToolModal/);
+  assert.doesNotMatch(dashboard, /function AddToolModalDark/);
+  assert.match(dashboard, /<DatabaseToastViewport\s*\/>/);
+  assert.match(shell, /<AddToolModal/);
+  assert.equal((modal.match(/function AddToolForm/g) ?? []).length, 1);
+});
+
+test("canonical Add Tool awaits dynamic categories and database persistence", () => {
   assert.match(modal, /<CategorySelector/);
   assert.match(modal, /categories=\{categories\}/);
   assert.match(modal, /\(await addCategory\(name\)\)\.category/);
-  assert.match(modal, /await addTool\(/);
-  assert.match(modal, /if \(savingRef\.current\) return/);
-  assert.match(modal, /finally \{[\s\S]*savingRef\.current = false;[\s\S]*setSaving\(false\)/);
+  assert.match(modal, /runAddToolSubmission/);
+  assert.match(modal, /save: async \(\) => \{[\s\S]*await addTool\(/);
+  assert.match(modal, /disabled=\{saving\}/);
+  assert.match(modal, /LoaderCircle/);
+  assert.match(modal, /Saving…/);
   assert.doesNotMatch(modal, /setTimeout\(\(\) => \{\s*setSaving\(false\)/);
 });
 

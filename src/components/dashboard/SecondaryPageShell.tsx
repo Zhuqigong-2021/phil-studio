@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import type { ShellState } from "@/hooks/useShellState";
+import { useCustomTools } from "@/hooks/useCustomTools";
 import type { PageKey } from "./Sidebar";
 import SkillBackground5 from "./SkillBackground5";
 import WorkspaceSplashCursor from "./WorkspaceSplashCursor";
@@ -11,6 +12,17 @@ import Topbar from "./Topbar";
 import CommandPalette from "./CommandPalette";
 import AddToolModal from "./AddToolModal";
 import DatabaseToastViewport from "./DatabaseToastViewport";
+
+function SecondaryAddToolModal({ state }: { state: ShellState }) {
+  const workspace = useCustomTools();
+  return (
+    <AddToolModal
+      open
+      onClose={state.closeAddTool}
+      workspace={workspace}
+    />
+  );
+}
 
 export default function SecondaryPageShell({
   state,
@@ -55,7 +67,7 @@ export default function SecondaryPageShell({
       </div>
 
       <CommandPalette state={state} />
-      <AddToolModal state={state} />
+      {state.addToolOpen && <SecondaryAddToolModal state={state} />}
       <DatabaseToastViewport />
     </div>
   );
