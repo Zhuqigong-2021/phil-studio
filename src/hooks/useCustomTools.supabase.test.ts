@@ -78,6 +78,22 @@ test("reads the local cache first and later replaces it with the server snapshot
   assert.equal((await synchronizeWorkspace(storage, api())).tools[0].name, "Server Tool");
 });
 
+test("authoritative workspace ignores a stale favorite cache and rewrites it", async () => {
+  const storage = new MemoryStorage();
+  const ap = TOOLS_RAW.find((tool) => tool.id === "ap");
+  assert.ok(ap);
+  storage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify({ ap: false }));
+  storage.setItem(SUPABASE_MIGRATED_KEY, "true");
+  const getWorkspace = async () => snapshot({ ...ap, favorite: true });
+
+  const workspace = readCachedWorkspace(storage, await getWorkspace());
+  const synchronized = await synchronizeWorkspace(storage, api({ fetchSnapshot: getWorkspace }));
+
+  assert.equal(workspace.tools.find((tool) => tool.id === "ap")?.favorite, true);
+  assert.equal(synchronized.tools.find((tool) => tool.id === "ap")?.favorite, true);
+  assert.equal(JSON.parse(storage.getItem(FAVORITES_STORAGE_KEY) ?? "{}").ap, true);
+});
+
 test("sets the migration marker only after migration and refetch succeed and preserves source keys", async () => {
   const storage = new MemoryStorage();
   storage.setItem(CUSTOM_TOOLS_KEY, JSON.stringify([customTool]));
@@ -117,15 +133,42 @@ test("sets the migration marker only after migration and refetch succeed and pre
 test("optimistic pin and favorite patches roll back the exact previous snapshot on failure", async () => {
   const initial = snapshot({ ...serverTool, favorite: false });
   const applied: WorkspaceSnapshot[] = [];
+  const storage = new MemoryStorage();
+  const apply = (next: WorkspaceSnapshot) => {
+    applied.push(next);
+    storage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify({
+      [customTool.id]: next.tools[0].favorite,
+    }));
+  };
   const failing = api({ patchTool: async () => { throw new Error("offline"); } });
 
   await assert.rejects(
-    () => createOptimisticToolPatch(initial, "custom-1", { pinned: false, favorite: true }, failing, (next) => applied.push(next)),
+    () => createOptimisticToolPatch(initial, "custom-1", { pinned: false, favorite: true }, failing, apply),
     /offline/,
   );
   assert.equal(applied[0].pinnedToolIds.includes("custom-1"), false);
   assert.equal(applied[0].tools[0].favorite, true);
   assert.deepEqual(applied.at(-1), initial);
+  assert.equal(JSON.parse(storage.getItem(FAVORITES_STORAGE_KEY) ?? "{}")[customTool.id], false);
+});
+
+test("confirmed favorite patches mirror the persisted favorite to the cache", async () => {
+  const storage = new MemoryStorage();
+  const initial = snapshot({ ...serverTool, favorite: false });
+  let current = initial;
+  const apply = (next: WorkspaceSnapshot) => {
+    current = next;
+    storage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify({
+      [customTool.id]: next.tools[0].favorite,
+    }));
+  };
+
+  await createOptimisticToolPatch(
+    initial, customTool.id, { favorite: true }, api(), apply, () => current,
+  );
+
+  assert.equal(current.tools[0].favorite, true);
+  assert.equal(JSON.parse(storage.getItem(FAVORITES_STORAGE_KEY) ?? "{}")[customTool.id], true);
 });
 
 test("workspace fetch adapter uses no-store and throws only a safe sync error", async () => {

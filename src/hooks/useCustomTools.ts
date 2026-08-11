@@ -93,7 +93,8 @@ export function readCachedWorkspace(
   const tools = [...TOOLS_RAW, ...parseStoredTools(storage.getItem(CUSTOM_TOOLS_KEY))]
     .map((tool) => {
       const source = BUILT_IN_IDS.has(tool.id) ? authoritativeById.get(tool.id) ?? tool : tool;
-      return { ...source, favorite: favoriteOverrides[tool.id] ?? source.favorite };
+      const cachedFavorite = authoritative ? undefined : favoriteOverrides[tool.id];
+      return { ...source, favorite: cachedFavorite ?? source.favorite };
     });
   return {
     tools,
