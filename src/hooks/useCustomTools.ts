@@ -35,10 +35,11 @@ export function useCustomTools() {
   }, []);
 
   useEffect(() => {
-    refresh();
+    const initialRead = window.setTimeout(refresh, 0);
     window.addEventListener("storage", refresh);
     window.addEventListener(CUSTOM_TOOLS_CHANGED_EVENT, refresh);
     return () => {
+      window.clearTimeout(initialRead);
       window.removeEventListener("storage", refresh);
       window.removeEventListener(CUSTOM_TOOLS_CHANGED_EVENT, refresh);
     };

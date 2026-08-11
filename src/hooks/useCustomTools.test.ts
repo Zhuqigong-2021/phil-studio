@@ -18,5 +18,6 @@ test("hook synchronizes all feature storage keys and same-tab changes", () => {
   assert.match(source, /PINNED_TOOLS_KEY/);
   assert.match(source, /CUSTOM_TOOLS_CHANGED_EVENT/);
   assert.match(source, /addEventListener\("storage"/);
+  assert.match(source, /setTimeout\(refresh, 0\)/);
   assert.match(source, /crypto\.randomUUID/);
 });
