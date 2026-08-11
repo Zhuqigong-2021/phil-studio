@@ -14,6 +14,10 @@ import {
   type CustomToolDraft,
 } from "../lib/dashboard/custom-tools.ts";
 import { FAVORITES_STORAGE_KEY } from "../lib/dashboard/favorites.ts";
+import {
+  publishFavoriteToast,
+  runFavoriteMutationWithToast,
+} from "../lib/dashboard/favorite-toast.ts";
 import { TAGS, TOOLS_RAW } from "../lib/dashboard/mock-data.ts";
 import {
   parseStoredRecentTools,
@@ -355,9 +359,17 @@ export function useCustomTools(api: WorkspaceApi = DEFAULT_WORKSPACE_API) {
   }, [api, applyWorkspace]);
 
   const setToolFavorite = useCallback(async (id: string, favorite: boolean): Promise<void> => {
-    await createOptimisticToolPatch(
-      workspaceRef.current, id, { favorite }, api, applyWorkspace, () => workspaceRef.current, patchVersionsRef.current,
-    );
+    const toolName = workspaceRef.current.tools.find((tool) => tool.id === id)?.name ?? "Tool";
+    await runFavoriteMutationWithToast({
+      toolName,
+      favorite,
+      mutate: async () => {
+        await createOptimisticToolPatch(
+          workspaceRef.current, id, { favorite }, api, applyWorkspace, () => workspaceRef.current, patchVersionsRef.current,
+        );
+      },
+      publish: publishFavoriteToast,
+    });
   }, [api, applyWorkspace]);
 
   const customTools = useMemo(
