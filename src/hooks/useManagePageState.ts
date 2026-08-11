@@ -1,115 +1,174 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import { decorate } from "@/lib/dashboard/mock-data";
-import type { DecoratedTool } from "@/lib/dashboard/types";
+import { openTool } from "@/lib/dashboard/open-tool";
+import {
+  paginateTools,
+  rowDraftToPatch,
+  toolToRowDraft,
+  type ToolRowDraft,
+} from "@/lib/dashboard/tool-library";
+import { publishDatabaseToast } from "@/lib/dashboard/tool-mutations";
+import type { Tool } from "@/lib/dashboard/types";
 import { buildCommandResults, buildToolResults, useShellState } from "./useShellState";
 import { useCustomTools } from "./useCustomTools";
-
-export interface ManageRow extends DecoratedTool {
-  starFill: string;
-  toggleFav: () => void;
-  toggleVisible: () => void;
-  visBg: string;
-  visDotLeft: string;
-  rowBg: string;
-  openEdit: () => void;
-}
-
-export interface EditingTool extends DecoratedTool {
-  tagChips: string[];
-  favDotLeft: string;
-  visBg: string;
-  visibleBg: string;
-  visibleDotLeft: string;
-  pinBg: string;
-  pinDotLeft: string;
-  toggleFav: () => void;
-  toggleVisible: () => void;
-  togglePin: () => void;
-}
+import {
+  createManageTableState,
+  manageTableReducer,
+  runManageMutation,
+  type ManagePageSize,
+} from "./manage-page-state";
 
 export function useManagePageState() {
   const shell = useShellState();
   const { router, closePalette, query, openAddTool } = shell;
-  const [visOverrides, setVisOverrides] = useState<Record<string, boolean>>({});
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const { tools: rawTools, pinnedToolIds, setToolFavorite, setToolPinned } = useCustomTools();
-
-  const isFav = (_id: string, base: boolean) => base;
-  const isVisible = (id: string) => (visOverrides[id] !== undefined ? visOverrides[id] : true);
-  const isPinned = (id: string) => pinnedToolIds.includes(id);
-
-  const toggleFav = (id: string, base: boolean) => { void setToolFavorite(id, !base).catch(() => undefined); };
-  const toggleVis = (id: string) => setVisOverrides((prev) => ({ ...prev, [id]: !isVisible(id) }));
-  const togglePin = (id: string) => { void setToolPinned(id, !isPinned(id)).catch(() => undefined); };
-
-  const manageTools: ManageRow[] = useMemo(
-    () =>
-      rawTools.map(decorate).map((t, i) => {
-        const fav = isFav(t.id, t.favorite);
-        const visible = isVisible(t.id);
-        return {
-          ...t,
-          tagStr: t.tags.join(" · "),
-          favorite: fav,
-          starFill: fav ? "#67E8F9" : "none",
-          toggleFav: () => toggleFav(t.id, t.favorite),
-          toggleVisible: () => toggleVis(t.id),
-          visBg: visible ? "rgba(59,130,246,.5)" : "rgba(255,255,255,.12)",
-          visDotLeft: visible ? "15px" : "2px",
-          rowBg: i % 2 === 0 ? "rgba(15,26,60,.10)" : "rgba(15,26,60,.05)",
-          openEdit: () => setEditingId(t.id),
-        };
-      }),
-    [rawTools, visOverrides], // eslint-disable-line react-hooks/exhaustive-deps
+  const {
+    tools: rawTools,
+    categories,
+    pinnedToolIds,
+    updateTool,
+    deleteTool,
+    loading,
+    syncError,
+  } = useCustomTools();
+  const [tableState, dispatch] = useReducer(
+    manageTableReducer,
+    undefined,
+    () => createManageTableState(rawTools, pinnedToolIds),
   );
+  const mutationRefreshes = useRef(new Map<string, { phase: "pending" | "succeeded"; original: Tool }>());
+  const deletePendingRef = useRef(false);
+  const rawToolsRef = useRef(rawTools);
+  const pinnedToolIdsRef = useRef(pinnedToolIds);
 
-  const editingTool: EditingTool | null = useMemo(() => {
-    const raw = editingId ? rawTools.find((t) => t.id === editingId) : null;
-    if (!raw) return null;
-    const t = decorate(raw);
-    const fav = isFav(t.id, t.favorite);
-    const visible = isVisible(t.id);
-    const pinned = isPinned(t.id);
-    return {
-      ...t,
-      tagChips: t.tags,
-      favorite: fav,
-      toggleFav: () => toggleFav(t.id, t.favorite),
-      favDotLeft: fav ? "15px" : "2px",
-      visBg: fav ? "rgba(59,130,246,.5)" : "rgba(255,255,255,.12)",
-      toggleVisible: () => toggleVis(t.id),
-      visibleBg: visible ? "rgba(59,130,246,.5)" : "rgba(255,255,255,.12)",
-      visibleDotLeft: visible ? "15px" : "2px",
-      togglePin: () => togglePin(t.id),
-      pinBg: pinned ? "rgba(59,130,246,.5)" : "rgba(255,255,255,.12)",
-      pinDotLeft: pinned ? "15px" : "2px",
-    };
-  }, [editingId, pinnedToolIds, rawTools, visOverrides]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    rawToolsRef.current = rawTools;
+    pinnedToolIdsRef.current = pinnedToolIds;
+    const resetDraftIds = [...mutationRefreshes.current.entries()]
+      .filter(([id, mutation]) => mutation.phase === "succeeded"
+        && rawTools.find((tool) => tool.id === id) !== mutation.original)
+      .map(([id]) => id);
+    dispatch({ type: "tools/sync", tools: rawTools, pinnedToolIds, resetDraftIds });
+    resetDraftIds.forEach((id) => mutationRefreshes.current.delete(id));
+  }, [rawTools, pinnedToolIds]);
+
+  const decoratedTools = useMemo(() => rawTools.map(decorate), [rawTools]);
+  const pagination = useMemo(
+    () => paginateTools(rawTools, tableState.page, tableState.pageSize),
+    [rawTools, tableState.page, tableState.pageSize],
+  );
+  const pageRows = useMemo(() => {
+    const pinned = new Set(pinnedToolIds);
+    return pagination.items.map((tool) => ({
+      tool: decorate(tool),
+      draft: tableState.drafts[tool.id] ?? toolToRowDraft(tool, pinned.has(tool.id)),
+    }));
+  }, [pagination.items, pinnedToolIds, tableState.drafts]);
+
+  const updateDraft = useCallback((id: string, partial: Partial<ToolRowDraft>) => {
+    dispatch({ type: "draft/change", id, partial });
+  }, []);
+
+  const submitRow = useCallback(async (id: string) => {
+    if (tableState.updatingIds.includes(id) || mutationRefreshes.current.has(id)) return;
+    const draft = tableState.drafts[id];
+    const tool = rawTools.find((item) => item.id === id);
+    if (!draft || !tool) return;
+
+    dispatch({ type: "update/start", id });
+    mutationRefreshes.current.set(id, { phase: "pending", original: tool });
+    const succeeded = await runManageMutation({
+      action: "updated",
+      toolName: tool.name,
+      mutate: () => updateTool(id, rowDraftToPatch(draft)),
+      publish: publishDatabaseToast,
+    });
+    if (succeeded) {
+      const mutation = mutationRefreshes.current.get(id);
+      if (!mutation) return;
+      mutation.phase = "succeeded";
+      if (rawToolsRef.current.find((item) => item.id === id) !== mutation.original) {
+        dispatch({
+          type: "tools/sync",
+          tools: rawToolsRef.current,
+          pinnedToolIds: pinnedToolIdsRef.current,
+          resetDraftIds: [id],
+        });
+        mutationRefreshes.current.delete(id);
+      }
+    } else {
+      mutationRefreshes.current.delete(id);
+      dispatch({ type: "update/failed", id });
+    }
+  }, [rawTools, tableState.drafts, tableState.updatingIds, updateTool]);
+
+  const requestDelete = useCallback((id: string) => {
+    dispatch({ type: "delete/request", id });
+  }, []);
+  const cancelDelete = useCallback(() => {
+    dispatch({ type: "delete/cancel" });
+  }, []);
+  const confirmDelete = useCallback(async () => {
+    const id = tableState.deleteTargetId;
+    const tool = id ? rawTools.find((item) => item.id === id) : undefined;
+    if (!id || !tool || tableState.deleting || deletePendingRef.current) return;
+
+    deletePendingRef.current = true;
+    dispatch({ type: "delete/start" });
+    const succeeded = await runManageMutation({
+      action: "deleted",
+      toolName: tool.name,
+      mutate: () => deleteTool(id),
+      publish: publishDatabaseToast,
+    });
+    deletePendingRef.current = false;
+    dispatch({ type: succeeded ? "delete/succeeded" : "delete/failed" });
+  }, [deleteTool, rawTools, tableState.deleteTargetId, tableState.deleting]);
+
+  const setPage = useCallback((page: number) => {
+    dispatch({ type: "page/set", page });
+  }, []);
+  const setPageSize = useCallback((pageSize: ManagePageSize) => {
+    dispatch({ type: "page-size/set", pageSize });
+  }, []);
 
   const q = query.trim().toLowerCase();
   const toolResults = useMemo(
-    () =>
-      buildToolResults(manageTools, q, (t) => {
-        setEditingId(t.id);
-        closePalette();
-      }),
-    [manageTools, q, closePalette],
+    () => buildToolResults(decoratedTools, q, (tool) => {
+      openTool(tool.id, tool.url);
+      closePalette();
+    }),
+    [decoratedTools, q, closePalette],
   );
   const commandResults = useMemo(
     () => buildCommandResults(q, closePalette, router, openAddTool),
     [q, closePalette, router, openAddTool],
   );
+  const deleteTarget = tableState.deleteTargetId
+    ? rawTools.find((tool) => tool.id === tableState.deleteTargetId) ?? null
+    : null;
 
   return {
     ...shell,
     toolResults,
     commandResults,
-    manageTools,
-    hasEditing: !!editingTool,
-    editingTool,
-    closeEdit: () => setEditingId(null),
+    categories,
+    pageRows,
+    pagination,
+    pageSize: tableState.pageSize,
+    updatingIds: tableState.updatingIds,
+    deleteTarget,
+    deleting: tableState.deleting,
+    loading,
+    syncError,
+    updateDraft,
+    submitRow,
+    requestDelete,
+    cancelDelete,
+    confirmDelete,
+    setPage,
+    setPageSize,
   };
 }
 
