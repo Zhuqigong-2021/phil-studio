@@ -336,6 +336,7 @@ export function useCustomTools(api: WorkspaceApi = DEFAULT_WORKSPACE_API) {
     customTools,
     categories: workspace.categories,
     pinnedToolIds: workspace.pinnedToolIds,
+    recentTools: workspace.recentTools,
     addCategory,
     addTool,
     setToolPinned,

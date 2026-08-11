@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { DEFAULT_TOOL_ICON_KEY } from "@/lib/dashboard/tool-icons";
 import type { Accent } from "@/lib/dashboard/types";
 import type { ShellState } from "@/hooks/useShellState";
@@ -60,6 +60,7 @@ function AddToolForm({ closeAddTool }: { closeAddTool: () => void }) {
   const [status, setStatus] = useState<Status>("idle");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
+  const savingRef = useRef(false);
   const { categories, addCategory, addTool } = useCustomTools();
 
   const getDetails = () => {
@@ -102,11 +103,13 @@ function AddToolForm({ closeAddTool }: { closeAddTool: () => void }) {
     setForm((f) => ({ ...f, aliases: f.aliases.filter((a) => a !== alias) }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     setSaveError("");
     try {
-      addTool(
+      await addTool(
         {
           name: form.name,
           url: form.url,
@@ -119,11 +122,12 @@ function AddToolForm({ closeAddTool }: { closeAddTool: () => void }) {
         },
         form.pin,
       );
-      setSaving(false);
       closeAddTool();
     } catch (reason) {
-      setSaving(false);
       setSaveError(reason instanceof Error ? reason.message : "Could not save tool.");
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
     }
   };
 
@@ -220,7 +224,7 @@ function AddToolForm({ closeAddTool }: { closeAddTool: () => void }) {
             categories={categories}
             selected={form.tags}
             onToggle={toggleTag}
-            onCreate={(name) => addCategory(name).category}
+            onCreate={async (name) => (await addCategory(name)).category}
           />
 
           {/* Aliases */}

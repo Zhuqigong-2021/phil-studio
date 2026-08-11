@@ -32,18 +32,17 @@ export interface EditingTool extends DecoratedTool {
 export function useManagePageState() {
   const shell = useShellState();
   const { router, closePalette, query, openAddTool } = shell;
-  const [favOverrides, setFavOverrides] = useState<Record<string, boolean>>({});
   const [visOverrides, setVisOverrides] = useState<Record<string, boolean>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
-  const { tools: rawTools, pinnedToolIds, setToolPinned } = useCustomTools();
+  const { tools: rawTools, pinnedToolIds, setToolFavorite, setToolPinned } = useCustomTools();
 
-  const isFav = (id: string, base: boolean) => (favOverrides[id] !== undefined ? favOverrides[id] : base);
+  const isFav = (_id: string, base: boolean) => base;
   const isVisible = (id: string) => (visOverrides[id] !== undefined ? visOverrides[id] : true);
   const isPinned = (id: string) => pinnedToolIds.includes(id);
 
-  const toggleFav = (id: string, base: boolean) => setFavOverrides((prev) => ({ ...prev, [id]: !isFav(id, base) }));
+  const toggleFav = (id: string, base: boolean) => { void setToolFavorite(id, !base).catch(() => undefined); };
   const toggleVis = (id: string) => setVisOverrides((prev) => ({ ...prev, [id]: !isVisible(id) }));
-  const togglePin = (id: string) => setToolPinned(id, !isPinned(id));
+  const togglePin = (id: string) => { void setToolPinned(id, !isPinned(id)).catch(() => undefined); };
 
   const manageTools: ManageRow[] = useMemo(
     () =>
@@ -63,7 +62,7 @@ export function useManagePageState() {
           openEdit: () => setEditingId(t.id),
         };
       }),
-    [favOverrides, rawTools, visOverrides], // eslint-disable-line react-hooks/exhaustive-deps
+    [rawTools, visOverrides], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const editingTool: EditingTool | null = useMemo(() => {
@@ -87,7 +86,7 @@ export function useManagePageState() {
       pinBg: pinned ? "rgba(59,130,246,.5)" : "rgba(255,255,255,.12)",
       pinDotLeft: pinned ? "15px" : "2px",
     };
-  }, [editingId, favOverrides, pinnedToolIds, rawTools, visOverrides]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [editingId, pinnedToolIds, rawTools, visOverrides]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const q = query.trim().toLowerCase();
   const toolResults = useMemo(

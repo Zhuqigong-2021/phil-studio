@@ -7,11 +7,13 @@ const modalStart = source.indexOf("function AddToolModalDark");
 const modalEnd = source.indexOf("function HeroSection", modalStart);
 const modal = source.slice(modalStart, modalEnd);
 
-test("active Add Tool uses dynamic categories and real local persistence", () => {
+test("active Add Tool awaits dynamic categories and server persistence", () => {
   assert.match(modal, /<CategorySelector/);
   assert.match(modal, /categories=\{categories\}/);
-  assert.match(modal, /addCategory\(name\)\.category/);
-  assert.match(modal, /addTool\(/);
+  assert.match(modal, /\(await addCategory\(name\)\)\.category/);
+  assert.match(modal, /await addTool\(/);
+  assert.match(modal, /if \(savingRef\.current\) return/);
+  assert.match(modal, /finally \{[\s\S]*savingRef\.current = false;[\s\S]*setSaving\(false\)/);
   assert.doesNotMatch(modal, /setTimeout\(\(\) => \{\s*setSaving\(false\)/);
 });
 

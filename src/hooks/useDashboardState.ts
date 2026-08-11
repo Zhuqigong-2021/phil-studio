@@ -8,7 +8,7 @@ import {
 } from "@/lib/dashboard/mock-data";
 import type { DecoratedTool, PanelId, ViewMode } from "@/lib/dashboard/types";
 import { buildCommandResults, buildToolResults, useShellState } from "./useShellState";
-import { useRecentTools } from "./useRecentTools";
+import { clearRecentTools } from "@/lib/dashboard/recent-tools";
 import { formatRecentTime } from "@/lib/dashboard/recent-tools";
 import { openTool } from "@/lib/dashboard/open-tool";
 import { useDailyTasks } from "./useDailyTasks";
@@ -38,13 +38,11 @@ export interface PanelData {
 
 export function useDashboardState() {
   const shell = useShellState();
-  const { recentTools: storedRecentTools, clearRecentTools } = useRecentTools();
   const { tasks: storedTasks, addTask, toggleTask } = useDailyTasks();
-  const { tools: rawTools, categories, pinnedToolIds } = useCustomTools();
+  const { tools: rawTools, categories, pinnedToolIds, recentTools: storedRecentTools, setToolFavorite } = useCustomTools();
   const { router, closePalette, query, openAddTool } = shell;
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [view, setView] = useState<ViewMode>("list");
-  const [favOverrides, setFavOverrides] = useState<Record<string, boolean>>({});
   const [slots, setSlots] = useState<{ slotA: PanelId[]; slotB: PanelId[] }>({
     slotA: ["qa", "recent"],
     slotB: ["calendar", "todo"],
@@ -140,19 +138,13 @@ export function useDashboardState() {
   );
 
   const toggleFav = useCallback((id: string) => {
-    setFavOverrides((prev) => {
-      const base = rawTools.find((t) => t.id === id)?.favorite ?? false;
-      const current = prev[id] !== undefined ? prev[id] : base;
-      return { ...prev, [id]: !current };
-    });
-  }, [rawTools]);
+    const current = rawTools.find((tool) => tool.id === id)?.favorite ?? false;
+    void setToolFavorite(id, !current).catch(() => undefined);
+  }, [rawTools, setToolFavorite]);
 
   const tools: DecoratedTool[] = useMemo(() => {
-    return rawTools.map(decorate).map((t) => {
-      const favorite = favOverrides[t.id] !== undefined ? favOverrides[t.id] : t.favorite;
-      return { ...t, favorite };
-    });
-  }, [favOverrides, rawTools]);
+    return rawTools.map(decorate);
+  }, [rawTools]);
 
   const byId = useMemo(() => Object.fromEntries(tools.map((t) => [t.id, t])), [tools]);
 

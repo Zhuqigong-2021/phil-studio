@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import styles from "./CategorySelector.module.css";
 
 interface CategorySelectorProps {
   categories: readonly string[];
   selected: ReadonlySet<string>;
   onToggle: (category: string) => void;
-  onCreate: (name: string) => string;
+  onCreate: (name: string) => Promise<string>;
 }
 
 export default function CategorySelector({
@@ -19,6 +19,8 @@ export default function CategorySelector({
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
 
   const cancel = () => {
     setCreating(false);
@@ -26,13 +28,20 @@ export default function CategorySelector({
     setError("");
   };
 
-  const add = () => {
+  const add = async () => {
+    if (savingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
+    setError("");
     try {
-      const category = onCreate(name);
+      const category = await onCreate(name);
       if (!selected.has(category)) onToggle(category);
       cancel();
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not add category.");
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
     }
   };
 
@@ -74,8 +83,8 @@ export default function CategorySelector({
                 if (event.key === "Escape") cancel();
               }}
             />
-            <button type="button" onClick={add}>Add</button>
-            <button type="button" onClick={cancel}>Cancel</button>
+            <button type="button" onClick={() => void add()} disabled={saving}>Add</button>
+            <button type="button" onClick={cancel} disabled={saving}>Cancel</button>
           </div>
           {error ? <div className={styles.error} role="alert">{error}</div> : null}
         </div>

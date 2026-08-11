@@ -91,7 +91,6 @@ import { DEFAULT_TOOL_ICON_KEY } from "@/lib/dashboard/tool-icons";
 import type { Accent, Tool } from "@/lib/dashboard/types";
 import { buildCategoryStats, matchesToolQuery } from "@/lib/dashboard/custom-tools";
 import { signOutFromApp } from "@/lib/auth/client";
-import { useRecentTools } from "@/hooks/useRecentTools";
 import { recordRecentTool } from "@/lib/dashboard/recent-tools";
 import { useDailyTasks } from "@/hooks/useDailyTasks";
 import { formatTaskTime, type DailyTask } from "@/lib/dashboard/daily-tasks";
@@ -1792,9 +1791,11 @@ function CommandPaletteDark({
 // Search bar + ⌘K command palette — extracted so it can render either in the topbar
 // (>=951px) or as its own full-width row under the greeting in HeroSection (<951px).
 function useToolViews(): DashboardToolView[] {
-  const { customTools } = useCustomTools();
+  const { tools } = useCustomTools();
   return React.useMemo(() => {
-    const customViews = customTools.map((tool) => {
+    return tools.map((tool) => {
+      const builtIn = builtInToolViews.find((view) => view.id === tool.id);
+      if (builtIn) return { ...builtIn, label: tool.name, href: tool.url, tool };
       const rgb = ACCENT_RGB[tool.accent];
       return {
         id: tool.id,
@@ -1813,8 +1814,7 @@ function useToolViews(): DashboardToolView[] {
         tool,
       };
     });
-    return [...builtInToolViews, ...customViews];
-  }, [customTools]);
+  }, [tools]);
 }
 
 function GlobalSearchBar({ fullWidth }: { fullWidth?: boolean }) {
@@ -2713,6 +2713,7 @@ function AddToolModalDark({ onClose }: { onClose: () => void }) {
   const [status, setStatus] = React.useState<AddToolStatus>("idle");
   const [saving, setSaving] = React.useState(false);
   const [saveError, setSaveError] = React.useState("");
+  const savingRef = React.useRef(false);
   const { categories, addCategory, addTool } = useCustomTools();
 
   const getDetails = () => {
@@ -2755,11 +2756,13 @@ function AddToolModalDark({ onClose }: { onClose: () => void }) {
     setForm((f) => ({ ...f, aliases: f.aliases.filter((a) => a !== alias) }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     setSaveError("");
     try {
-      addTool(
+      await addTool(
         {
           name: form.name,
           url: form.url,
@@ -2772,11 +2775,12 @@ function AddToolModalDark({ onClose }: { onClose: () => void }) {
         },
         form.pin,
       );
-      setSaving(false);
       onClose();
     } catch (reason) {
-      setSaving(false);
       setSaveError(reason instanceof Error ? reason.message : "Could not save tool.");
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
     }
   };
 
@@ -2943,7 +2947,7 @@ function AddToolModalDark({ onClose }: { onClose: () => void }) {
             categories={categories}
             selected={form.tags}
             onToggle={toggleTag}
-            onCreate={(name) => addCategory(name).category}
+            onCreate={async (name) => (await addCategory(name)).category}
           />
 
           {/* Aliases */}
@@ -3120,7 +3124,7 @@ function AddToolModalDark({ onClose }: { onClose: () => void }) {
           </button>
           <button
             type="button"
-            onClick={handleSave}
+            onClick={() => void handleSave()}
             disabled={saving}
             className="flex-1 h-[42px] rounded-[11px] text-white text-[13px] font-semibold"
             style={{
@@ -3147,9 +3151,8 @@ function HeroSection() {
   // Below 951px the greeting + side column no longer have room for Quick Access, so it drops
   // out of that column and becomes its own full-width row underneath.
   const [stackQuickAccess, setStackQuickAccess] = React.useState(false);
-  const { recentTools } = useRecentTools();
   const toolViews = useToolViews();
-  const { pinnedToolIds } = useCustomTools();
+  const { pinnedToolIds, recentTools } = useCustomTools();
 
   React.useEffect(() => {
     const update = () => {
@@ -5408,15 +5411,15 @@ export default function DashboardPage() {
 
   // Shared with the search palette's per-result star toggle via localStorage + a custom
   // event (see useFavorites) — no prop drilling needed between the two.
-  const { overrides: favOverrides, toggleFavorite: toggleFavoriteRaw } =
+  const { overrides: favOverrides, toggleFavorite: persistFavorite } =
     useFavorites();
   const toggleFavorite = React.useCallback(
     (id: string) =>
-      toggleFavoriteRaw(
+      persistFavorite(
         id,
         favOverrides[id] ?? baseFavoriteById.get(id) ?? false,
       ),
-    [favOverrides, toggleFavoriteRaw],
+    [favOverrides, persistFavorite],
   );
   const favoriteTools = React.useMemo(
     () =>

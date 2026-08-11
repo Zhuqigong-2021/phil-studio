@@ -13,6 +13,9 @@ test("offers an accessible dynamic category creation flow", () => {
   assert.match(selectorSource, /maxLength=\{24\}/);
   assert.match(selectorSource, /role="alert"/);
   assert.match(selectorSource, /aria-pressed=\{selected\.has\(category\)\}/);
+  assert.match(selectorSource, /onCreate: \(name: string\) => Promise<string>/);
+  assert.match(selectorSource, /const category = await onCreate\(name\)/);
+  assert.match(selectorSource, /disabled=\{saving\}/);
 });
 
 test("keeps new category controls in the indigo visual system", () => {
@@ -27,7 +30,10 @@ test("shared Add Tool uses the reusable category selector", () => {
 });
 
 test("shared Add Tool persists the complete tool instead of using a fake save timer", () => {
-  assert.match(sharedModal, /addTool\(/);
+  assert.match(sharedModal, /await addTool\(/);
+  assert.match(sharedModal, /\(await addCategory\(name\)\)\.category/);
+  assert.match(sharedModal, /if \(savingRef\.current\) return/);
+  assert.match(sharedModal, /finally \{[\s\S]*savingRef\.current = false;[\s\S]*setSaving\(false\)/);
   assert.match(sharedModal, /aliases: form\.aliases/);
   assert.match(sharedModal, /tags: \[\.\.\.form\.tags\]/);
   assert.doesNotMatch(sharedModal, /setTimeout\(\(\) => \{\s*setSaving\(false\)/);

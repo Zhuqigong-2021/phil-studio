@@ -13,24 +13,17 @@ export function useAllPageState() {
   const { router, closePalette, query, openAddTool } = shell;
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [view, setView] = useState<ViewMode>("list");
-  const [favOverrides, setFavOverrides] = useState<Record<string, boolean>>({});
-  const { tools: rawTools, categories } = useCustomTools();
+  const { tools: rawTools, categories, setToolFavorite } = useCustomTools();
 
   const toggleFav = (id: string) => {
-    setFavOverrides((prev) => {
-      const base = rawTools.find((t) => t.id === id)?.favorite ?? false;
-      const current = prev[id] !== undefined ? prev[id] : base;
-      return { ...prev, [id]: !current };
-    });
+    const current = rawTools.find((tool) => tool.id === id)?.favorite ?? false;
+    void setToolFavorite(id, !current).catch(() => undefined);
   };
 
   const tools = useMemo(
     () =>
-      rawTools.map(decorate).map((t) => ({
-        ...t,
-        favorite: favOverrides[t.id] !== undefined ? favOverrides[t.id] : t.favorite,
-      })),
-    [favOverrides, rawTools],
+      rawTools.map(decorate),
+    [rawTools],
   );
 
   const allTools = useMemo(
