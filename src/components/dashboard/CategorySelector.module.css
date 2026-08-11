@@ -1,0 +1,98 @@
+.selector {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.label {
+  color: #a9b2c3;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.chip,
+.newCategory,
+.row button {
+  border: 1px solid rgba(129, 140, 248, 0.28);
+  background: rgba(99, 102, 241, 0.14);
+  color: #e0e7ff;
+  cursor: pointer;
+  font: inherit;
+}
+
+.chip {
+  border-radius: 10px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.chip:hover,
+.newCategory:hover,
+.row button:hover {
+  background: rgba(99, 102, 241, 0.22);
+  border-color: rgba(129, 140, 248, 0.45);
+}
+
+.selected {
+  background: linear-gradient(120deg, rgba(79, 70, 229, 0.72), rgba(124, 58, 237, 0.6));
+  border-color: rgba(165, 180, 252, 0.65);
+  color: #f5f3ff;
+}
+
+.newCategory {
+  align-self: flex-start;
+  border-radius: 9px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.creation {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.row {
+  display: flex;
+  gap: 7px;
+}
+
+.row input {
+  min-width: 0;
+  flex: 1;
+  height: 36px;
+  box-sizing: border-box;
+  border: 1px solid rgba(129, 140, 248, 0.34);
+  border-radius: 10px;
+  outline: none;
+  background: rgba(49, 46, 129, 0.2);
+  color: #f2f4fa;
+  padding: 0 11px;
+  font: inherit;
+  font-size: 12px;
+}
+
+.row input:focus {
+  border-color: rgba(165, 180, 252, 0.72);
+}
+
+.row button {
+  height: 36px;
+  border-radius: 10px;
+  padding: 0 11px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.error {
+  color: #fda4af;
+  font-size: 11px;
+}

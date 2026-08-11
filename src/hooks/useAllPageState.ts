@@ -1,11 +1,12 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { TAGS, TOOLS_RAW, decorate } from "@/lib/dashboard/mock-data";
+import { decorate } from "@/lib/dashboard/mock-data";
 import type { ViewMode } from "@/lib/dashboard/types";
 import { buildCommandResults, buildToolResults, useShellState } from "./useShellState";
 import type { TagChip } from "./useDashboardState";
 import { openTool } from "@/lib/dashboard/open-tool";
+import { useCustomTools } from "./useCustomTools";
 
 export function useAllPageState() {
   const shell = useShellState();
@@ -13,10 +14,11 @@ export function useAllPageState() {
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [view, setView] = useState<ViewMode>("list");
   const [favOverrides, setFavOverrides] = useState<Record<string, boolean>>({});
+  const { tools: rawTools, categories } = useCustomTools();
 
   const toggleFav = (id: string) => {
     setFavOverrides((prev) => {
-      const base = TOOLS_RAW.find((t) => t.id === id)?.favorite ?? false;
+      const base = rawTools.find((t) => t.id === id)?.favorite ?? false;
       const current = prev[id] !== undefined ? prev[id] : base;
       return { ...prev, [id]: !current };
     });
@@ -24,11 +26,11 @@ export function useAllPageState() {
 
   const tools = useMemo(
     () =>
-      TOOLS_RAW.map(decorate).map((t) => ({
+      rawTools.map(decorate).map((t) => ({
         ...t,
         favorite: favOverrides[t.id] !== undefined ? favOverrides[t.id] : t.favorite,
       })),
-    [favOverrides],
+    [favOverrides, rawTools],
   );
 
   const allTools = useMemo(
@@ -37,13 +39,13 @@ export function useAllPageState() {
   );
 
   const tagsList: TagChip[] = useMemo(() => {
-    const names = ["All", ...TAGS];
+    const names = ["All", ...categories];
     return names.map((name) => ({
       name,
       active: name === "All" ? activeTag === null : name === activeTag,
       onClick: () => setActiveTag(name === "All" ? null : name),
     }));
-  }, [activeTag]);
+  }, [activeTag, categories]);
 
   const q = query.trim().toLowerCase();
   const toolResults = useMemo(

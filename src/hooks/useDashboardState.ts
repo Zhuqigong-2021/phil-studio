@@ -3,8 +3,6 @@
 import { useCallback, useMemo, useState } from "react";
 import {
   QA_IDS,
-  TAGS,
-  TOOLS_RAW,
   WEEKDAYS,
   decorate,
 } from "@/lib/dashboard/mock-data";
@@ -15,6 +13,7 @@ import { formatRecentTime } from "@/lib/dashboard/recent-tools";
 import { openTool } from "@/lib/dashboard/open-tool";
 import { useDailyTasks } from "./useDailyTasks";
 import { formatTaskTime } from "@/lib/dashboard/daily-tasks";
+import { useCustomTools } from "./useCustomTools";
 
 const FAV_BASE = "linear-gradient(165deg, rgba(165,180,255,.05) 0%, rgba(99,102,241,.035) 45%, rgba(15,26,60,.14) 100%)";
 
@@ -41,6 +40,7 @@ export function useDashboardState() {
   const shell = useShellState();
   const { recentTools: storedRecentTools, clearRecentTools } = useRecentTools();
   const { tasks: storedTasks, addTask, toggleTask } = useDailyTasks();
+  const { tools: rawTools, categories, pinnedToolIds } = useCustomTools();
   const { router, closePalette, query, openAddTool } = shell;
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [view, setView] = useState<ViewMode>("list");
@@ -141,18 +141,18 @@ export function useDashboardState() {
 
   const toggleFav = useCallback((id: string) => {
     setFavOverrides((prev) => {
-      const base = TOOLS_RAW.find((t) => t.id === id)?.favorite ?? false;
+      const base = rawTools.find((t) => t.id === id)?.favorite ?? false;
       const current = prev[id] !== undefined ? prev[id] : base;
       return { ...prev, [id]: !current };
     });
-  }, []);
+  }, [rawTools]);
 
   const tools: DecoratedTool[] = useMemo(() => {
-    return TOOLS_RAW.map(decorate).map((t) => {
+    return rawTools.map(decorate).map((t) => {
       const favorite = favOverrides[t.id] !== undefined ? favOverrides[t.id] : t.favorite;
       return { ...t, favorite };
     });
-  }, [favOverrides]);
+  }, [favOverrides, rawTools]);
 
   const byId = useMemo(() => Object.fromEntries(tools.map((t) => [t.id, t])), [tools]);
 
@@ -170,9 +170,9 @@ export function useDashboardState() {
   );
 
   const qaTools = useMemo(() => {
-    const ids = [...storedRecentTools.map((entry) => entry.id), ...QA_IDS];
+    const ids = [...pinnedToolIds, ...storedRecentTools.map((entry) => entry.id), ...QA_IDS];
     return [...new Set(ids)].map((id) => byId[id]).filter(Boolean).slice(0, QA_IDS.length);
-  }, [byId, storedRecentTools]);
+  }, [byId, pinnedToolIds, storedRecentTools]);
 
   const recentTools = useMemo(
     () =>
@@ -183,13 +183,13 @@ export function useDashboardState() {
   );
 
   const tagsList: TagChip[] = useMemo(() => {
-    const names = ["All", ...TAGS];
+    const names = ["All", ...categories];
     return names.map((name) => ({
       name,
       active: name === "All" ? activeTag === null : name === activeTag,
       onClick: () => setActiveTag(name === "All" ? null : name),
     }));
-  }, [activeTag]);
+  }, [activeTag, categories]);
 
   const todoTasks = useMemo(
     () =>

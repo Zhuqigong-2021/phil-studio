@@ -27,6 +27,8 @@ import { useLyricsTimeline } from "@/hooks/useLyricsTimeline";
 import MagicRings from "@/components/dashboard/MagicRings";
 import SideRays from "@/components/dashboard/SideRays";
 import ToolIconPicker from "@/components/dashboard/ToolIconPicker";
+import CategorySelector from "@/components/dashboard/CategorySelector";
+import DynamicToolIcon from "@/components/dashboard/DynamicToolIcon";
 import type { IconType } from "react-icons";
 import {
   WiCloud,
@@ -81,12 +83,13 @@ import {
 } from "lucide-react";
 import { TRACKS, type Track } from "@/lib/dashboard/music";
 import {
+  ACCENT_RGB,
   TOOLS_RAW,
-  TAGS,
   QA_IDS,
 } from "@/lib/dashboard/mock-data";
 import { DEFAULT_TOOL_ICON_KEY } from "@/lib/dashboard/tool-icons";
-import type { Accent } from "@/lib/dashboard/types";
+import type { Accent, Tool } from "@/lib/dashboard/types";
+import { buildCategoryStats, matchesToolQuery } from "@/lib/dashboard/custom-tools";
 import { signOutFromApp } from "@/lib/auth/client";
 import { useRecentTools } from "@/hooks/useRecentTools";
 import { recordRecentTool } from "@/lib/dashboard/recent-tools";
@@ -95,11 +98,23 @@ import { formatTaskTime, type DailyTask } from "@/lib/dashboard/daily-tasks";
 import { useFocusLog } from "@/hooks/useFocusLog";
 import type { FocusEntry } from "@/lib/dashboard/focus-log";
 import { useFavorites } from "@/hooks/useFavorites";
+import { useCustomTools } from "@/hooks/useCustomTools";
 
 const toolUrlById = new Map(TOOLS_RAW.map((tool) => [tool.id, tool.url]));
 
 const imgBg = "/backgrounds/dark-old-port-background-layout-final.png";
 const imgAvatar = "/backgrounds/dark-old-port-avatar.png";
+
+interface DashboardToolView {
+  id: string;
+  icon: React.ReactNode;
+  label: string;
+  border: string;
+  bg: string;
+  shadow: string;
+  href?: string;
+  tool: Tool;
+}
 
 function DashboardBackground() {
   const rootRef = React.useRef<HTMLDivElement>(null);
@@ -1649,7 +1664,7 @@ function CommandPaletteDark({
 }: {
   query: string;
   setQuery: (q: string) => void;
-  results: typeof allTools;
+  results: DashboardToolView[];
   onClose: () => void;
   inputRef: React.RefObject<HTMLInputElement | null>;
 }) {
@@ -1776,10 +1791,37 @@ function CommandPaletteDark({
 
 // Search bar + ⌘K command palette — extracted so it can render either in the topbar
 // (>=951px) or as its own full-width row under the greeting in HeroSection (<951px).
+function useToolViews(): DashboardToolView[] {
+  const { customTools } = useCustomTools();
+  return React.useMemo(() => {
+    const customViews = customTools.map((tool) => {
+      const rgb = ACCENT_RGB[tool.accent];
+      return {
+        id: tool.id,
+        icon: (
+          <DynamicToolIcon
+            iconKey={tool.iconKey ?? DEFAULT_TOOL_ICON_KEY}
+            size={28}
+            strokeWidth={1.8}
+          />
+        ),
+        label: tool.name,
+        border: `rgba(${rgb},0.45)`,
+        bg: `rgba(${rgb},0.13)`,
+        shadow: `rgba(${rgb},0.18)`,
+        href: tool.url,
+        tool,
+      };
+    });
+    return [...builtInToolViews, ...customViews];
+  }, [customTools]);
+}
+
 function GlobalSearchBar({ fullWidth }: { fullWidth?: boolean }) {
   const [paletteOpen, setPaletteOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
   const inputRef = React.useRef<HTMLInputElement>(null);
+  const toolViews = useToolViews();
 
   const openPalette = React.useCallback(() => {
     setPaletteOpen(true);
@@ -1803,8 +1845,8 @@ function GlobalSearchBar({ fullWidth }: { fullWidth?: boolean }) {
 
   const trimmed = query.trim().toLowerCase();
   const results = trimmed
-    ? allTools.filter((t) => t.label.toLowerCase().includes(trimmed))
-    : allTools;
+    ? toolViews.filter((t) => matchesToolQuery(t.tool, trimmed))
+    : toolViews;
 
   return (
     <>
@@ -2670,6 +2712,8 @@ function AddToolModalDark({ onClose }: { onClose: () => void }) {
   const [form, setForm] = React.useState(emptyAddToolForm);
   const [status, setStatus] = React.useState<AddToolStatus>("idle");
   const [saving, setSaving] = React.useState(false);
+  const [saveError, setSaveError] = React.useState("");
+  const { categories, addCategory, addTool } = useCustomTools();
 
   const getDetails = () => {
     if (!form.url.trim()) {
@@ -2701,7 +2745,7 @@ function AddToolModalDark({ onClose }: { onClose: () => void }) {
     const value = form.aliasInput.trim();
     if (!value) return;
     setForm((f) =>
-      f.aliases.includes(value)
+      f.aliases.some((alias) => alias.toLocaleLowerCase() === value.toLocaleLowerCase())
         ? { ...f, aliasInput: "" }
         : { ...f, aliases: [...f.aliases, value], aliasInput: "" },
     );
@@ -2713,10 +2757,27 @@ function AddToolModalDark({ onClose }: { onClose: () => void }) {
 
   const handleSave = () => {
     setSaving(true);
-    setTimeout(() => {
+    setSaveError("");
+    try {
+      addTool(
+        {
+          name: form.name,
+          url: form.url,
+          description: form.description,
+          iconKey: form.iconKey,
+          accent: form.accent,
+          tags: [...form.tags],
+          aliases: form.aliases,
+          sourceType: form.source,
+        },
+        form.pin,
+      );
       setSaving(false);
       onClose();
-    }, 500);
+    } catch (reason) {
+      setSaving(false);
+      setSaveError(reason instanceof Error ? reason.message : "Could not save tool.");
+    }
   };
 
   const fieldClass =
@@ -2878,32 +2939,12 @@ function AddToolModalDark({ onClose }: { onClose: () => void }) {
             />
           </div>
 
-          {/* Tags */}
-          <div>
-            <div className="text-[11px] font-semibold text-[#9aa3be] mb-[6px]">
-              Tags
-            </div>
-            <div className="flex gap-[6px] flex-wrap">
-              {TAGS.map((tag) => {
-                const active = form.tags.has(tag);
-                return (
-                  <div
-                    key={tag}
-                    onClick={() => toggleTag(tag)}
-                    className="ui-choice rounded-[10px] px-3 py-[6px] text-[12px] font-medium cursor-pointer"
-                    style={{
-                      background: active
-                        ? "linear-gradient(120deg, rgba(140,80,220,0.55), rgba(103,232,249,0.28))"
-                        : ADD_TOOL_SECONDARY_BACKGROUND,
-                      color: ADD_TOOL_SECONDARY_TEXT,
-                    }}
-                  >
-                    {tag}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <CategorySelector
+            categories={categories}
+            selected={form.tags}
+            onToggle={toggleTag}
+            onCreate={(name) => addCategory(name).category}
+          />
 
           {/* Aliases */}
           <div>
@@ -3054,6 +3095,11 @@ function AddToolModalDark({ onClose }: { onClose: () => void }) {
               />
             </button>
           </div>
+          {saveError ? (
+            <div role="alert" className="text-[12px] text-[#fda4af]">
+              {saveError}
+            </div>
+          ) : null}
         </div>
 
         <div
@@ -3102,6 +3148,8 @@ function HeroSection() {
   // out of that column and becomes its own full-width row underneath.
   const [stackQuickAccess, setStackQuickAccess] = React.useState(false);
   const { recentTools } = useRecentTools();
+  const toolViews = useToolViews();
+  const { pinnedToolIds } = useCustomTools();
 
   React.useEffect(() => {
     const update = () => {
@@ -3120,11 +3168,13 @@ function HeroSection() {
   // rest back — falls back to QA_IDS defaults to fill any remaining slots. No cap: once
   // there are more tiles than fit, the row scrolls horizontally instead of hiding any.
   const quickAccessTools = React.useMemo(() => {
-    const ids = [...new Set([...recentTools.map((r) => r.id), ...QA_IDS])];
+    const ids = [
+      ...new Set([...pinnedToolIds, ...recentTools.map((r) => r.id), ...QA_IDS]),
+    ];
     return ids
-      .map((id) => allTools.find((t) => t.id === id))
-      .filter((t): t is (typeof allTools)[number] => Boolean(t));
-  }, [recentTools]);
+      .map((id) => toolViews.find((t) => t.id === id))
+      .filter((t): t is DashboardToolView => Boolean(t));
+  }, [pinnedToolIds, recentTools, toolViews]);
 
   const quickAccessPanel = (
     <GlassPanel
@@ -3332,7 +3382,7 @@ function StatsRow({
 
 // ─── Bottom row ────────────────────────────────────────────────────────────────
 
-const allTools = [
+const builtInToolViews: DashboardToolView[] = [
   {
     id: "ap",
     icon: <ToolIconArtsPortfolio />,
@@ -3414,7 +3464,10 @@ const allTools = [
     shadow: "rgba(182,124,255,0.18)",
     href: toolUrlById.get("ai"),
   },
-];
+].map((view) => ({
+  ...view,
+  tool: TOOLS_RAW.find((tool) => tool.id === view.id)!,
+}));
 
 const baseFavoriteById = new Map(
   TOOLS_RAW.map((tool) => [tool.id, tool.favorite]),
@@ -5009,6 +5062,7 @@ function TaskCompletionPanel({
 }
 
 function AllToolsPanel() {
+  const toolViews = useToolViews();
   return (
     <GlassPanel
       className="flex-1 min-w-0 flex flex-col px-5 py-4 overflow-hidden max-[950px]:w-full max-[950px]:min-h-[320px] max-[950px]:order-2"
@@ -5030,7 +5084,7 @@ function AllToolsPanel() {
         className="grid grid-flow-col grid-rows-2 gap-x-[31px] gap-y-0.5 min-[1180px]:grid-rows-1 min-[1180px]:items-center overflow-x-auto flex-1 [&::-webkit-scrollbar]:hidden"
         style={{ scrollbarWidth: "none" }}
       >
-        {allTools.map((t) => (
+        {toolViews.map((t) => (
           <ToolTile
             key={t.label}
             id={t.id}
@@ -5061,21 +5115,11 @@ const categoryBarColors = [
 ];
 
 function CategoriesPanel() {
-  const categoryStats = React.useMemo(() => {
-    const counts = new Map<string, number>();
-    let total = 0;
-    TOOLS_RAW.forEach((tool) => {
-      tool.tags.forEach((tag) => {
-        counts.set(tag, (counts.get(tag) ?? 0) + 1);
-        total += 1;
-      });
-    });
-    return TAGS.map((tag) => {
-      const count = counts.get(tag) ?? 0;
-      const percent = total ? Math.round((count / total) * 100) : 0;
-      return { tag, percent };
-    }).sort((a, b) => b.percent - a.percent);
-  }, []);
+  const { tools, categories } = useCustomTools();
+  const categoryStats = React.useMemo(
+    () => buildCategoryStats(tools, categories),
+    [categories, tools],
+  );
 
   return (
     <GlassPanel
@@ -5089,7 +5133,7 @@ function CategoriesPanel() {
       <div className="flex items-center justify-between mb-[22px] flex-shrink-0">
         <p className="text-white font-semibold text-[18px]">Categories</p>
         <span className="text-[#8891ac] text-[13px]">
-          {TAGS.length} categories
+          {categories.length} categories
         </span>
       </div>
       <div className="flex-1 min-h-0 relative">
@@ -5137,7 +5181,7 @@ function FavoritesPanel({
   favoriteTools,
   onToggleFavorite,
 }: {
-  favoriteTools: typeof allTools;
+  favoriteTools: DashboardToolView[];
   onToggleFavorite: (id: string) => void;
 }) {
   const reduceMotion = Boolean(useReducedMotion());
@@ -5253,7 +5297,7 @@ function BottomRow({
   toggleTask: (id: string) => void;
   updateTask: (id: string, title: string) => boolean;
   deleteTask: (id: string) => void;
-  favoriteTools: typeof allTools;
+  favoriteTools: DashboardToolView[];
   onToggleFavorite: (id: string) => void;
   focusEntries: FocusEntry[];
   focusSession: FocusSession | null;
@@ -5353,6 +5397,7 @@ export default function DashboardPage() {
   const reduceMotion = Boolean(useReducedMotion());
   const narrowNav = useBelowWidth(MOBILE_NAV_BREAKPOINT);
   const [drawerOpen, setDrawerOpen] = React.useState(false);
+  const toolViews = useToolViews();
 
   const [activeStat, setActiveStat] = React.useState<StatKey>("recent");
   const { tasks, addTask, toggleTask, updateTask, deleteTask } = useDailyTasks();
@@ -5375,10 +5420,10 @@ export default function DashboardPage() {
   );
   const favoriteTools = React.useMemo(
     () =>
-      allTools.filter(
+      toolViews.filter(
         (t) => favOverrides[t.id] ?? baseFavoriteById.get(t.id) ?? false,
       ),
-    [favOverrides],
+    [favOverrides, toolViews],
   );
 
   const { entries: focusEntries, addEntry: addFocusEntry } = useFocusLog();

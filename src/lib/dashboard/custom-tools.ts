@@ -184,3 +184,23 @@ export function matchesToolQuery(tool: Tool, query: string): boolean {
     .toLocaleLowerCase()
     .includes(normalized);
 }
+
+export function buildCategoryStats(
+  tools: readonly Tool[],
+  categories: readonly string[],
+): Array<{ tag: string; percent: number }> {
+  const counts = new Map<string, number>();
+  let total = 0;
+  for (const tool of tools) {
+    for (const tag of tool.tags) {
+      counts.set(tag, (counts.get(tag) ?? 0) + 1);
+      total += 1;
+    }
+  }
+  return categories
+    .map((tag) => ({
+      tag,
+      percent: total ? Math.round(((counts.get(tag) ?? 0) / total) * 100) : 0,
+    }))
+    .sort((a, b) => b.percent - a.percent);
+}

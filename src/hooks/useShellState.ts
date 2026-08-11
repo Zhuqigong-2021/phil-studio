@@ -124,6 +124,7 @@ export function buildToolResults(
       (t) =>
         !q ||
         t.name.toLowerCase().includes(q) ||
+        t.aliases?.some((alias) => alias.toLowerCase().includes(q)) ||
         t.tags.some((tag) => tag.toLowerCase().includes(q)),
     )
     .slice(0, 6)

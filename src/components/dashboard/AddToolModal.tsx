@@ -1,10 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { TAGS } from "@/lib/dashboard/mock-data";
 import { DEFAULT_TOOL_ICON_KEY } from "@/lib/dashboard/tool-icons";
 import type { Accent } from "@/lib/dashboard/types";
 import type { ShellState } from "@/hooks/useShellState";
+import { useCustomTools } from "@/hooks/useCustomTools";
+import CategorySelector from "./CategorySelector";
 import ToolIconPicker from "./ToolIconPicker";
 
 type Status = "idle" | "suggesting" | "ready" | "error";
@@ -58,6 +59,8 @@ function AddToolForm({ closeAddTool }: { closeAddTool: () => void }) {
   const [form, setForm] = useState(emptyForm);
   const [status, setStatus] = useState<Status>("idle");
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const { categories, addCategory, addTool } = useCustomTools();
 
   const getDetails = () => {
     if (!form.url.trim()) {
@@ -89,7 +92,9 @@ function AddToolForm({ closeAddTool }: { closeAddTool: () => void }) {
     const value = form.aliasInput.trim();
     if (!value) return;
     setForm((f) =>
-      f.aliases.includes(value) ? { ...f, aliasInput: "" } : { ...f, aliases: [...f.aliases, value], aliasInput: "" },
+      f.aliases.some((alias) => alias.toLocaleLowerCase() === value.toLocaleLowerCase())
+        ? { ...f, aliasInput: "" }
+        : { ...f, aliases: [...f.aliases, value], aliasInput: "" },
     );
   };
 
@@ -99,10 +104,27 @@ function AddToolForm({ closeAddTool }: { closeAddTool: () => void }) {
 
   const handleSave = () => {
     setSaving(true);
-    setTimeout(() => {
+    setSaveError("");
+    try {
+      addTool(
+        {
+          name: form.name,
+          url: form.url,
+          description: form.description,
+          iconKey: form.iconKey,
+          accent: form.accent,
+          tags: [...form.tags],
+          aliases: form.aliases,
+          sourceType: form.source,
+        },
+        form.pin,
+      );
       setSaving(false);
       closeAddTool();
-    }, 500);
+    } catch (reason) {
+      setSaving(false);
+      setSaveError(reason instanceof Error ? reason.message : "Could not save tool.");
+    }
   };
 
   return (
@@ -194,24 +216,12 @@ function AddToolForm({ closeAddTool }: { closeAddTool: () => void }) {
             />
           </div>
 
-          {/* Tags */}
-          <div>
-            <div style={{ fontSize: 11, fontWeight: 600, color: "#A9B2C3", marginBottom: 6 }}>Tags</div>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-              {TAGS.map((tag) => {
-                const active = form.tags.has(tag);
-                return (
-                  <div
-                    key={tag}
-                    onClick={() => toggleTag(tag)}
-                    style={{ padding: "6px 12px", borderRadius: 10, fontSize: 12, fontWeight: 500, cursor: "pointer", background: active ? "linear-gradient(120deg, rgba(59,130,246,.45), rgba(139,92,246,.36))" : ADD_TOOL_SECONDARY_BACKGROUND, color: ADD_TOOL_SECONDARY_TEXT }}
-                  >
-                    {tag}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <CategorySelector
+            categories={categories}
+            selected={form.tags}
+            onToggle={toggleTag}
+            onCreate={(name) => addCategory(name).category}
+          />
 
           {/* Aliases */}
           <div>
@@ -272,6 +282,7 @@ function AddToolForm({ closeAddTool }: { closeAddTool: () => void }) {
               <div style={{ width: 15, height: 15, borderRadius: "50%", background: "#fff", position: "absolute", top: 2, left: form.pin ? "15px" : "2px", transition: "left .15s" }} />
             </button>
           </div>
+          {saveError ? <div role="alert" style={{ color: "#FDA4AF", fontSize: 12 }}>{saveError}</div> : null}
         </div>
 
         <div style={{ display: "flex", gap: 10, padding: "16px 22px", borderTop: "1px solid rgba(125,190,255,.14)", flexShrink: 0 }}>

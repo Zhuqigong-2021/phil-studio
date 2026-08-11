@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { TOOLS_RAW, decorate } from "@/lib/dashboard/mock-data";
+import { decorate } from "@/lib/dashboard/mock-data";
 import type { DecoratedTool } from "@/lib/dashboard/types";
 import { buildCommandResults, buildToolResults, useShellState } from "./useShellState";
+import { useCustomTools } from "./useCustomTools";
 
 export interface ManageRow extends DecoratedTool {
   starFill: string;
@@ -33,20 +34,20 @@ export function useManagePageState() {
   const { router, closePalette, query, openAddTool } = shell;
   const [favOverrides, setFavOverrides] = useState<Record<string, boolean>>({});
   const [visOverrides, setVisOverrides] = useState<Record<string, boolean>>({});
-  const [pinOverrides, setPinOverrides] = useState<Record<string, boolean>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
+  const { tools: rawTools, pinnedToolIds, setToolPinned } = useCustomTools();
 
   const isFav = (id: string, base: boolean) => (favOverrides[id] !== undefined ? favOverrides[id] : base);
   const isVisible = (id: string) => (visOverrides[id] !== undefined ? visOverrides[id] : true);
-  const isPinned = (id: string) => (pinOverrides[id] !== undefined ? pinOverrides[id] : false);
+  const isPinned = (id: string) => pinnedToolIds.includes(id);
 
   const toggleFav = (id: string, base: boolean) => setFavOverrides((prev) => ({ ...prev, [id]: !isFav(id, base) }));
   const toggleVis = (id: string) => setVisOverrides((prev) => ({ ...prev, [id]: !isVisible(id) }));
-  const togglePin = (id: string) => setPinOverrides((prev) => ({ ...prev, [id]: !isPinned(id) }));
+  const togglePin = (id: string) => setToolPinned(id, !isPinned(id));
 
   const manageTools: ManageRow[] = useMemo(
     () =>
-      TOOLS_RAW.map(decorate).map((t, i) => {
+      rawTools.map(decorate).map((t, i) => {
         const fav = isFav(t.id, t.favorite);
         const visible = isVisible(t.id);
         return {
@@ -62,11 +63,11 @@ export function useManagePageState() {
           openEdit: () => setEditingId(t.id),
         };
       }),
-    [favOverrides, visOverrides], // eslint-disable-line react-hooks/exhaustive-deps
+    [favOverrides, rawTools, visOverrides], // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const editingTool: EditingTool | null = useMemo(() => {
-    const raw = editingId ? TOOLS_RAW.find((t) => t.id === editingId) : null;
+    const raw = editingId ? rawTools.find((t) => t.id === editingId) : null;
     if (!raw) return null;
     const t = decorate(raw);
     const fav = isFav(t.id, t.favorite);
@@ -86,7 +87,7 @@ export function useManagePageState() {
       pinBg: pinned ? "rgba(59,130,246,.5)" : "rgba(255,255,255,.12)",
       pinDotLeft: pinned ? "15px" : "2px",
     };
-  }, [editingId, favOverrides, visOverrides, pinOverrides]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [editingId, favOverrides, pinnedToolIds, rawTools, visOverrides]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const q = query.trim().toLowerCase();
   const toolResults = useMemo(
