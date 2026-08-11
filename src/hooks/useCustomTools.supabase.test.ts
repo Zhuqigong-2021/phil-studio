@@ -54,6 +54,7 @@ function api(overrides: Partial<WorkspaceApi> = {}): WorkspaceApi {
     postTool: async () => serverTool,
     postCategory: async (name) => ({ id: "category-1", name, sortOrder: 0 }),
     patchTool: async () => serverTool,
+    deleteTool: async () => undefined,
     ...overrides,
   };
 }

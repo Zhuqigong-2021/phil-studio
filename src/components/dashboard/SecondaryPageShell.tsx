@@ -10,6 +10,7 @@ import MobileDrawer from "./MobileDrawer";
 import Topbar from "./Topbar";
 import CommandPalette from "./CommandPalette";
 import AddToolModal from "./AddToolModal";
+import DatabaseToastViewport from "./DatabaseToastViewport";
 
 export default function SecondaryPageShell({
   state,
@@ -55,6 +56,7 @@ export default function SecondaryPageShell({
 
       <CommandPalette state={state} />
       <AddToolModal state={state} />
+      <DatabaseToastViewport />
     </div>
   );
 }
