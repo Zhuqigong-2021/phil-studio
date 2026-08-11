@@ -28,15 +28,15 @@ export const ACCENT_RGB: Record<Accent, string> = {
 };
 
 export const TOOLS_RAW: Tool[] = [
-  { id: "ap", name: "Arts Portfolio", mono: "AP", accent: "violet", tags: ["Design", "Work"], favorite: true, sourceType: "internal", url: "https://phil-art-vercel-deploy.vercel.app/", checkStatus: "Working", checkColor: "#4ADE80" },
-  { id: "cv", name: "Online CV", mono: "CV", accent: "blue", tags: ["Work"], favorite: false, sourceType: "internal", url: "https://philzhu-work-onlinecv.vercel.app/", checkStatus: "Working", checkColor: "#4ADE80" },
-  { id: "ps", name: "Online PS", mono: "PS", accent: "pink", tags: ["Design", "Productivity"], favorite: true, sourceType: "internal", url: "https://photoshop-web-ten.vercel.app/", checkStatus: "Working", checkColor: "#4ADE80" },
-  { id: "pdf", name: "Online PDF Editor", mono: "PD", accent: "orange", tags: ["Productivity", "Work"], favorite: false, sourceType: "internal", url: "https://pdf-editor-two-tau.vercel.app/", checkStatus: "Working", checkColor: "#4ADE80" },
-  { id: "am", name: "Animation Maker", mono: "AM", accent: "cyan", tags: ["Design"], favorite: false, sourceType: "internal", url: "https://videoscribe-html.vercel.app/", checkStatus: "Working", checkColor: "#4ADE80" },
-  { id: "mm", name: "Mindmap", mono: "MM", accent: "teal", tags: ["Productivity", "Learn"], favorite: false, sourceType: "internal", url: "https://mindstudio-tool.vercel.app/", checkStatus: "Working", checkColor: "#4ADE80" },
-  { id: "sm", name: "StudyMate", mono: "SM", accent: "teal", tags: ["ServiceNow", "Learn"], favorite: true, sourceType: "internal", url: "https://study-mate-for-exam.vercel.app/", checkStatus: "Working", checkColor: "#4ADE80" },
-  { id: "no", name: "Notion", mono: "N", accent: "pink", tags: ["Productivity", "Work"], favorite: true, sourceType: "external", url: "https://app.notion.com/", checkStatus: "Working", checkColor: "#4ADE80" },
-  { id: "ai", name: "AI Agent Learning Notes", mono: "AI", accent: "violet", tags: ["AI", "Learn"], favorite: false, sourceType: "internal", checkStatus: "Unknown", checkColor: "#7C8698" },
+  { id: "ap", name: "Arts Portfolio", mono: "AP", accent: "violet", tags: ["Design", "Work"], favorite: true, sourceType: "internal", iconKey: "palette", iconType: "matching", url: "https://phil-art-vercel-deploy.vercel.app/", checkStatus: "Working", checkColor: "#4ADE80" },
+  { id: "cv", name: "Online CV", mono: "CV", accent: "blue", tags: ["Work"], favorite: false, sourceType: "internal", iconKey: "contact", iconType: "matching", url: "https://philzhu-work-onlinecv.vercel.app/", checkStatus: "Working", checkColor: "#4ADE80" },
+  { id: "ps", name: "Online PS", mono: "PS", accent: "pink", tags: ["Design", "Productivity"], favorite: true, sourceType: "internal", iconKey: "image", iconType: "matching", url: "https://photoshop-web-ten.vercel.app/", checkStatus: "Working", checkColor: "#4ADE80" },
+  { id: "pdf", name: "Online PDF Editor", mono: "PD", accent: "orange", tags: ["Productivity", "Work"], favorite: false, sourceType: "internal", iconKey: "file-text", iconType: "matching", url: "https://pdf-editor-two-tau.vercel.app/", checkStatus: "Working", checkColor: "#4ADE80" },
+  { id: "am", name: "Animation Maker", mono: "AM", accent: "cyan", tags: ["Design"], favorite: false, sourceType: "internal", iconKey: "clapperboard", iconType: "matching", url: "https://videoscribe-html.vercel.app/", checkStatus: "Working", checkColor: "#4ADE80" },
+  { id: "mm", name: "Mindmap", mono: "MM", accent: "teal", tags: ["Productivity", "Learn"], favorite: false, sourceType: "internal", iconKey: "chart-network", iconType: "matching", url: "https://mindstudio-tool.vercel.app/", checkStatus: "Working", checkColor: "#4ADE80" },
+  { id: "sm", name: "StudyMate", mono: "SM", accent: "teal", tags: ["ServiceNow", "Learn"], favorite: true, sourceType: "internal", iconKey: "graduation-cap", iconType: "matching", url: "https://study-mate-for-exam.vercel.app/", checkStatus: "Working", checkColor: "#4ADE80" },
+  { id: "no", name: "Notion", mono: "N", accent: "pink", tags: ["Productivity", "Work"], favorite: true, sourceType: "external", iconKey: "book-open-text", iconType: "matching", url: "https://app.notion.com/", checkStatus: "Working", checkColor: "#4ADE80" },
+  { id: "ai", name: "AI Agent Learning Notes", mono: "AI", accent: "violet", tags: ["AI", "Learn"], favorite: false, sourceType: "internal", iconKey: "brain-circuit", iconType: "matching", checkStatus: "Unknown", checkColor: "#7C8698" },
 ];
 
 export const TAGS = [

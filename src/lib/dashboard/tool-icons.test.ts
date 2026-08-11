@@ -8,6 +8,7 @@ import {
   searchToolIcons,
   TOOL_ICONS,
 } from "./tool-icons.ts";
+import { TOOLS_RAW } from "./mock-data.ts";
 
 const ORIGINAL_TOOL_ICON_KEYS = [
   "app-window", "home", "search", "settings", "star", "heart", "bookmark", "user",
@@ -84,4 +85,30 @@ test("searches labels, keys, categories, and bilingual keywords", () => {
 test("falls back safely for an unknown key", () => {
   assert.equal(getToolIcon("not-real").key, "app-window");
   assert.equal(getToolIcon(undefined).key, "app-window");
+});
+
+test("assigns catalog-valid matching icons to every built-in tool", () => {
+  const expected = {
+    ap: "palette",
+    cv: "contact",
+    ps: "image",
+    pdf: "file-text",
+    am: "clapperboard",
+    mm: "chart-network",
+    sm: "graduation-cap",
+    no: "book-open-text",
+    ai: "brain-circuit",
+  };
+
+  assert.deepEqual(
+    Object.fromEntries(TOOLS_RAW.map((tool) => [tool.id, tool.iconKey])),
+    expected,
+  );
+  assert.ok(
+    TOOLS_RAW.every(
+      (tool) =>
+        tool.iconType === "matching" &&
+        TOOL_ICONS.some((icon) => icon.key === tool.iconKey),
+    ),
+  );
 });
