@@ -1,4 +1,4 @@
-import type { Accent, SourceType, Tool } from "./types.ts";
+import type { Accent, SourceType, Tool, ToolColor } from "./types.ts";
 
 export const CUSTOM_CATEGORIES_KEY = "phil-studio:custom-categories:v1";
 export const CUSTOM_TOOLS_KEY = "phil-studio:custom-tools:v1";
@@ -21,7 +21,7 @@ export interface CustomToolDraft {
   url: string;
   description: string;
   iconKey: string;
-  accent: Accent;
+  accent: ToolColor;
   tags: string[];
   aliases: string[];
   sourceType: SourceType;

@@ -4,7 +4,8 @@ import {
   createCustomTool,
   type CustomToolDraft,
 } from "./custom-tools.ts";
-import type { Accent, IconType, SourceType, Tool } from "./types.ts";
+import { normalizeToolColor } from "./tool-library.ts";
+import type { IconType, SourceType, Tool, ToolColor } from "./types.ts";
 
 export type ToolRow = Tables<"tools">;
 
@@ -39,7 +40,7 @@ export interface ToolPatch {
   url?: string;
   description?: string;
   iconKey?: string;
-  accent?: Accent;
+  accent?: ToolColor;
   tags?: string[];
   aliases?: string[];
   sourceType?: SourceType;
@@ -50,7 +51,6 @@ export interface ToolPatch {
   usedAt?: string;
 }
 
-const ACCENTS = new Set<Accent>(["violet", "blue", "pink", "orange", "cyan", "teal", "slate"]);
 const ICON_TYPES = new Set<IconType>(["official", "matching", "monogram"]);
 const SOURCE_TYPES = new Set<SourceType>(["internal", "external"]);
 const PATCH_KEYS = new Set<keyof ToolPatch>([
@@ -92,8 +92,7 @@ function normalizedTool(value: unknown): Tool {
   if (!id) throw new Error("Tool id is required.");
   if (!Array.isArray(input.aliases)) throw new Error("Tool aliases must be an array of strings.");
 
-  const accent = requireString(input.accent, "Tool accent") as Accent;
-  if (!ACCENTS.has(accent)) throw new Error("Tool accent is invalid.");
+  const accent = normalizeToolColor(requireString(input.accent, "Tool accent"));
   const sourceType = requireString(input.sourceType, "Tool source") as SourceType;
   const iconType = (input.iconType ?? "matching") as IconType;
   if (!ICON_TYPES.has(iconType)) throw new Error("Tool icon type is invalid.");
@@ -124,7 +123,7 @@ function normalizedTool(value: unknown): Tool {
 }
 
 export function toolRowToTool(row: ToolRow, categoryNames: readonly string[]): Tool {
-  if (!ACCENTS.has(row.icon_color as Accent)) throw new Error("Stored tool accent is invalid.");
+  const accent = normalizeToolColor(row.icon_color);
   if (!ICON_TYPES.has(row.icon_type as IconType)) throw new Error("Stored tool icon type is invalid.");
   return {
     id: row.id,
@@ -132,7 +131,7 @@ export function toolRowToTool(row: ToolRow, categoryNames: readonly string[]): T
     ...(row.url ? { url: row.url } : {}),
     description: row.description,
     mono: row.mono,
-    accent: row.icon_color as Accent,
+    accent,
     tags: [...categoryNames],
     favorite: row.is_favorite,
     sourceType: row.source_type as SourceType,
@@ -191,8 +190,9 @@ export function validateToolPatch(value: unknown): ToolPatch {
   if (patch.iconKey !== undefined && typeof patch.iconKey !== "string") {
     throw new Error("Tool icon key must be a string.");
   }
-  if (patch.accent !== undefined && (typeof patch.accent !== "string" || !ACCENTS.has(patch.accent))) {
-    throw new Error("Tool accent is invalid.");
+  if (patch.accent !== undefined) {
+    if (typeof patch.accent !== "string") throw new Error("Tool accent is invalid.");
+    patch.accent = normalizeToolColor(patch.accent);
   }
   if (patch.sourceType !== undefined && (typeof patch.sourceType !== "string" || !SOURCE_TYPES.has(patch.sourceType))) {
     throw new Error("Tool source is invalid.");

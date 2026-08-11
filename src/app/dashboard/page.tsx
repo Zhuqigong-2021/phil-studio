@@ -83,8 +83,8 @@ import {
 } from "lucide-react";
 import { TRACKS, type Track } from "@/lib/dashboard/music";
 import {
-  ACCENT_RGB,
   TOOLS_RAW,
+  toolColorRgb,
 } from "@/lib/dashboard/mock-data";
 import {
   DEFAULT_TOOL_ICON_KEY,
@@ -1816,15 +1816,16 @@ function useToolViews(): DashboardToolView[] {
   const { tools } = useDashboardWorkspace();
   return React.useMemo(() => {
     return tools.map((tool) => {
+      const rgb = toolColorRgb(tool.accent);
       const builtIn = builtInToolViews.find((view) => view.id === tool.id);
       if (builtIn) {
         return {
           ...builtIn,
-          bg: `rgba(${ACCENT_RGB[tool.accent]},0.07)`,
+          bg: `rgba(${rgb},0.07)`,
           icon: hasToolIcon(tool.iconKey) ? (
             <DynamicToolIcon
               iconKey={tool.iconKey!}
-              color={`rgb(${ACCENT_RGB[tool.accent]})`}
+              color={`rgb(${rgb})`}
               size={28}
               strokeWidth={1.8}
             />
@@ -1834,7 +1835,6 @@ function useToolViews(): DashboardToolView[] {
           tool,
         };
       }
-      const rgb = ACCENT_RGB[tool.accent];
       return {
         id: tool.id,
         icon: (

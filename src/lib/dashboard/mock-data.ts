@@ -4,6 +4,7 @@ import type {
   DecoratedTool,
   RecentEntry,
   Tool,
+  ToolColor,
   TodoGroup,
 } from "./types";
 
@@ -119,14 +120,22 @@ export const TODO_RAW: TodoGroup[] = [
 ];
 
 export function decorate(tool: Tool): DecoratedTool {
-  const rgb = ACCENT_RGB[tool.accent];
+  const color = ACCENTS[tool.accent as Accent] ?? tool.accent;
+  const rgb = toolColorRgb(tool.accent);
   return {
     ...tool,
-    color: ACCENTS[tool.accent],
+    color,
     accentSoft: `rgba(${rgb},0.18)`,
     accentBorder: `rgba(${rgb},0.35)`,
     tagStr:
       tool.tags.slice(0, 2).join(" · ") +
       (tool.tags.length > 2 ? ` +${tool.tags.length - 2}` : ""),
   };
+}
+
+export function toolColorRgb(color: ToolColor): string {
+  const namedAccent = ACCENT_RGB[color as Accent];
+  if (namedAccent) return namedAccent;
+  const hex = color.slice(1);
+  return `${parseInt(hex.slice(0, 2), 16)},${parseInt(hex.slice(2, 4), 16)},${parseInt(hex.slice(4, 6), 16)}`;
 }

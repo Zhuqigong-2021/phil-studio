@@ -7,6 +7,10 @@ export type Accent =
   | "teal"
   | "slate";
 
+export type CustomToolColor = `#${string}`;
+
+export type ToolColor = Accent | CustomToolColor;
+
 export type IconType = "official" | "matching" | "monogram";
 
 export type SourceType = "internal" | "external";
@@ -24,7 +28,7 @@ export interface Tool {
   url?: string;
   description?: string;
   mono: string;
-  accent: Accent;
+  accent: ToolColor;
   tags: string[];
   favorite: boolean;
   sourceType?: SourceType;

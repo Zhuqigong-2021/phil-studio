@@ -154,6 +154,12 @@ test("validates each supported scalar patch field independently", () => {
   });
 });
 
+test("normalizes custom hexadecimal colors in tool patches while preserving named accents", () => {
+  assert.deepEqual(validateToolPatch({ accent: "#22d3ee" }), { accent: "#22D3EE" });
+  assert.deepEqual(validateToolPatch({ accent: "teal" }), { accent: "teal" });
+  assert.throws(() => validateToolPatch({ accent: "#22D3E" }), /accent.*invalid/i);
+});
+
 test("sends encoded tool ids through DELETE and accepts an empty 204 response", async () => {
   let input = "";
   let method = "";
