@@ -99,7 +99,6 @@ import { useDailyTasks } from "@/hooks/useDailyTasks";
 import { formatTaskTime, type DailyTask } from "@/lib/dashboard/daily-tasks";
 import { useFocusLog } from "@/hooks/useFocusLog";
 import type { FocusEntry } from "@/lib/dashboard/focus-log";
-import { useFavorites } from "@/hooks/useFavorites";
 import { useCustomTools } from "@/hooks/useCustomTools";
 
 const toolUrlById = new Map(TOOLS_RAW.map((tool) => [tool.id, tool.url]));
@@ -116,6 +115,23 @@ interface DashboardToolView {
   shadow: string;
   href?: string;
   tool: Tool;
+}
+
+const DashboardWorkspaceContext = React.createContext<ReturnType<typeof useCustomTools> | null>(null);
+
+function useDashboardWorkspace() {
+  const workspace = React.useContext(DashboardWorkspaceContext);
+  if (!workspace) throw new Error("Dashboard workspace is unavailable.");
+  return workspace;
+}
+
+function DashboardWorkspaceProvider({ children }: { children: React.ReactNode }) {
+  const workspace = useCustomTools();
+  return (
+    <DashboardWorkspaceContext.Provider value={workspace}>
+      {children}
+    </DashboardWorkspaceContext.Provider>
+  );
 }
 
 function DashboardBackground() {
@@ -1676,10 +1692,7 @@ function CommandPaletteDark({
   onClose: () => void;
   inputRef: React.RefObject<HTMLInputElement | null>;
 }) {
-  // Self-contained via useFavorites (localStorage + event) rather than threaded in as a
-  // prop — GlobalSearchBar renders this from both the topbar and HeroSection, and this
-  // avoids drilling favorite state through both call sites.
-  const { overrides: favOverrides, toggleFavorite } = useFavorites();
+  const { setToolFavorite } = useDashboardWorkspace();
 
   return (
     <div
@@ -1730,8 +1743,7 @@ function CommandPaletteDark({
           {results.length > 0 ? (
             results.map((t) => {
               const Link = t.href ? "a" : "div";
-              const isFavorite =
-                favOverrides[t.id] ?? baseFavoriteById.get(t.id) ?? false;
+              const isFavorite = t.tool.favorite;
               return (
                 <div
                   key={t.label}
@@ -1770,7 +1782,9 @@ function CommandPaletteDark({
                         ? `Remove ${t.label} from favorites`
                         : `Add ${t.label} to favorites`
                     }
-                    onClick={() => toggleFavorite(t.id, isFavorite)}
+                    onClick={() =>
+                      void setToolFavorite(t.id, !isFavorite).catch(() => undefined)
+                    }
                     className="flex-shrink-0 flex items-center justify-center transition-transform hover:scale-110 cursor-pointer"
                     style={{ width: 22, height: 22 }}
                   >
@@ -1800,7 +1814,7 @@ function CommandPaletteDark({
 // Search bar + ⌘K command palette — extracted so it can render either in the topbar
 // (>=951px) or as its own full-width row under the greeting in HeroSection (<951px).
 function useToolViews(): DashboardToolView[] {
-  const { tools } = useCustomTools();
+  const { tools } = useDashboardWorkspace();
   return React.useMemo(() => {
     return tools.map((tool) => {
       const builtIn = builtInToolViews.find((view) => view.id === tool.id);
@@ -2740,7 +2754,7 @@ function AddToolModalDark({ onClose }: { onClose: () => void }) {
   const [saving, setSaving] = React.useState(false);
   const [saveError, setSaveError] = React.useState("");
   const savingRef = React.useRef(false);
-  const { categories, addCategory, addTool } = useCustomTools();
+  const { categories, addCategory, addTool } = useDashboardWorkspace();
 
   const getDetails = () => {
     if (!form.url.trim()) {
@@ -3178,7 +3192,7 @@ function HeroSection() {
   // out of that column and becomes its own full-width row underneath.
   const [stackQuickAccess, setStackQuickAccess] = React.useState(false);
   const toolViews = useToolViews();
-  const { pinnedToolIds, recentTools } = useCustomTools();
+  const { pinnedToolIds, recentTools } = useDashboardWorkspace();
 
   React.useEffect(() => {
     const update = () => {
@@ -3338,11 +3352,15 @@ function StatsRow({
   onSelect,
   completionPercent,
   focusEntryCount,
+  categoryCount,
+  favoriteCount,
 }: {
   active: StatKey;
   onSelect: (key: StatKey) => void;
   completionPercent: number;
   focusEntryCount: number;
+  categoryCount: number;
+  favoriteCount: number;
 }) {
   return (
     // Below 1180px the 5 flex-1 cards would keep shrinking until the bold numbers/labels
@@ -3375,7 +3393,7 @@ function StatsRow({
             strokeWidth={2}
           />
         }
-        value="15"
+        value={String(categoryCount)}
         label="Categories"
         lightAngle={196}
         active={active === "categories"}
@@ -3383,7 +3401,7 @@ function StatsRow({
       />
       <StatCard
         icon={<IconFavorites />}
-        value="23"
+        value={String(favoriteCount)}
         label="Favorites"
         lightAngle={183}
         active={active === "favorites"}
@@ -3497,10 +3515,6 @@ const builtInToolViews: DashboardToolView[] = [
   ...view,
   tool: TOOLS_RAW.find((tool) => tool.id === view.id)!,
 }));
-
-const baseFavoriteById = new Map(
-  TOOLS_RAW.map((tool) => [tool.id, tool.favorite]),
-);
 
 // Recent Activity doubles as a Pomodoro-style focus-timer check-in: "Settings" opens
 // FocusSettingsModal to pick a duration + task, the countdown runs in DarkThemePage (via
@@ -5144,7 +5158,7 @@ const categoryBarColors = [
 ];
 
 function CategoriesPanel() {
-  const { tools, categories } = useCustomTools();
+  const { tools, categories } = useDashboardWorkspace();
   const categoryStats = React.useMemo(
     () => buildCategoryStats(tools, categories),
     [categories, tools],
@@ -5421,12 +5435,14 @@ function BottomRow({
 
 // ─── App root ──────────────────────────────────────────────────────────────────
 
-export default function DashboardPage() {
+function DashboardPageContent() {
   const rootRef = React.useRef<HTMLDivElement>(null);
   const reduceMotion = Boolean(useReducedMotion());
   const narrowNav = useBelowWidth(MOBILE_NAV_BREAKPOINT);
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const toolViews = useToolViews();
+  const { tools, categories, setToolFavorite } = useDashboardWorkspace();
+  const categoryCount = categories.length;
 
   const [activeStat, setActiveStat] = React.useState<StatKey>("recent");
   const { tasks, addTask, toggleTask, updateTask, deleteTask } = useDailyTasks();
@@ -5435,25 +5451,18 @@ export default function DashboardPage() {
     ? Math.round((completedCount / tasks.length) * 100)
     : 0;
 
-  // Shared with the search palette's per-result star toggle via localStorage + a custom
-  // event (see useFavorites) — no prop drilling needed between the two.
-  const { overrides: favOverrides, toggleFavorite: persistFavorite } =
-    useFavorites();
   const toggleFavorite = React.useCallback(
-    (id: string) =>
-      persistFavorite(
-        id,
-        favOverrides[id] ?? baseFavoriteById.get(id) ?? false,
-      ),
-    [favOverrides, persistFavorite],
+    (id: string) => {
+      const currentFavorite = tools.find((tool) => tool.id === id)?.favorite ?? false;
+      void setToolFavorite(id, !currentFavorite).catch(() => undefined);
+    },
+    [setToolFavorite, tools],
   );
   const favoriteTools = React.useMemo(
-    () =>
-      toolViews.filter(
-        (t) => favOverrides[t.id] ?? baseFavoriteById.get(t.id) ?? false,
-      ),
-    [favOverrides, toolViews],
+    () => toolViews.filter((view) => view.tool.favorite),
+    [toolViews],
   );
+  const favoriteCount = favoriteTools.length;
 
   const { entries: focusEntries, addEntry: addFocusEntry } = useFocusLog();
   const [focusSettingsOpen, setFocusSettingsOpen] = React.useState(false);
@@ -5661,6 +5670,8 @@ export default function DashboardPage() {
             onSelect={setActiveStat}
             completionPercent={completionPercent}
             focusEntryCount={focusEntries.length}
+            categoryCount={categoryCount}
+            favoriteCount={favoriteCount}
           />
           <BottomRow
             active={activeStat}
@@ -5706,5 +5717,13 @@ export default function DashboardPage() {
           )
         : null}
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <DashboardWorkspaceProvider>
+      <DashboardPageContent />
+    </DashboardWorkspaceProvider>
   );
 }
