@@ -10,7 +10,7 @@ import {
 } from "../../lib/dashboard/favorite-toast.ts";
 
 const DISMISS_AFTER_MS = 3000;
-const RETIRE_AFTER_MS = 320;
+const RETIRE_AFTER_MS = 420;
 
 const toneStyles = {
   success: {
@@ -79,7 +79,7 @@ export default function FavoriteToastHost() {
   };
 
   return (
-    <div className="pointer-events-none fixed left-1/2 top-5 z-[1000] grid -translate-x-1/2">
+    <div className="pointer-events-none fixed left-1/2 top-16 z-[1000] grid -translate-x-1/2">
       {retiringToast && (() => {
         const { border, glow } = toneStyles[retiringToast.tone];
         return (
