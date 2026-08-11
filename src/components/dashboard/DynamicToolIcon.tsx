@@ -8,8 +8,11 @@ import {
   type ComponentType,
   type ReactNode,
 } from "react";
-import { AppWindow, type LucideIcon, type LucideProps } from "lucide-react";
-import dynamicIconImports from "lucide-react/dynamicIconImports.mjs";
+import { AppWindow, type LucideProps } from "lucide-react";
+import {
+  TOOL_ICON_LOADERS,
+  type ToolIconLoader,
+} from "@/lib/dashboard/tool-icon-loaders";
 import {
   DEFAULT_TOOL_ICON_KEY,
   getToolIcon,
@@ -30,13 +33,7 @@ interface IconLoadBoundaryState {
   failed: boolean;
 }
 
-type IconModule = { default: LucideIcon };
-type IconLoader = () => Promise<IconModule>;
-
-const loaders = dynamicIconImports as unknown as Record<string, IconLoader>;
-
-function createLazyIcon(lucideName: string): ComponentType<LucideProps> {
-  const loader = loaders[lucideName] ?? loaders[DEFAULT_TOOL_ICON_KEY];
+function createLazyIcon(loader: ToolIconLoader): ComponentType<LucideProps> {
 
   return lazy(async () => {
     const loadedIcon = await loader();
@@ -46,8 +43,9 @@ function createLazyIcon(lucideName: string): ComponentType<LucideProps> {
 
 const lazyIcons = new Map(
   TOOL_ICONS.map((metadata) => {
-    const lucideName = metadata.lucideName ?? metadata.key;
-    return [metadata.key, createLazyIcon(lucideName)] as const;
+    const loader =
+      TOOL_ICON_LOADERS[metadata.key] ?? TOOL_ICON_LOADERS[DEFAULT_TOOL_ICON_KEY];
+    return [metadata.key, createLazyIcon(loader)] as const;
   }),
 );
 

@@ -8,7 +8,8 @@ const stylesUrl = new URL("./DynamicToolIcon.module.css", import.meta.url);
 test("lazy-loads allowlisted Lucide icons with loading and error fallbacks", async () => {
   const source = await readFile(componentUrl, "utf8");
 
-  assert.match(source, /dynamicIconImports/);
+  assert.match(source, /TOOL_ICON_LOADERS/);
+  assert.doesNotMatch(source, /lucide-react\/dynamicIconImports/);
   assert.match(source, /getToolIcon/);
   assert.match(source, /lazy\(/);
   assert.match(source, /Suspense/);
