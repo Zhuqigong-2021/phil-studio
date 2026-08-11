@@ -42,4 +42,3 @@ const patchTool = createToolPatchHandler({ authorize: requireOwnerEmail, patchTo
 export async function PATCH(request: Request, context: RouteContext<"/api/tools/[id]">): Promise<Response> {
   return patchTool(request, context);
 }
-

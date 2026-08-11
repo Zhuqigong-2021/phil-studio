@@ -44,4 +44,3 @@ test("migration POST validates once and returns the migrated snapshot", async ()
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), snapshot);
 });
-

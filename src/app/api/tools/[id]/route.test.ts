@@ -36,4 +36,3 @@ test("tool PATCH awaits Next.js 16 params and returns the updated tool", async (
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { tool });
 });
-

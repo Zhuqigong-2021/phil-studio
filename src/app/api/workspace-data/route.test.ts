@@ -43,4 +43,3 @@ test("GET returns the owner workspace snapshot without caching", async () => {
   assert.deepEqual(await response.json(), snapshot);
   assert.equal(response.headers.get("cache-control"), "no-store");
 });
-

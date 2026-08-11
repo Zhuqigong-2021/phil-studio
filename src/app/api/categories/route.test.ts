@@ -33,4 +33,3 @@ test("category POST trims and returns the created category", async () => {
   assert.equal(response.status, 201);
   assert.deepEqual(await response.json(), { category });
 });
-

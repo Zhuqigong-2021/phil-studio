@@ -37,4 +37,3 @@ const migrateWorkspace = createWorkspaceMigrationPostHandler({ authorize: requir
 export async function POST(request: Request): Promise<Response> {
   return migrateWorkspace(request);
 }
-

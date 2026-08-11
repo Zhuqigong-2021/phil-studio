@@ -39,4 +39,3 @@ const postCategory = createCategoryPostHandler({ authorize: requireOwnerEmail, c
 export async function POST(request: Request): Promise<Response> {
   return postCategory(request);
 }
-

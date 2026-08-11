@@ -62,4 +62,3 @@ const postTool = createToolPostHandler({ authorize: requireOwnerEmail, createToo
 export async function POST(request: Request): Promise<Response> {
   return postTool(request);
 }
-

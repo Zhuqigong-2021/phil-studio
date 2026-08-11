@@ -39,4 +39,3 @@ const getWorkspaceData = createWorkspaceDataGetHandler({
 export async function GET(): Promise<Response> {
   return getWorkspaceData();
 }
-
