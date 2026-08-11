@@ -10,6 +10,7 @@ import {
 } from "../../lib/dashboard/favorite-toast.ts";
 
 const DISMISS_AFTER_MS = 3000;
+const RETIRE_AFTER_MS = 220;
 
 const toneStyles = {
   success: {
@@ -33,8 +34,9 @@ const toneStyles = {
 } as const;
 
 export default function FavoriteToastHost() {
-  const [state, dispatch] = useReducer(reduceFavoriteToast, { current: null });
+  const [state, dispatch] = useReducer(reduceFavoriteToast, { current: null, retiring: null });
   const toast = state.current;
+  const retiringToast = state.retiring;
 
   useEffect(() => {
     const showToast = (event: Event) => {
@@ -52,21 +54,61 @@ export default function FavoriteToastHost() {
     return () => window.clearTimeout(timer);
   }, [toast]);
 
-  if (!toast) return null;
+  useEffect(() => {
+    if (!retiringToast) return;
+    const timer = window.setTimeout(() => {
+      dispatch({ type: "retired", id: retiringToast.id });
+    }, RETIRE_AFTER_MS);
+    return () => window.clearTimeout(timer);
+  }, [retiringToast]);
 
-  const { Icon, border, glow, iconBackground } = toneStyles[toast.tone];
-  return (
-    <div className="pointer-events-none fixed left-1/2 top-5 z-[1000] -translate-x-1/2">
-      <div
-        role={toast.tone === "error" ? "alert" : "status"}
-        aria-live={toast.tone === "error" ? "assertive" : "polite"}
-        className={`flex max-w-[min(420px,calc(100vw-2rem))] animate-[favorite-toast-fade-in_180ms_ease-out_both] items-center gap-3 rounded-[10px] border ${border} bg-[#17152d]/75 px-4 py-3 text-sm font-medium text-white backdrop-blur-xl ${glow} motion-reduce:animate-none`}
-      >
+  const dismissToast = (id: number) => dispatch({ type: "dismiss", id });
+
+  if (!toast && !retiringToast) return null;
+
+  const renderToastContent = (detail: FavoriteToastDetail) => {
+    const { Icon, iconBackground } = toneStyles[detail.tone];
+    return (
+      <>
         <span className={`flex h-5 w-5 shrink-0 items-center justify-center ${iconBackground}`}>
           <Icon aria-hidden="true" className="h-[15px] w-[15px] text-white" strokeWidth={3} />
         </span>
-        <span>{toast.message}</span>
-      </div>
+        <span>{detail.message}</span>
+      </>
+    );
+  };
+
+  return (
+    <div className="pointer-events-none fixed left-1/2 top-5 z-[1000] grid -translate-x-1/2">
+      {retiringToast && (() => {
+        const { border, glow } = toneStyles[retiringToast.tone];
+        return (
+          <div
+            aria-hidden="true"
+            className={`col-start-1 row-start-1 flex max-w-[min(420px,calc(100vw-2rem))] animate-[favorite-toast-retire_220ms_ease-in_both] items-center gap-3 rounded-[10px] border ${border} bg-[#17152d]/75 px-4 py-3 text-sm font-medium text-white backdrop-blur-xl ${glow} motion-reduce:animate-none`}
+          >
+            {renderToastContent(retiringToast)}
+          </div>
+        );
+      })()}
+      {toast && (() => {
+        const { border, glow } = toneStyles[toast.tone];
+        return (
+          <div
+            role={toast.tone === "error" ? "alert" : "status"}
+            aria-live={toast.tone === "error" ? "assertive" : "polite"}
+            aria-label={`${toast.message}. Click to dismiss.`}
+            tabIndex={0}
+            onClick={() => dismissToast(toast.id)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") dismissToast(toast.id);
+            }}
+            className={`pointer-events-auto col-start-1 row-start-1 flex max-w-[min(420px,calc(100vw-2rem))] cursor-pointer animate-[favorite-toast-fade-in_180ms_ease-out_both] items-center gap-3 rounded-[10px] border ${border} bg-[#17152d]/75 px-4 py-3 text-sm font-medium text-white backdrop-blur-xl ${glow} motion-reduce:animate-none`}
+          >
+            {renderToastContent(toast)}
+          </div>
+        );
+      })()}
     </div>
   );
 }

@@ -21,7 +21,8 @@ Give an explicit result for every favorite or unfavorite action across the app. 
 | Unfavorite rejected | `Could not remove {tool name} from favorites. Previous state restored.` | Error, red |
 
 - Toasts appear at the top center and dismiss automatically after about three seconds.
-- A new toast replaces the current toast; no queue is required for this personal workspace.
+- A new toast immediately moves the current toast into a blurred background-retirement layer while the new toast fades into the foreground.
+- Clicking the foreground toast dismisses it through the same retirement animation. Only one foreground and one retiring background toast are retained.
 - The toast uses `role="status"` for success and `role="alert"` for failure.
 - Reduced-motion users receive no entrance or exit animation.
 
@@ -40,6 +41,7 @@ All favorite surfaces use this wrapper instead of silently swallowing the return
 - Match the dashboard glass material and indigo theme.
 - Use a compact panel with a restrained 10px corner radius and a small success/info/error icon.
 - Keep adequate contrast and maintain safe spacing from the top viewport edge on narrow screens.
+- Foreground entry uses a 180ms opacity fade. Retirement uses a 220ms blur, slight upward movement, scale to 94%, and fade-out.
 
 ## Verification
 

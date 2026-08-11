@@ -10,18 +10,32 @@ export interface FavoriteToastDetail {
 
 export interface FavoriteToastState {
   current: FavoriteToastDetail | null;
+  retiring: FavoriteToastDetail | null;
 }
 
 export type FavoriteToastAction =
   | { type: "show"; detail: FavoriteToastDetail }
-  | { type: "dismiss"; id: number };
+  | { type: "dismiss"; id: number }
+  | { type: "retired"; id: number };
 
 export function reduceFavoriteToast(
   state: FavoriteToastState,
   action: FavoriteToastAction,
 ): FavoriteToastState {
-  if (action.type === "show") return { current: action.detail };
-  return state.current?.id === action.id ? { current: null } : state;
+  if (action.type === "show") {
+    return {
+      current: action.detail,
+      retiring: state.current ?? state.retiring,
+    };
+  }
+  if (action.type === "dismiss") {
+    return state.current?.id === action.id
+      ? { current: null, retiring: state.current }
+      : state;
+  }
+  return state.retiring?.id === action.id
+    ? { ...state, retiring: null }
+    : state;
 }
 
 interface FavoriteMutationOptions {

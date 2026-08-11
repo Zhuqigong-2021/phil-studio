@@ -10,6 +10,20 @@
   }
 }
 
+@keyframes favorite-toast-retire {
+  from {
+    filter: blur(0);
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    filter: blur(4px);
+    opacity: 0;
+    transform: translateY(-4px) scale(0.94);
+  }
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
