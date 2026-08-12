@@ -4,7 +4,7 @@ import test from "node:test";
 import {
   MOTION_EASINGS,
   MOTION_CURVES,
-  getDashboardEntranceMotion,
+  getDashboardEntranceTimeline,
   getDrawerMotion,
   getListItemMotion,
   getOverlayMotion,
@@ -26,13 +26,12 @@ test("dashboard motion uses one cohesive easing vocabulary", () => {
 });
 
 test("GSAP dashboard entrance is perceptible while reduced motion removes travel", () => {
-  assert.deepEqual(getDashboardEntranceMotion(false), {
-    from: { autoAlpha: 0, y: 18 },
-    to: { autoAlpha: 1, y: 0, duration: 0.28, stagger: 0.055, ease: "power3.out" },
+  assert.deepEqual(getDashboardEntranceTimeline(false).navbar.from, {
+    autoAlpha: 0,
+    y: -32,
   });
-  assert.deepEqual(getDashboardEntranceMotion(true), {
-    from: { autoAlpha: 0 },
-    to: { autoAlpha: 1, duration: 0.14, stagger: 0, ease: "power2.out" },
+  assert.deepEqual(getDashboardEntranceTimeline(true).navbar.from, {
+    autoAlpha: 0,
   });
   assert.deepEqual(getPanelMotion(false, 1), {
     from: { autoAlpha: 0, x: 14 },

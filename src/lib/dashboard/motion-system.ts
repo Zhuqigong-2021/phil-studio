@@ -10,27 +10,23 @@ export const MOTION_CURVES = {
   drawer: [0.32, 0.72, 0, 1],
 } as const;
 
-export function getDashboardEntranceMotion(reduced: boolean) {
-  return reduced
-    ? {
-        from: { autoAlpha: 0 },
-        to: {
-          autoAlpha: 1,
-          duration: 0.14,
-          stagger: 0,
-          ease: "power2.out",
-        },
-      }
-    : {
-        from: { autoAlpha: 0, y: 18 },
-        to: {
-          autoAlpha: 1,
-          y: 0,
-          duration: 0.28,
-          stagger: 0.055,
-          ease: "power3.out",
-        },
-      };
+export function getDashboardEntranceTimeline(reduced: boolean) {
+  const duration = reduced ? 0.16 : 1.45;
+  const ease = reduced ? "power2.out" : "power3.inOut";
+  const from = (offset: { x?: number; y?: number }) => ({
+    from: reduced ? { autoAlpha: 0 } : { autoAlpha: 0, ...offset },
+    to: { autoAlpha: 1, x: 0, y: 0, duration, ease },
+  });
+
+  return {
+    duration,
+    ease,
+    sidebar: from({ x: -44 }),
+    navbar: from({ y: -32 }),
+    utilities: from({ x: 44 }),
+    stats: from({ y: 38 }),
+    bottom: from({ y: 46 }),
+  };
 }
 
 export function getPanelMotion(reduced: boolean, direction = 1) {

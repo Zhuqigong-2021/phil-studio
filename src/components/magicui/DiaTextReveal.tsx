@@ -9,6 +9,8 @@ type DiaTextRevealProps = {
   textColor?: string;
   duration?: number;
   delay?: number;
+  active?: boolean;
+  onRevealComplete?: () => void;
   className?: string;
 };
 
@@ -20,6 +22,8 @@ export function DiaTextReveal({
   textColor = "currentColor",
   duration = 1.8,
   delay = 0.35,
+  active = true,
+  onRevealComplete,
   className,
 }: DiaTextRevealProps) {
   const reduceMotion = Boolean(useReducedMotion());
@@ -33,7 +37,7 @@ export function DiaTextReveal({
     return () => window.cancelAnimationFrame(frame);
   }, [reduceMotion]);
 
-  if (reduceMotion || !mounted || settled) {
+  if (reduceMotion || !active || !mounted || settled) {
     return (
       <span className={className} style={{ color: textColor }}>
         {text}
@@ -62,7 +66,10 @@ export function DiaTextReveal({
           times: [0, 0.5, 1],
           ease: [0.45, 0, 0.2, 1],
         }}
-        onAnimationComplete={() => setSettled(true)}
+        onAnimationComplete={() => {
+          setSettled(true);
+          onRevealComplete?.();
+        }}
         style={{
           position: "absolute",
           inset: 0,

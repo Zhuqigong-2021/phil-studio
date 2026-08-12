@@ -9,7 +9,7 @@ import "./dashboard.css";
 import { getLyricsProgressMotion } from "./lyrics-progress-motion";
 import svgPaths from "./svg-paths";
 import {
-  getDashboardEntranceMotion,
+  getDashboardEntranceTimeline,
   getDrawerMotion,
   getListItemMotion,
   getOverlayMotion,
@@ -23,7 +23,7 @@ import {
 import WorkspaceSplashCursor from "@/components/dashboard/WorkspaceSplashCursor";
 import EnergySandVolume from "@/components/dashboard/EnergySandVolume";
 import SyncedLyrics from "@/components/dashboard/SyncedLyrics";
-import { DiaTextReveal } from "@/components/magicui/DiaTextReveal";
+import DashboardGreeting from "@/components/dashboard/DashboardGreeting";
 import { useAudioAnalyser } from "@/hooks/useAudioAnalyser";
 import { useLyricsTimeline } from "@/hooks/useLyricsTimeline";
 import MagicRings from "@/components/dashboard/MagicRings";
@@ -59,7 +59,6 @@ import {
   Clock,
   Settings2,
   Settings,
-  MapPin,
   LogOut,
   Plus,
   Check,
@@ -2003,7 +2002,7 @@ function TopBar({ onOpenDrawer }: { onOpenDrawer: () => void }) {
     // Below 951px the sidebar is gone: just the brand mark + name, tap to open the drawer.
     // Search moves into HeroSection; theme switch, settings and the profile menu are dropped.
     return (
-      <header data-dashboard-enter className="flex items-center px-5 pt-[42px] pb-0 flex-shrink-0">
+      <header data-dashboard-navbar className="flex items-center px-5 pt-[42px] pb-0 flex-shrink-0">
         <button
           type="button"
           onClick={onOpenDrawer}
@@ -2025,7 +2024,7 @@ function TopBar({ onOpenDrawer }: { onOpenDrawer: () => void }) {
     // 48px search bar) so the search bar/profile row lines up with "Phil's Studio",
     // not with the empty top edge of the sidebar's glass panel.
     <header
-      data-dashboard-enter
+      data-dashboard-navbar
       className="grid relative z-30 px-5 pt-[42px] pb-0 flex-shrink-0"
       style={{
         gridTemplateColumns: "auto 1fr auto",
@@ -2800,36 +2799,11 @@ function HeroSection() {
   return (
     <>
       <section
-        data-dashboard-enter
         className="flex flex-row gap-4 px-5 flex-shrink-0"
       >
         {/* Greeting */}
-        <div
-          className="flex-1 flex flex-col justify-start"
-          style={{ paddingTop: heroPt }}
-        >
-          <h1 className="text-white font-semibold text-[34px] leading-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.6)]">
-            <DiaTextReveal
-              text="Bonjour, Phil !"
-              colors={["#A97CF8", "#818CF8", "#67E8F9"]}
-              textColor="#ffffff"
-            />{" "}
-            <span aria-hidden="true">👋</span>
-          </h1>
-          <p className="text-[#e4e7f1] font-medium text-[16px] mt-[14px] drop-shadow-[0_1px_6px_rgba(0,0,0,0.5)]">
-            Welcome to your AI Tools Dashboard
-          </p>
-          <div className="inline-flex items-center gap-[6px] mt-[12px] text-[#aab4cc]">
-            <MapPin
-              className="flex-shrink-0"
-              style={{ width: 15, height: 15 }}
-              strokeWidth={2}
-              fill="none"
-            />
-            <span className="text-[15px] font-medium drop-shadow-[0_1px_6px_rgba(0,0,0,0.5)]">
-              Montréal, Canada
-            </span>
-          </div>
+        <div className="flex-1 min-w-0">
+          <DashboardGreeting paddingTop={heroPt} />
 
           {/* Below 951px the topbar drops the search bar (replaced by the drawer's brand
             button), so it reappears here as its own full-width row. */}
@@ -2843,6 +2817,7 @@ function HeroSection() {
         {/* Weather + Quick Access */}
         {!stackQuickAccess && (
           <div
+            data-dashboard-utilities
             className="flex flex-col gap-3 w-[min(488px,32vw)] flex-shrink-0"
             style={{ paddingTop: heroPt }}
           >
@@ -2913,7 +2888,7 @@ function StatsRow({
     // stop being legible — instead their width locks at a fixed size and the row scrolls
     // horizontally, same fallback pattern already used by the All Tools tile row.
     <section
-      data-dashboard-enter
+      data-dashboard-stats
       className="flex gap-3 px-5 flex-shrink-0 overflow-x-auto min-[1180px]:overflow-visible [&::-webkit-scrollbar]:hidden"
       style={{ scrollbarWidth: "none" }}
     >
@@ -4954,7 +4929,7 @@ function BottomRow({
 
   return (
     <section
-      data-dashboard-enter
+      data-dashboard-bottom
       className="flex gap-3 px-5 pb-5 flex-1 min-h-0 max-[950px]:flex-col max-[950px]:flex-none"
     >
       <AllToolsPanel />
@@ -5071,9 +5046,15 @@ function DashboardPageContent({
 
   React.useLayoutEffect(() => {
     if (activeRoute === "manage" || reduceMotion) return;
-    const values = getDashboardEntranceMotion(reduceMotion);
+    const plan = getDashboardEntranceTimeline(reduceMotion);
     const context = gsap.context(() => {
-      gsap.fromTo("[data-dashboard-enter]", values.from, values.to);
+      const timeline = gsap.timeline();
+      timeline
+        .fromTo("[data-dashboard-sidebar]", plan.sidebar.from, plan.sidebar.to, 0)
+        .fromTo("[data-dashboard-navbar]", plan.navbar.from, plan.navbar.to, 0)
+        .fromTo("[data-dashboard-utilities]", plan.utilities.from, plan.utilities.to, 0.06)
+        .fromTo("[data-dashboard-stats]", plan.stats.from, plan.stats.to, 0.12)
+        .fromTo("[data-dashboard-bottom]", plan.bottom.from, plan.bottom.to, 0.18);
     }, rootRef);
 
     return () => context.revert();
@@ -5251,7 +5232,7 @@ function DashboardPageContent({
 
       {/* Sidebar — replaced below 951px by a drawer opened from the topbar's brand button */}
       {!narrowNav && (
-        <div data-dashboard-enter className="relative z-10 flex-shrink-0 self-stretch flex flex-col">
+        <div data-dashboard-sidebar className="relative z-10 flex-shrink-0 self-stretch flex flex-col">
           <Sidebar activeRoute={activeRoute} />
         </div>
       )}
