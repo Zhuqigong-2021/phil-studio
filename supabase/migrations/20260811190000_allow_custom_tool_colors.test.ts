@@ -10,6 +10,6 @@ test("migration preserves named accents and permits normalized custom hexadecima
   assert.match(migration, /drop constraint if exists tools_icon_color_check;/i);
   assert.match(
     migration,
-    /add constraint tools_icon_color_check check\s*\(\s*icon_color in \('violet', 'blue', 'pink', 'orange', 'cyan', 'teal', 'slate'\)\s*or icon_color ~ '\^#\[0-9A-F\]\{6\}\$'/is,
+    /add constraint tools_icon_color_check check\s*\(\s*icon_color in \('violet', 'blue', 'pink', 'orange', 'cyan', 'teal', 'slate'\)\s*or icon_color ~ '\^#\[0-9A-F\]\{6\}\$'/i,
   );
 });

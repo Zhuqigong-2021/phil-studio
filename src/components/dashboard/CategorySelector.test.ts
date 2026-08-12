@@ -32,8 +32,8 @@ test("shared Add Tool uses the reusable category selector", () => {
 test("shared Add Tool persists the complete tool instead of using a fake save timer", () => {
   assert.match(sharedModal, /await addTool\(/);
   assert.match(sharedModal, /\(await addCategory\(name\)\)\.category/);
-  assert.match(sharedModal, /if \(savingRef\.current\) return/);
-  assert.match(sharedModal, /finally \{[\s\S]*savingRef\.current = false;[\s\S]*setSaving\(false\)/);
+  assert.match(sharedModal, /createAddToolSubmissionGuard/);
+  assert.match(sharedModal, /runAddToolSubmission\(\{/);
   assert.match(sharedModal, /aliases: form\.aliases/);
   assert.match(sharedModal, /tags: \[\.\.\.form\.tags\]/);
   assert.doesNotMatch(sharedModal, /setTimeout\(\(\) => \{\s*setSaving\(false\)/);
