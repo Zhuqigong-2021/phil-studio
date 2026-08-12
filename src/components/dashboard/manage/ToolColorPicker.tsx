@@ -1,7 +1,8 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { isManagePopoverOpen } from "@/hooks/manage-page-state";
+import { useExclusiveManagePopover } from "@/hooks/useExclusiveManagePopover";
 import { ACCENTS } from "@/lib/dashboard/mock-data";
 import { normalizeToolColor } from "@/lib/dashboard/tool-library";
 import type { Accent, ToolColor } from "@/lib/dashboard/types";
@@ -23,13 +24,13 @@ export default function ToolColorPicker({
   disabled: boolean;
   onChange: (color: ToolColor) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const { open, toggle, close: closePopover } = useExclusiveManagePopover();
   const triggerRef = useRef<HTMLButtonElement>(null);
   const customValue = value.startsWith("#") ? value : renderedColor(value);
   const visibleOpen = isManagePopoverOpen(open, disabled);
 
   const close = () => {
-    setOpen(false);
+    closePopover();
     requestAnimationFrame(() => triggerRef.current?.focus());
   };
 
@@ -48,7 +49,7 @@ export default function ToolColorPicker({
         aria-haspopup="dialog"
         aria-expanded={visibleOpen}
         disabled={disabled}
-        onClick={() => setOpen((current) => !current)}
+        onClick={toggle}
       >
         <span className="tool-color-swatch" style={{ background: renderedColor(value) }} />
       </button>

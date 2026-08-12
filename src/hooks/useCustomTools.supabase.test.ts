@@ -152,6 +152,15 @@ test("authoritative workspace ignores a stale favorite cache and rewrites it", a
   assert.equal(JSON.parse(storage.getItem(FAVORITES_STORAGE_KEY) ?? "{}").ap, true);
 });
 
+test("authoritative workspace does not resurrect a seeded tool deleted from the database", () => {
+  const storage = new MemoryStorage();
+  const authoritative = { ...snapshot(), tools: TOOLS_RAW.filter((tool) => tool.id !== "ap") };
+
+  const cached = readCachedWorkspace(storage, authoritative);
+
+  assert.equal(cached.tools.some((tool) => tool.id === "ap"), false);
+});
+
 test("sets the migration marker only after migration and refetch succeed and preserves source keys", async () => {
   const storage = new MemoryStorage();
   storage.setItem(CUSTOM_TOOLS_KEY, JSON.stringify([customTool]));

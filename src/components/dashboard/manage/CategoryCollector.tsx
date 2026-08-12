@@ -3,6 +3,7 @@
 import { Check, ChevronDown, Search, X } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { isManagePopoverOpen } from "@/hooks/manage-page-state";
+import { useExclusiveManagePopover } from "@/hooks/useExclusiveManagePopover";
 
 export default function CategoryCollector({
   toolName,
@@ -17,7 +18,7 @@ export default function CategoryCollector({
   disabled: boolean;
   onChange: (categories: string[]) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const { open, toggle, close: closePopover } = useExclusiveManagePopover();
   const [query, setQuery] = useState("");
   const triggerRef = useRef<HTMLButtonElement>(null);
   const filtered = useMemo(() => {
@@ -27,11 +28,11 @@ export default function CategoryCollector({
   const visibleOpen = isManagePopoverOpen(open, disabled);
 
   const close = () => {
-    setOpen(false);
+    closePopover();
     setQuery("");
     requestAnimationFrame(() => triggerRef.current?.focus());
   };
-  const toggle = (category: string) => {
+  const toggleCategory = (category: string) => {
     onChange(selected.includes(category)
       ? selected.filter((value) => value !== category)
       : [...selected, category]);
@@ -52,7 +53,7 @@ export default function CategoryCollector({
         aria-haspopup="dialog"
         aria-expanded={visibleOpen}
         disabled={disabled}
-        onClick={() => setOpen((current) => !current)}
+        onClick={toggle}
       >
         <span className="category-chip-list">
           {selected.length
@@ -88,7 +89,7 @@ export default function CategoryCollector({
                     type="checkbox"
                     disabled={disabled}
                     checked={checked}
-                    onChange={() => toggle(category)}
+                    onChange={() => toggleCategory(category)}
                   />
                   <span className="category-checkbox" aria-hidden="true">{checked && <Check size={12} />}</span>
                   <span>{category}</span>

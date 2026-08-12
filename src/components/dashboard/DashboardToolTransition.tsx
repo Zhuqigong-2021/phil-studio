@@ -37,11 +37,6 @@ export default function DashboardToolTransition({
   return (
     <>
       {children({ sourceRef, startTransition })}
-      <div
-        aria-hidden="true"
-        data-tool-library-transition-destination
-        className="pointer-events-none invisible fixed top-20 right-4 bottom-4 left-4 min-[900px]:left-[276px]"
-      />
     </>
   );
 }

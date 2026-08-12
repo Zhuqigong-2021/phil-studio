@@ -54,18 +54,45 @@ export interface ToolTransitionOverlay {
   remove: () => void;
 }
 
+export interface ToolLibraryHandoffRegistry {
+  retain: (cleanup: () => void) => void;
+  complete: () => void;
+  hasActive: () => boolean;
+}
+
 export interface ToolLibraryTransitionDependencies {
   lock: ToolTransitionLock;
   findDestinationRect: () => ToolTransitionRect | null;
-  cloneShell: (source: ToolTransitionSource, deep: false) => ToolTransitionOverlay;
+  cloneShell: (source: ToolTransitionSource, deep: true) => ToolTransitionOverlay;
   appendOverlay: (overlay: ToolTransitionOverlay) => void;
   prefersReducedMotion: () => boolean;
   marker: ToolLibraryHandoffMarker;
+  handoff: ToolLibraryHandoffRegistry;
+  prepareSurroundings?: (source: ToolTransitionSource) => () => void;
   animate: (
     overlay: ToolTransitionOverlay,
     plan: ToolTransitionPlan,
     onComplete: () => void,
   ) => () => void;
+}
+
+export function createToolLibraryHandoffRegistry(): ToolLibraryHandoffRegistry {
+  let activeCleanup: (() => void) | null = null;
+
+  return {
+    retain(cleanup) {
+      activeCleanup?.();
+      activeCleanup = cleanup;
+    },
+    complete() {
+      const cleanup = activeCleanup;
+      activeCleanup = null;
+      cleanup?.();
+    },
+    hasActive() {
+      return activeCleanup !== null;
+    },
+  };
 }
 
 export function createToolTransitionLock(): ToolTransitionLock {
@@ -205,20 +232,28 @@ export function createToolLibraryTransitionStarter(
     let navigated = false;
     let cancelAnimation: (() => void) | null = null;
     let overlay: ToolTransitionOverlay | null = null;
+    let restoreSurroundings: (() => void) | null = null;
 
-    const cleanup = () => {
+    const finalize = () => {
       if (cleaned) return;
       cleaned = true;
       cancelAnimation?.();
       cancelAnimation = null;
       overlay?.remove();
+      restoreSurroundings?.();
+      restoreSurroundings = null;
       dependencies.lock.release();
+    };
+
+    const cancel = () => {
+      if (navigated) return;
+      finalize();
     };
 
     if (!destinationRect) {
       navigated = true;
       router.push("/manage");
-      return cleanup;
+      return cancel;
     }
 
     const plan = getToolTransitionPlan(
@@ -226,8 +261,10 @@ export function createToolLibraryTransitionStarter(
       destinationRect,
       dependencies.prefersReducedMotion(),
     );
-    overlay = dependencies.cloneShell(sourceElement, false);
+    restoreSurroundings = dependencies.prepareSurroundings?.(sourceElement) ?? null;
+    overlay = dependencies.cloneShell(sourceElement, true);
     overlay.setAttribute("aria-hidden", "true");
+    overlay.setAttribute("data-tool-library-transition-overlay", "true");
     overlay.removeAttribute("role");
     overlay.removeAttribute("tabindex");
     overlay.classList.add("dashboard-tool-transition-overlay");
@@ -250,7 +287,7 @@ export function createToolLibraryTransitionStarter(
       if (cleaned || navigated) return;
       navigated = true;
       dependencies.marker.mark();
-      cleanup();
+      dependencies.handoff.retain(finalize);
       router.push("/manage");
     });
     if (cleaned) {
@@ -258,20 +295,63 @@ export function createToolLibraryTransitionStarter(
       cancelAnimation = null;
     }
 
-    return cleanup;
+    return cancel;
   };
 }
 
+const browserHandoffRegistry = createToolLibraryHandoffRegistry();
+
 const browserTransitionStarter = createToolLibraryTransitionStarter({
   lock: createToolTransitionLock(),
-  findDestinationRect: () =>
-    document
-      .querySelector<HTMLElement>("[data-tool-library-transition-destination]")
-      ?.getBoundingClientRect() ?? null,
+  findDestinationRect: () => {
+    const desktop = window.innerWidth >= 900;
+    const left = desktop ? 300 : 20;
+    const top = desktop ? 102 : 82;
+    const right = 20;
+    const bottom = 20;
+    return {
+      left,
+      top,
+      width: Math.max(1, window.innerWidth - left - right),
+      height: Math.max(1, window.innerHeight - top - bottom),
+    };
+  },
   cloneShell: (source, deep) => (source as HTMLElement).cloneNode(deep) as HTMLElement,
   appendOverlay: (overlay) => document.body.appendChild(overlay as HTMLElement),
   prefersReducedMotion: () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
   marker: browserHandoffMarker,
+  handoff: browserHandoffRegistry,
+  prepareSurroundings: (source) => {
+    const sourceNode = source as HTMLElement;
+    const root = sourceNode.closest<HTMLElement>(".dashboard-motion-root");
+    const veil = document.createElement("div");
+    veil.setAttribute("data-tool-library-transition-veil", "true");
+    Object.assign(veil.style, {
+      position: "fixed",
+      inset: "0",
+      zIndex: "110",
+      pointerEvents: "none",
+      opacity: "0",
+      background: "radial-gradient(circle at 56% 12%, rgba(89, 72, 180, 0.22), transparent 42%), linear-gradient(145deg, rgba(2, 8, 23, 0.76), rgba(8, 15, 38, 0.94))",
+      backdropFilter: "blur(3px)",
+    });
+    document.body.appendChild(veil);
+    gsap.to(veil, { opacity: 1, duration: 0.34, ease: "power2.out" });
+    if (root) {
+      gsap.to(root, {
+        opacity: 0.22,
+        filter: "blur(10px)",
+        scale: 0.992,
+        duration: 0.34,
+        ease: "power2.out",
+      });
+    }
+    return () => {
+      gsap.killTweensOf(veil);
+      veil.remove();
+      if (root) gsap.killTweensOf(root);
+    };
+  },
   animate: (overlay, plan, onComplete) => {
     gsap.to(overlay, {
       ...plan,
@@ -286,4 +366,23 @@ export function startToolLibraryTransition(
   router: ToolTransitionRouter,
 ): (() => void) | null {
   return browserTransitionStarter(sourceElement, router);
+}
+
+export function completeToolLibraryHandoff(reduceMotion = false) {
+  const layers = document.querySelectorAll<HTMLElement>(
+    "[data-tool-library-transition-overlay], [data-tool-library-transition-veil]",
+  );
+  if (!layers.length) {
+    browserHandoffRegistry.complete();
+    return;
+  }
+  gsap.to(layers, {
+    opacity: 0,
+    duration: reduceMotion ? 0.12 : 0.3,
+    ease: "power2.out",
+    onComplete: () => {
+      layers.forEach((layer) => layer.remove());
+      browserHandoffRegistry.complete();
+    },
+  });
 }

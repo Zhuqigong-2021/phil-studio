@@ -9,13 +9,13 @@ test("dashboard uses one workspace snapshot for counts, favorites, and mutations
 
   assert.doesNotMatch(source, /import\s+\{\s*useFavorites\s*\}/);
   assert.match(source, /const DashboardWorkspaceContext = React\.createContext<ReturnType<typeof useCustomTools> \| null>\(null\)/);
-  assert.match(source, /function useDashboardWorkspace\(\)/);
+  assert.match(source, /export function useDashboardWorkspace\(\)/);
   assert.match(source, /function DashboardWorkspaceProvider\(\{ children \}: \{ children: React\.ReactNode \}\)/);
 
   const customToolCalls = source.match(/useCustomTools\(\)/g) ?? [];
   assert.equal(customToolCalls.length, 1);
   assert.match(source, /function DashboardPageContent\(\{/);
-  assert.match(source, /<DashboardWorkspaceProvider>\s*<DashboardPageContent mainContent=\{mainContent\} activeRoute=\{activeRoute\} \/>\s*<\/DashboardWorkspaceProvider>/);
+  assert.match(source, /<DashboardWorkspaceProvider>[\s\S]*<DashboardPageContent[\s\S]*mainContent=\{mainContent\}[\s\S]*activeRoute=\{activeRoute\}[\s\S]*backgroundMode=\{backgroundMode\}[\s\S]*<\/DashboardWorkspaceProvider>/);
 
   assert.match(source, /favoritePendingIds/);
   assert.match(source, /if \(favoritePendingIds\.includes\(id\)\) return/);

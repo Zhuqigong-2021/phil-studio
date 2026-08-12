@@ -3,7 +3,8 @@
 import { Check, LoaderCircle, Search, Star, Trash2 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { isManagePopoverOpen } from "@/hooks/manage-page-state";
-import { ACCENTS, isBuiltInToolId } from "@/lib/dashboard/mock-data";
+import { useExclusiveManagePopover } from "@/hooks/useExclusiveManagePopover";
+import { ACCENTS } from "@/lib/dashboard/mock-data";
 import type { ToolRowDraft } from "@/lib/dashboard/tool-library";
 import { getToolIcon, searchToolIcons } from "@/lib/dashboard/tool-icons";
 import type { Accent, DecoratedTool } from "@/lib/dashboard/types";
@@ -24,14 +25,14 @@ function InlineIconPicker({
   disabled: boolean;
   onChange: (iconKey: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const { open, toggle, close: closePopover } = useExclusiveManagePopover();
   const [query, setQuery] = useState("");
   const triggerRef = useRef<HTMLButtonElement>(null);
   const matches = useMemo(() => searchToolIcons(query, "all").slice(0, 30), [query]);
   const selected = getToolIcon(value);
   const visibleOpen = isManagePopoverOpen(open, disabled);
   const close = () => {
-    setOpen(false);
+    closePopover();
     setQuery("");
     requestAnimationFrame(() => triggerRef.current?.focus());
   };
@@ -51,7 +52,7 @@ function InlineIconPicker({
         aria-haspopup="dialog"
         aria-expanded={visibleOpen}
         disabled={disabled}
-        onClick={() => setOpen((current) => !current)}
+        onClick={toggle}
         style={{ color }}
       >
         <DynamicToolIcon iconKey={selected.key} size={19} strokeWidth={1.8} aria-hidden="true" />
@@ -93,7 +94,6 @@ export default function EditableToolRow({
   aliasInput,
   categories,
   updating,
-  error,
   onChange,
   onAliasInputChange,
   onSubmit,
@@ -104,17 +104,14 @@ export default function EditableToolRow({
   aliasInput: string;
   categories: readonly string[];
   updating: boolean;
-  error: string | null;
   onChange: (partial: Partial<ToolRowDraft>) => void;
   onAliasInputChange: (value: string) => void;
   onSubmit: () => void;
   onDelete: () => void;
 }) {
   const renderedColor = ACCENTS[draft.color as Accent] ?? draft.color;
-  const builtIn = isBuiltInToolId(tool.id);
 
   return (
-    <>
       <tr className={updating ? "tool-library-row is-updating" : "tool-library-row"} aria-busy={updating}>
       <td>
         <InlineIconPicker
@@ -218,9 +215,9 @@ export default function EditableToolRow({
           <button
             type="button"
             className="tool-delete-button"
-            aria-label={builtIn ? `Delete unavailable for ${tool.name}. Built-in tools cannot be deleted.` : `Delete ${tool.name}`}
-            title={builtIn ? "Built-in tools cannot be deleted" : `Delete ${tool.name}`}
-            disabled={updating || builtIn}
+            aria-label={`Delete ${tool.name}`}
+            title={`Delete ${tool.name}`}
+            disabled={updating}
             onClick={onDelete}
           >
             <Trash2 size={16} aria-hidden="true" />
@@ -228,11 +225,5 @@ export default function EditableToolRow({
         </div>
       </td>
       </tr>
-      {error && (
-        <tr className="tool-row-error-row">
-          <td colSpan={10}><div className="tool-row-error" role="alert">{error}</div></td>
-        </tr>
-      )}
-    </>
   );
 }

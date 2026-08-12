@@ -245,12 +245,12 @@ export function readCachedWorkspace(
   authoritative?: WorkspaceSnapshot,
 ): WorkspaceSnapshot {
   const favoriteOverrides = parseFavoriteOverrides(storage.getItem(FAVORITES_STORAGE_KEY));
-  const authoritativeById = new Map(authoritative?.tools.map((tool) => [tool.id, tool]));
-  const tools = [...TOOLS_RAW, ...parseStoredTools(storage.getItem(CUSTOM_TOOLS_KEY))]
+  const sourceTools = authoritative?.tools
+    ?? [...TOOLS_RAW, ...parseStoredTools(storage.getItem(CUSTOM_TOOLS_KEY))];
+  const tools = sourceTools
     .map((tool) => {
-      const source = BUILT_IN_IDS.has(tool.id) ? authoritativeById.get(tool.id) ?? tool : tool;
       const cachedFavorite = authoritative ? undefined : favoriteOverrides[tool.id];
-      return { ...source, favorite: cachedFavorite ?? source.favorite };
+      return { ...tool, favorite: cachedFavorite ?? tool.favorite };
     });
   return {
     tools,

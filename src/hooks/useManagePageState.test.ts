@@ -113,6 +113,30 @@ test("a successful refresh resets only the matching draft from database state", 
   assert.deepEqual(refreshed.dirtyIds, ["b"]);
 });
 
+test("a successful update immediately releases its saved draft for authoritative sync", () => {
+  let state = createManageTableState([tool("a")], []);
+  state = manageTableReducer(state, {
+    type: "draft/change",
+    id: "a",
+    partial: { url: "https://saved.example/" },
+  });
+  state = manageTableReducer(state, { type: "update/start", id: "a" });
+  state = manageTableReducer(state, { type: "update/succeeded", id: "a" });
+
+  assert.equal(state.drafts.a.url, "https://saved.example/");
+  assert.deepEqual(state.updatingIds, []);
+  assert.deepEqual(state.dirtyIds, []);
+});
+
+test("Manage renders authoritative fields whenever a row has no unsaved edits", async () => {
+  const source = await import("node:fs/promises").then(({ readFile }) =>
+    readFile(new URL("./useManagePageState.ts", import.meta.url), "utf8"),
+  );
+
+  assert.match(source, /const dirty = tableState\.dirtyIds\.includes\(tool\.id\)/);
+  assert.match(source, /draft: dirty \? tableState\.drafts\[tool\.id\] \?\? freshDraft : freshDraft/);
+});
+
 test("a failed update clears pending state but keeps the user's draft", () => {
   let state = createManageTableState([tool("a")], []);
   state = manageTableReducer(state, {

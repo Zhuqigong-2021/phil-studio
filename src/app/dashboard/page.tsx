@@ -121,7 +121,7 @@ interface DashboardToolView {
 
 const DashboardWorkspaceContext = React.createContext<ReturnType<typeof useCustomTools> | null>(null);
 
-function useDashboardWorkspace() {
+export function useDashboardWorkspace() {
   const workspace = React.useContext(DashboardWorkspaceContext);
   if (!workspace) throw new Error("Dashboard workspace is unavailable.");
   return workspace;
@@ -5001,9 +5001,11 @@ function BottomRow({
 function DashboardPageContent({
   mainContent,
   activeRoute,
+  backgroundMode,
 }: {
   mainContent?: React.ReactNode;
   activeRoute: "dashboard" | "manage";
+  backgroundMode: "photo" | "manage";
 }) {
   const rootRef = React.useRef<HTMLDivElement>(null);
   const reduceMotion = Boolean(useReducedMotion());
@@ -5074,7 +5076,18 @@ function DashboardPageContent({
         className="absolute top-0 left-0 right-0 bottom-0 max-[950px]:bottom-auto max-[950px]:h-screen pointer-events-none select-none"
         style={{ isolation: "isolate" }}
       >
-        <DashboardBackground />
+        {backgroundMode === "manage" ? (
+          <div
+            data-manage-background
+            className="absolute inset-0"
+            style={{
+              background:
+                "radial-gradient(circle at 58% 0%, rgba(101, 78, 214, 0.20), transparent 38%), radial-gradient(circle at 18% 72%, rgba(20, 117, 154, 0.12), transparent 42%), linear-gradient(145deg, #050b1d 0%, #08122b 48%, #090d24 100%)",
+            }}
+          />
+        ) : (
+          <DashboardBackground />
+        )}
         {/* Crisp contrast lift over the clock tower / core building — mix-blend-overlay (not
             screen) so it sharpens local contrast instead of adding a flat, blurred brightness
             haze; kept low-blur so the tower itself stays sharp. */}
@@ -5301,13 +5314,19 @@ function DashboardPageContent({
 export function DashboardPageView({
   mainContent,
   activeRoute = "dashboard",
+  backgroundMode = "photo",
 }: {
   mainContent?: React.ReactNode;
   activeRoute?: "dashboard" | "manage";
+  backgroundMode?: "photo" | "manage";
 }) {
   return (
     <DashboardWorkspaceProvider>
-      <DashboardPageContent mainContent={mainContent} activeRoute={activeRoute} />
+      <DashboardPageContent
+        mainContent={mainContent}
+        activeRoute={activeRoute}
+        backgroundMode={backgroundMode}
+      />
     </DashboardWorkspaceProvider>
   );
 }

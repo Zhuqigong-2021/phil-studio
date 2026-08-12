@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   beginToolLibraryHandoffEntrance,
   createToolLibraryHandoffMarker,
+  createToolLibraryHandoffRegistry,
   createToolTransitionLock,
   createToolLibraryTransitionStarter,
   getToolTransitionPlan,
@@ -153,6 +154,7 @@ test("transition starter owns marker, overlay, lock, cleanup, and route-once lif
   const marker = createToolLibraryHandoffMarker({ storage: () => storage, now: () => 1_000 });
   const pushes: string[] = [];
   const appended: ToolTransitionOverlay[] = [];
+  const handoff = createToolLibraryHandoffRegistry();
   let cloneDepth: boolean | undefined;
   let animationComplete: (() => void) | undefined;
   let animationCancels = 0;
@@ -167,6 +169,7 @@ test("transition starter owns marker, overlay, lock, cleanup, and route-once lif
     appendOverlay: (node) => appended.push(node),
     prefersReducedMotion: () => false,
     marker,
+    handoff,
     animate: (_node, plan, onComplete) => {
       animationPlan = plan;
       animationComplete = onComplete;
@@ -179,7 +182,7 @@ test("transition starter owns marker, overlay, lock, cleanup, and route-once lif
   const cleanup = start(source, router);
   assert.equal(typeof cleanup, "function");
   assert.equal(start(source, router), null);
-  assert.equal(cloneDepth, false);
+  assert.equal(cloneDepth, true);
   assert.deepEqual(appended, [overlay]);
   assert.deepEqual(animationPlan, getToolTransitionPlan(sourceRect, destinationRect, false));
 
@@ -191,6 +194,11 @@ test("transition starter owns marker, overlay, lock, cleanup, and route-once lif
   assert.equal(marker.detect(), true);
   marker.clear();
   assert.equal(marker.detect(), false);
+  assert.equal(overlay.removed, false);
+  assert.equal(animationCancels, 0);
+  assert.equal(start(source, router), null);
+
+  handoff.complete();
   assert.equal(overlay.removed, true);
   assert.equal(animationCancels, 1);
   assert.notEqual(start(source, router), null);
@@ -210,6 +218,7 @@ test("manual transition cleanup releases the lock without marking or navigating"
     appendOverlay: () => undefined,
     prefersReducedMotion: () => false,
     marker,
+    handoff: createToolLibraryHandoffRegistry(),
     animate: () => () => { cancels += 1; },
   });
   const source = { getBoundingClientRect: () => sourceRect };
@@ -223,4 +232,17 @@ test("manual transition cleanup releases the lock without marking or navigating"
   assert.equal(marker.detect(), false);
   assert.deepEqual(pushes, []);
   assert.notEqual(start(source, router), null);
+});
+
+test("handoff registry completes retained transition cleanup only once", () => {
+  const handoff = createToolLibraryHandoffRegistry();
+  let cleanups = 0;
+
+  handoff.retain(() => { cleanups += 1; });
+  assert.equal(handoff.hasActive(), true);
+  handoff.complete();
+  handoff.complete();
+
+  assert.equal(cleanups, 1);
+  assert.equal(handoff.hasActive(), false);
 });

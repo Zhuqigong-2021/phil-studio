@@ -1,6 +1,6 @@
 import type { Tables, TablesInsert, TablesUpdate } from "../supabase/database.types.ts";
 import { addCategoryToList, createCustomTool, type CustomToolDraft } from "./custom-tools.ts";
-import { isBuiltInToolId, TAGS, TOOLS_RAW } from "./mock-data.ts";
+import { TAGS, TOOLS_RAW } from "./mock-data.ts";
 import {
   buildMigrationPayload,
   toolRowToTool,
@@ -151,13 +151,6 @@ export class WorkspaceToolNotFoundError extends Error {
   }
 }
 
-export class WorkspaceToolProtectedError extends Error {
-  constructor(id: string) {
-    super(`Built-in tools cannot be deleted: ${id}.`);
-    this.name = "WorkspaceToolProtectedError";
-  }
-}
-
 function toolInsert(ownerEmail: string, tool: Tool, mutable: Partial<TablesInsert<"tools">> = {}): TablesInsert<"tools"> {
   return {
     id: tool.id,
@@ -237,7 +230,6 @@ function snapshotFromRows(tools: ToolRow[], categories: CategoryRow[], relations
 
 export async function getWorkspaceSnapshot(ownerEmail: string, port?: WorkspaceDatabasePort): Promise<WorkspaceSnapshot> {
   const database = await resolvePort(port);
-  await seedBuiltIns(ownerEmail, database);
   const [tools, categories] = await Promise.all([
     database.listTools(ownerEmail),
     database.listCategories(ownerEmail),
@@ -300,7 +292,6 @@ export async function deleteWorkspaceTool(
   id: string,
   port?: WorkspaceDatabasePort,
 ): Promise<void> {
-  if (isBuiltInToolId(id)) throw new WorkspaceToolProtectedError(id);
   const database = await resolvePort(port);
   const deleted = await database.deleteTool(ownerEmail, id);
   if (!deleted) throw new WorkspaceToolNotFoundError(id);

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
-import { decorate, isBuiltInToolId } from "@/lib/dashboard/mock-data";
+import { decorate } from "@/lib/dashboard/mock-data";
 import { openTool } from "@/lib/dashboard/open-tool";
 import {
   paginateTools,
@@ -20,7 +20,9 @@ import {
   type ManagePageSize,
 } from "./manage-page-state";
 
-export function useManagePageState() {
+export function useManagePageStateWithWorkspace(
+  workspace: ReturnType<typeof useCustomTools>,
+) {
   const shell = useShellState();
   const { router, closePalette, query, openAddTool } = shell;
   const {
@@ -31,7 +33,7 @@ export function useManagePageState() {
     deleteTool,
     loading,
     syncError,
-  } = useCustomTools();
+  } = workspace;
   const [tableState, dispatch] = useReducer(
     manageTableReducer,
     undefined,
@@ -41,6 +43,13 @@ export function useManagePageState() {
   const deletePendingRef = useRef(false);
   const rawToolsRef = useRef(rawTools);
   const pinnedToolIdsRef = useRef(pinnedToolIds);
+  const lastSyncErrorRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!syncError || syncError === lastSyncErrorRef.current) return;
+    lastSyncErrorRef.current = syncError;
+    publishDatabaseToast({ tone: "error", message: syncError });
+  }, [syncError]);
 
   useEffect(() => {
     rawToolsRef.current = rawTools;
@@ -60,13 +69,19 @@ export function useManagePageState() {
   );
   const pageRows = useMemo(() => {
     const pinned = new Set(pinnedToolIds);
-    return pagination.items.map((tool) => ({
-      tool: decorate(tool),
-      draft: tableState.drafts[tool.id] ?? toolToRowDraft(tool, pinned.has(tool.id)),
-      aliasInput: tableState.aliasInputs[tool.id] ?? (tool.aliases ?? []).join(", "),
-      error: tableState.rowErrors[tool.id] ?? null,
-    }));
-  }, [pagination.items, pinnedToolIds, tableState.aliasInputs, tableState.drafts, tableState.rowErrors]);
+    return pagination.items.map((tool) => {
+      const dirty = tableState.dirtyIds.includes(tool.id);
+      const freshDraft = toolToRowDraft(tool, pinned.has(tool.id));
+      return {
+        tool: decorate(tool),
+        draft: dirty ? tableState.drafts[tool.id] ?? freshDraft : freshDraft,
+        aliasInput: dirty
+          ? tableState.aliasInputs[tool.id] ?? (tool.aliases ?? []).join(", ")
+          : (tool.aliases ?? []).join(", "),
+        error: tableState.rowErrors[tool.id] ?? null,
+      };
+    });
+  }, [pagination.items, pinnedToolIds, tableState.aliasInputs, tableState.dirtyIds, tableState.drafts, tableState.rowErrors]);
 
   const updateDraft = useCallback((id: string, partial: Partial<ToolRowDraft>) => {
     dispatch({ type: "draft/change", id, partial });
@@ -84,9 +99,8 @@ export function useManagePageState() {
     try {
       patch = validateManageDraft(draft, tableState.aliasInputs[id] ?? "", categories);
     } catch (error) {
-      dispatch({
-        type: "validation/failed",
-        id,
+      publishDatabaseToast({
+        tone: "error",
         message: error instanceof Error ? error.message : "Please check this row and try again.",
       });
       return;
@@ -101,6 +115,7 @@ export function useManagePageState() {
       publish: publishDatabaseToast,
     });
     if (result.succeeded) {
+      dispatch({ type: "update/succeeded", id });
       const mutation = mutationRefreshes.current.get(id);
       if (!mutation) return;
       mutation.phase = "succeeded";
@@ -120,7 +135,6 @@ export function useManagePageState() {
   }, [categories, rawTools, tableState.aliasInputs, tableState.drafts, tableState.updatingIds, updateTool]);
 
   const requestDelete = useCallback((id: string) => {
-    if (isBuiltInToolId(id)) return;
     dispatch({ type: "delete/request", id });
   }, []);
   const cancelDelete = useCallback(() => {
@@ -188,6 +202,10 @@ export function useManagePageState() {
     setPage,
     setPageSize,
   };
+}
+
+export function useManagePageState() {
+  return useManagePageStateWithWorkspace(useCustomTools());
 }
 
 export type ManagePageState = ReturnType<typeof useManagePageState>;

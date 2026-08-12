@@ -4,16 +4,28 @@ import { useLayoutEffect, useRef } from "react";
 import gsap from "gsap";
 import { AnimatePresence } from "motion/react";
 import "@/styles/secondary.css";
-import { DashboardPageView } from "@/app/dashboard/page";
+import { DashboardPageView, useDashboardWorkspace } from "@/app/dashboard/page";
 import AddToolModal from "@/components/dashboard/AddToolModal";
-import { useManagePageState } from "@/hooks/useManagePageState";
-import { useCustomTools } from "@/hooks/useCustomTools";
+import { useManagePageStateWithWorkspace } from "@/hooks/useManagePageState";
 import ManageContent from "@/components/dashboard/pages/ManageContent";
-import { beginToolLibraryHandoffEntrance } from "@/lib/dashboard/tool-transition";
+import {
+  beginToolLibraryHandoffEntrance,
+  completeToolLibraryHandoff,
+} from "@/lib/dashboard/tool-transition";
 
 export default function ManagePage() {
-  const state = useManagePageState();
-  const workspace = useCustomTools();
+  return (
+    <DashboardPageView
+      activeRoute="manage"
+      backgroundMode="manage"
+      mainContent={<ManageWorkspace />}
+    />
+  );
+}
+
+function ManageWorkspace() {
+  const workspace = useDashboardWorkspace();
+  const state = useManagePageStateWithWorkspace(workspace);
   const entranceRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
@@ -49,7 +61,10 @@ export default function ManagePage() {
     }, root);
 
     const cancelMarkerClear = entrance.establish((clearMarker) => {
-      const timeoutId = window.setTimeout(clearMarker, 0);
+      const timeoutId = window.setTimeout(() => {
+        completeToolLibraryHandoff(reduceMotion);
+        clearMarker();
+      }, reduceMotion ? 20 : 120);
       return () => window.clearTimeout(timeoutId);
     });
 
@@ -60,10 +75,7 @@ export default function ManagePage() {
   }, []);
 
   return (
-    <DashboardPageView
-      activeRoute="manage"
-      mainContent={(
-        <>
+    <>
           <div ref={entranceRef} className="tool-library-page-enter">
             <ManageContent state={state} />
           </div>
@@ -76,8 +88,6 @@ export default function ManagePage() {
               />
             )}
           </AnimatePresence>
-        </>
-      )}
-    />
+    </>
   );
 }

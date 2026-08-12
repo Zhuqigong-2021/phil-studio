@@ -33,6 +33,7 @@ export type ManageTableAction =
   | { type: "alias/change"; id: string; value: string }
   | { type: "tools/sync"; tools: Tool[]; pinnedToolIds: string[]; resetDraftIds: string[] }
   | { type: "update/start"; id: string }
+  | { type: "update/succeeded"; id: string }
   | { type: "update/failed"; id: string }
   | { type: "validation/failed"; id: string; message: string }
   | { type: "delete/request"; id: string }
@@ -145,6 +146,15 @@ export function manageTableReducer(
   if (action.type === "update/start") {
     if (state.updatingIds.includes(action.id)) return state;
     return { ...state, updatingIds: [...state.updatingIds, action.id] };
+  }
+
+  if (action.type === "update/succeeded") {
+    return {
+      ...state,
+      dirtyIds: state.dirtyIds.filter((id) => id !== action.id),
+      updatingIds: state.updatingIds.filter((id) => id !== action.id),
+      rowErrors: clearRowError(state.rowErrors, action.id),
+    };
   }
 
   if (action.type === "update/failed") {

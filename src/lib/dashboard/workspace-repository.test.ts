@@ -9,7 +9,6 @@ import {
   getWorkspaceSnapshot,
   migrateLocalWorkspace,
   patchWorkspaceTool,
-  WorkspaceToolProtectedError,
   type WorkspaceDatabasePort,
 } from "./workspace-repository.ts";
 
@@ -149,6 +148,7 @@ class MemoryPort implements WorkspaceDatabasePort {
 
 test("owner-scopes every tool/category query and assembles a snapshot after all query groups succeed", async () => {
   const port = new MemoryPort();
+  port.tools.push(toolRow({ id: "ap" }));
   port.categories.push({ id: "category-work", owner_email: OWNER, name: "Work", sort_order: 0, created_at: NOW, updated_at: NOW });
   port.relationships.push({ tool_id: "ap", category_id: "category-work", created_at: NOW });
 
@@ -189,26 +189,23 @@ test("owner-scoped deletion reports not found without touching another owner's r
   assert.deepEqual(port.deleteOperations, ["tool:custom-private"]);
 });
 
-test("protects seeded built-in tools before issuing any delete", async () => {
+test("deletes an owned seeded tool like any other database row", async () => {
   const port = new MemoryPort();
   port.tools.push(toolRow({ id: "ap" }));
 
-  await assert.rejects(
-    () => deleteWorkspaceTool(OWNER, "ap", port),
-    (error: unknown) => error instanceof WorkspaceToolProtectedError,
-  );
+  await deleteWorkspaceTool(OWNER, "ap", port);
 
-  assert.equal(port.tools.length, 1);
-  assert.deepEqual(port.deleteOperations, []);
+  assert.equal(port.tools.length, 0);
+  assert.deepEqual(port.deleteOperations, ["tool:ap"]);
 });
 
-test("built-in seeding uses duplicate-ignoring upsert and preserves mutable fields", async () => {
+test("workspace reads preserve existing rows without resurrecting deleted seeds", async () => {
   const port = new MemoryPort();
   port.tools.push(toolRow({ id: "ap", is_favorite: true, is_pinned: true, use_count: 8 }));
 
   const snapshot = await getWorkspaceSnapshot(OWNER, port);
 
-  assert.deepEqual(port.toolUpserts[0]?.options, { onConflict: "id", ignoreDuplicates: true });
+  assert.equal(port.toolUpserts.length, 0);
   const preserved = snapshot.tools.find((tool) => tool.id === "ap");
   assert.equal(preserved?.favorite, true);
   assert.equal(snapshot.pinnedToolIds.includes("ap"), true);

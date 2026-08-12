@@ -17,11 +17,10 @@ export default function ManageContent({ state }: { state: ManagePageState }) {
     deleteTarget,
     deleting,
     loading,
-    syncError,
   } = state;
 
   return (
-    <section className="tool-library secondary-page-flow-border" aria-labelledby="tool-library-title">
+    <section className="tool-library" aria-labelledby="tool-library-title">
       <header className="tool-library-header">
         <div>
           <h1 id="tool-library-title">Tool Library</h1>
@@ -31,8 +30,6 @@ export default function ManageContent({ state }: { state: ManagePageState }) {
           <Plus size={18} aria-hidden="true" />
         </button>
       </header>
-
-      {syncError && <div className="tool-library-sync-error" role="alert">{syncError} Your unsaved row edits are still available.</div>}
 
       <div className="tool-library-table-scroll">
         <table className="tool-library-table">
@@ -51,7 +48,7 @@ export default function ManageContent({ state }: { state: ManagePageState }) {
             </tr>
           </thead>
           <tbody>
-            {pageRows.map(({ tool, draft, aliasInput, error }) => (
+            {pageRows.map(({ tool, draft, aliasInput }) => (
               <EditableToolRow
                 key={tool.id}
                 tool={tool}
@@ -59,7 +56,6 @@ export default function ManageContent({ state }: { state: ManagePageState }) {
                 aliasInput={aliasInput}
                 categories={categories}
                 updating={updatingIds.includes(tool.id)}
-                error={error}
                 onChange={(partial) => state.updateDraft(tool.id, partial)}
                 onAliasInputChange={(value) => state.updateAliasInput(tool.id, value)}
                 onSubmit={() => { void state.submitRow(tool.id); }}

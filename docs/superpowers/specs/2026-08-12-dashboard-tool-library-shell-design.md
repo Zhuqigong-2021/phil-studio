@@ -2,15 +2,24 @@
 
 ## Goal
 
-Render `/manage` as the expanded state of the existing Dashboard All Tools card, preserving the Montréal background, original Sidebar, original Topbar, glass treatment, and database-backed management behavior.
+Render `/manage` as the visual continuation of the existing Dashboard All Tools card, preserving the design language and database-backed management behavior without exposing a route-remount jump.
 
 ## Approved Structure
 
 - `/dashboard` keeps Hero, Stats, and BottomRow unchanged.
-- `/manage` renders the same Dashboard root, background, Sidebar, Topbar, responsive drawer, toast viewport, and workspace provider.
+- `/manage` uses the same Dashboard component language but replaces the Montréal photograph with a low-contrast navy/violet gradient for legibility.
 - Only the Dashboard content stack is replaced by `ManageContent`.
 - The Sidebar marks Manage active on `/manage` and Dashboard active on `/dashboard`.
-- The existing GSAP source-card expansion remains the navigation handoff; the destination content enters inside the same visual shell.
+- The All Tools card is deep-cloned and remains above both routes throughout the handoff.
+- Dashboard siblings blur and fade while the clone expands to the management content bounds.
+- Route navigation occurs behind the retained transition layer; the destination table crossfades in before the layer is removed.
+- Reduced Motion uses a short crossfade without scale or blur movement.
+
+## Integrated Surface
+
+- Tool Library has no outer border, outline, panel shadow, or whole-surface hover glow.
+- The management content reads as part of the page rather than a card placed on top.
+- Only row separators, editable controls, and operation buttons retain necessary boundaries.
 
 ## Table Layout
 
@@ -25,7 +34,7 @@ Add, Update, Delete confirmation, Favorite, Pin, aliases, category selection, co
 
 ## Acceptance Criteria
 
-1. `/manage` has the same Montréal background, Sidebar, and Topbar as `/dashboard`.
+1. `/manage` uses the Dashboard style but does not show the Montréal photograph.
 2. At desktop width, Operation is visible without horizontal page or table scrolling.
-3. Dashboard View All transitions to `/manage`; Manage Sidebar navigation lands on the same content.
+3. Dashboard View All expands continuously to `/manage` while surrounding content blurs/fades and no Sidebar remount is visible.
 4. Existing mutation and state tests remain green, with new shell/layout regression tests preventing the old SecondaryPageShell implementation.

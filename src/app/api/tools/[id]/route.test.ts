@@ -61,16 +61,15 @@ test("tool DELETE maps malformed or unknown ids to 404", async () => {
   assert.equal((await handler(deleteRequest, { params: Promise.resolve({ id: "missing" }) })).status, 404);
 });
 
-test("tool DELETE rejects protected seeded tool ids with 403", async () => {
+test("tool DELETE permits an owned seeded tool id", async () => {
   let deleteCalls = 0;
   const response = await createToolDeleteHandler({
     authorize: async () => "owner@example.com",
     deleteTool: async () => { deleteCalls += 1; },
   })(deleteRequest, { params: Promise.resolve({ id: "ap" }) });
 
-  assert.equal(response.status, 403);
-  assert.match(await response.text(), /built-in tools cannot be deleted/i);
-  assert.equal(deleteCalls, 0);
+  assert.equal(response.status, 204);
+  assert.equal(deleteCalls, 1);
 });
 
 test("tool DELETE safely maps authorization, configuration, and repository failures", async () => {

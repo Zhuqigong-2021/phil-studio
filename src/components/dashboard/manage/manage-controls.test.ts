@@ -41,12 +41,29 @@ test("category choices expose checkbox-group semantics instead of listbox semant
   assert.doesNotMatch(categories, /role="listbox"|aria-multiselectable/);
 });
 
-test("built-in rows explain why Delete is unavailable", async () => {
+test("every database row exposes Delete and routes errors through Toast instead of table rows", async () => {
   const row = await readFile(new URL("./EditableToolRow.tsx", import.meta.url), "utf8");
+  const page = await readFile(new URL("../pages/ManageContent.tsx", import.meta.url), "utf8");
 
-  assert.match(row, /isBuiltInToolId\(tool\.id\)/);
-  assert.match(row, /Built-in tools cannot be deleted/);
-  assert.match(row, /disabled=\{updating \|\| builtIn\}/);
+  assert.doesNotMatch(row, /isBuiltInToolId|Built-in tools cannot be deleted|tool-row-error-row/);
+  assert.match(row, /aria-label=\{`Delete \$\{tool\.name\}`\}/);
+  assert.match(row, /disabled=\{updating\}/);
+  assert.doesNotMatch(page, /tool-library-sync-error/);
+});
+
+test("management popovers are mutually exclusive and scroll without visible scrollbars", async () => {
+  const [row, color, categories, css] = await Promise.all([
+    readFile(new URL("./EditableToolRow.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./ToolColorPicker.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./CategoryCollector.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../../../styles/secondary.css", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(row, /useExclusiveManagePopover/);
+  assert.match(color, /useExclusiveManagePopover/);
+  assert.match(categories, /useExclusiveManagePopover/);
+  assert.match(css, /\.inline-icon-grid[\s\S]*scrollbar-width:\s*none/);
+  assert.match(css, /\.category-options[\s\S]*scrollbar-width:\s*none/);
 });
 
 test("Manage delete confirmation shares the established overlay exit motion", async () => {
