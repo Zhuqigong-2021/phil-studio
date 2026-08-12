@@ -17,6 +17,7 @@ import {
   manageTableReducer,
   runManageMutation,
   validateManageDraft,
+  filterToolsByCategories,
   type ManagePageSize,
 } from "./manage-page-state";
 
@@ -63,9 +64,13 @@ export function useManagePageStateWithWorkspace(
   }, [rawTools, pinnedToolIds]);
 
   const decoratedTools = useMemo(() => rawTools.map(decorate), [rawTools]);
+  const filteredTools = useMemo(
+    () => filterToolsByCategories(rawTools, tableState.selectedCategoryFilters),
+    [rawTools, tableState.selectedCategoryFilters],
+  );
   const pagination = useMemo(
-    () => paginateTools(rawTools, tableState.page, tableState.pageSize),
-    [rawTools, tableState.page, tableState.pageSize],
+    () => paginateTools(filteredTools, tableState.page, tableState.pageSize),
+    [filteredTools, tableState.page, tableState.pageSize],
   );
   const pageRows = useMemo(() => {
     const pinned = new Set(pinnedToolIds);
@@ -163,6 +168,12 @@ export function useManagePageStateWithWorkspace(
   const setPageSize = useCallback((pageSize: ManagePageSize) => {
     dispatch({ type: "page-size/set", pageSize });
   }, []);
+  const toggleCategoryFilter = useCallback((category: string) => {
+    dispatch({ type: "category-filter/toggle", category });
+  }, []);
+  const clearCategoryFilters = useCallback(() => {
+    dispatch({ type: "category-filter/clear" });
+  }, []);
 
   const q = query.trim().toLowerCase();
   const toolResults = useMemo(
@@ -201,6 +212,9 @@ export function useManagePageStateWithWorkspace(
     confirmDelete,
     setPage,
     setPageSize,
+    selectedCategoryFilters: tableState.selectedCategoryFilters,
+    toggleCategoryFilter,
+    clearCategoryFilters,
   };
 }
 

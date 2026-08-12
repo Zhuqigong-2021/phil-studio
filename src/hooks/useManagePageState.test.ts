@@ -8,6 +8,7 @@ import {
   parseManageAliasInput,
   runManageMutation,
   validateManageDraft,
+  filterToolsByCategories,
 } from "./manage-page-state.ts";
 import { toolToRowDraft } from "../lib/dashboard/tool-library.ts";
 import type { Tool } from "../lib/dashboard/types.ts";
@@ -159,6 +160,29 @@ test("changing page size returns pagination to page one", () => {
 
   assert.equal(state.page, 1);
   assert.equal(state.pageSize, 20);
+});
+
+test("category filter defaults to all and supports single or multiple OR matches", () => {
+  const tools = [
+    { ...tool("design"), tags: ["Design"] },
+    { ...tool("mixed"), tags: ["Design", "Automation"] },
+    { ...tool("work"), tags: ["Work"] },
+  ];
+  assert.deepEqual(filterToolsByCategories(tools, []).map((item) => item.id), ["design", "mixed", "work"]);
+  assert.deepEqual(filterToolsByCategories(tools, ["Automation"]).map((item) => item.id), ["mixed"]);
+  assert.deepEqual(filterToolsByCategories(tools, ["Automation", "Work"]).map((item) => item.id), ["mixed", "work"]);
+});
+
+test("changing category selections resets pagination and clearing restores All categories", () => {
+  let state = createManageTableState(Array.from({ length: 24 }, (_, index) => tool(String(index))), []);
+  state = manageTableReducer(state, { type: "page/set", page: 3 });
+  state = manageTableReducer(state, { type: "category-filter/toggle", category: "Work" });
+  assert.equal(state.page, 1);
+  assert.deepEqual(state.selectedCategoryFilters, ["Work"]);
+  state = manageTableReducer(state, { type: "category-filter/toggle", category: "Design" });
+  assert.deepEqual(state.selectedCategoryFilters, ["Work", "Design"]);
+  state = manageTableReducer(state, { type: "category-filter/clear" });
+  assert.deepEqual(state.selectedCategoryFilters, []);
 });
 
 test("a deletion refresh clamps the page to the nearest remaining page", () => {

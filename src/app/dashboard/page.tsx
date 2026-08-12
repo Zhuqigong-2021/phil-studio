@@ -25,6 +25,7 @@ import EnergySandVolume from "@/components/dashboard/EnergySandVolume";
 import SyncedLyrics from "@/components/dashboard/SyncedLyrics";
 import DashboardGreeting from "@/components/dashboard/DashboardGreeting";
 import CategoryProgressRow from "@/components/dashboard/CategoryProgressRow";
+import { getFavoriteRowMotion } from "@/lib/dashboard/favorites-list-motion";
 import { usePersistentMusic, type MusicPlayMode } from "@/components/dashboard/PersistentMusicProvider";
 import { useAudioAnalyser } from "@/hooks/useAudioAnalyser";
 import { useLyricsTimeline } from "@/hooks/useLyricsTimeline";
@@ -3135,7 +3136,7 @@ function RecentActivityPanel({
       )}
 
       <div className="flex-1 min-h-0 relative">
-        {entries.length === 0 ? (
+        {entries.length === 0 && !session ? (
           <div className="h-full flex items-center justify-center text-center px-4">
             <p className="text-[#7c8698] text-[13px] leading-relaxed">
               No focus sessions logged yet today — hit Settings to start one.
@@ -4781,7 +4782,6 @@ function FavoritesPanel({
   onToggleFavorite: (id: string) => void;
 }) {
   const reduceMotion = Boolean(useReducedMotion());
-  const listItemMotion = getListItemMotion(reduceMotion);
 
   return (
     <GlassPanel
@@ -4818,13 +4818,17 @@ function FavoritesPanel({
             </div>
           )}
           <AnimatePresence initial={false}>
-            {favoriteTools.map((t) => (
+            {favoriteTools.map((t, index) => (
             <motion.div
               key={t.id}
+              data-favorite-row
               layout={!reduceMotion}
-              {...listItemMotion}
-              className="flex items-center gap-3 flex-shrink-0"
+              {...getFavoriteRowMotion(index, reduceMotion)}
+              whileHover={reduceMotion ? undefined : { transform: "translateX(3px)" }}
+              whileTap={reduceMotion ? undefined : { transform: "translateX(3px) scale(0.99)" }}
+              className="favorite-list-row relative flex items-center gap-3 flex-shrink-0 rounded-[9px] px-2 py-1 -mx-2"
             >
+              <span data-favorite-row-glow aria-hidden="true" className="favorite-list-row-glow pointer-events-none absolute inset-0 -z-10 rounded-[9px]" />
               <div
                 className="flex items-center justify-center rounded-[8px] size-[28px] flex-shrink-0"
                 style={{ background: t.bg, border: `1px solid ${t.border}` }}
@@ -4841,7 +4845,8 @@ function FavoritesPanel({
                   rel="noopener noreferrer"
                   onClick={() => recordRecentTool(t.id)}
                   aria-label={`Open ${t.label}`}
-                  className="flex-shrink-0 flex items-center justify-center text-[#8891ac] hover:text-[#dde2f0] transition-colors"
+                  data-favorite-external-link
+                  className="flex-shrink-0 flex items-center justify-center text-[#8891ac] transition-[color,transform] duration-150 ease-out hover:text-[#dde2f0] hover:translate-x-[1px] hover:-translate-y-[1px] motion-reduce:transform-none"
                 >
                   <ExternalLink
                     style={{ width: 15, height: 15 }}
@@ -4856,7 +4861,8 @@ function FavoritesPanel({
                   : `Remove ${t.label} from favorites`}
                 disabled={favoritePendingIds.includes(t.id)}
                 onClick={() => onToggleFavorite(t.id)}
-                className="flex-shrink-0 flex items-center justify-center transition-transform hover:scale-110"
+                data-favorite-star
+                className="flex-shrink-0 flex items-center justify-center rounded-full transition-[transform,filter] duration-150 ease-out hover:scale-[1.12] hover:drop-shadow-[0_0_7px_rgba(250,204,21,0.5)] active:scale-[0.94] motion-reduce:transform-none"
               >
                 {favoritePendingIds.includes(t.id) ? (
                   <LoaderCircle

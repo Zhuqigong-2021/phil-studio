@@ -6,6 +6,7 @@ import type { ManagePageState } from "@/hooks/useManagePageState";
 import DeleteToolDialog from "../manage/DeleteToolDialog";
 import EditableToolRow from "../manage/EditableToolRow";
 import ToolLibraryPagination from "../manage/ToolLibraryPagination";
+import CategoryTableFilter from "../manage/CategoryTableFilter";
 
 export default function ManageContent({ state }: { state: ManagePageState }) {
   const {
@@ -39,7 +40,14 @@ export default function ManageContent({ state }: { state: ManagePageState }) {
               <th scope="col">Color</th>
               <th scope="col">Name</th>
               <th scope="col">Description</th>
-              <th scope="col">Category</th>
+              <th scope="col">
+                <CategoryTableFilter
+                  categories={categories}
+                  selected={state.selectedCategoryFilters}
+                  onToggle={state.toggleCategoryFilter}
+                  onClear={state.clearCategoryFilters}
+                />
+              </th>
               <th scope="col">Link</th>
               <th scope="col">Pin</th>
               <th scope="col">Favorite</th>

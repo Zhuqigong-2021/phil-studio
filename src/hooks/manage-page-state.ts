@@ -26,6 +26,7 @@ export interface ManageTableState {
   deleting: boolean;
   page: number;
   pageSize: ManagePageSize;
+  selectedCategoryFilters: string[];
 }
 
 export type ManageTableAction =
@@ -42,7 +43,9 @@ export type ManageTableAction =
   | { type: "delete/failed" }
   | { type: "delete/succeeded" }
   | { type: "page/set"; page: number }
-  | { type: "page-size/set"; pageSize: ManagePageSize };
+  | { type: "page-size/set"; pageSize: ManagePageSize }
+  | { type: "category-filter/toggle"; category: string }
+  | { type: "category-filter/clear" };
 
 function sourceDrafts(tools: readonly Tool[], pinnedToolIds: readonly string[]) {
   const pinned = new Set(pinnedToolIds);
@@ -78,6 +81,7 @@ export function createManageTableState(
     deleting: false,
     page: 1,
     pageSize: 10,
+    selectedCategoryFilters: [],
   };
 }
 
@@ -189,7 +193,24 @@ export function manageTableReducer(
     return { ...state, page: Math.max(1, Math.floor(action.page) || 1) };
   }
 
+  if (action.type === "category-filter/toggle") {
+    const selected = state.selectedCategoryFilters.includes(action.category)
+      ? state.selectedCategoryFilters.filter((category) => category !== action.category)
+      : [...state.selectedCategoryFilters, action.category];
+    return { ...state, selectedCategoryFilters: selected, page: 1 };
+  }
+
+  if (action.type === "category-filter/clear") {
+    return { ...state, selectedCategoryFilters: [], page: 1 };
+  }
+
   return { ...state, page: 1, pageSize: action.pageSize };
+}
+
+export function filterToolsByCategories(tools: readonly Tool[], selected: readonly string[]): Tool[] {
+  if (!selected.length) return [...tools];
+  const filters = new Set(selected.map((category) => category.toLocaleLowerCase()));
+  return tools.filter((tool) => tool.tags.some((category) => filters.has(category.toLocaleLowerCase())));
 }
 
 export function parseManageAliasInput(value: string): string[] {

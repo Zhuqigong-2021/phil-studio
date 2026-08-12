@@ -107,3 +107,17 @@ test("Manage shared Add Tool modal propagates exit motion before its workspace o
   assert.match(shell, /state\.addToolOpen && <SecondaryAddToolModal/);
   assert.match(modal, /<AnimatePresence propagate>/);
 });
+
+test("Category table header provides an accessible multi-select filter separate from row editors", async () => {
+  const [page, filter, css] = await Promise.all([
+    readFile(new URL("../pages/ManageContent.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./CategoryTableFilter.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../../../styles/secondary.css", import.meta.url), "utf8"),
+  ]);
+  assert.match(page, /<CategoryTableFilter/);
+  assert.match(filter, /All categories/);
+  assert.match(filter, /type="checkbox"/);
+  assert.match(filter, /aria-label="Filter tools by category"/);
+  assert.match(filter, /Escape/);
+  assert.match(css, /\.category-table-filter-options[\s\S]*scrollbar-width:\s*none/);
+});

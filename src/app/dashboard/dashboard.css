@@ -851,3 +851,12 @@
   position: relative;
   z-index: 2;
 }
+.favorite-list-row-glow {
+  opacity: 0;
+  background: linear-gradient(90deg, rgba(99, 102, 241, .14), rgba(139, 92, 246, .08), transparent 88%);
+  transition: opacity 180ms cubic-bezier(.23, 1, .32, 1);
+}
+.favorite-list-row:hover .favorite-list-row-glow { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .favorite-list-row-glow { transition: none; }
+}
