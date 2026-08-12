@@ -22,7 +22,7 @@ test("manage renders inside the real Dashboard shell instead of SecondaryPageShe
   assert.match(dashboardPage, /const resolvedActiveNav = activeRoute === "manage" \? "Manage" : activeNav/);
 });
 
-test("manage uses a quiet non-photo background and an integrated library surface", async () => {
+test("manage and its transition preview share an unrecognizably blurred harbour atmosphere", async () => {
   const [managePage, dashboardPage, manageContent, dashboardCss] = await Promise.all([
     readFile(managePageUrl, "utf8"),
     readFile(dashboardPageUrl, "utf8"),
@@ -44,9 +44,12 @@ test("manage uses a quiet non-photo background and an integrated library surface
   assert.match(dashboardCss, /14, 165, 233/);
   assert.match(dashboardCss, /rgba\(124, 58, 237, \.30\)/);
   assert.doesNotMatch(dashboardCss, /rgba\(124, 58, 237, \.48\)/);
+  assert.match(dashboardCss, /url\("\/backgrounds\/dark-old-port-background-layout-final\.png"\)/);
+  assert.match(dashboardCss, /filter:\s*blur\(80px\) brightness\(\.48\) saturate\(\.86\)/);
+  assert.match(dashboardCss, /\.tool-library-morph-preview::before,\s*\n\.manage-scene-background::before/);
   assert.match(dashboardCss, /\.dashboard-tool-transition-overlay\s*\{[^}]*container-type:\s*inline-size/);
   assert.match(dashboardCss, /\.tool-library-morph-row\s*\{[^}]*font-size:\s*clamp\(/);
-  assert.match(dashboardCss, /\.tool-library-morph-preview,\s*\n\.manage-scene-background\s*\{[\s\S]*radial-gradient\(ellipse at 77% 8%[\s\S]*radial-gradient\(ellipse at 48% 88%/);
+  assert.match(dashboardCss, /\.tool-library-morph-preview::after,\s*\n\.manage-scene-background::after\s*\{[\s\S]*radial-gradient\(ellipse at 77% 8%[\s\S]*radial-gradient\(ellipse at 48% 88%/);
 });
 
 test("desktop tool library fits the Dashboard content width without a forced wide table", async () => {

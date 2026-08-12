@@ -820,10 +820,31 @@
 .tool-library-morph-line { height: 5px; border-radius: 4px; background: rgba(148, 163, 184, .16); }
 .tool-library-morph-preview,
 .manage-scene-background {
+  isolation: isolate;
+  overflow: hidden;
+  background: #080d27;
+}
+.tool-library-morph-preview::before,
+.manage-scene-background::before {
+  content: "";
+  position: absolute;
+  inset: -96px;
+  z-index: -2;
+  background: url("/backgrounds/dark-old-port-background-layout-final.png") center / cover no-repeat;
+  filter: blur(80px) brightness(.48) saturate(.86);
+  transform: scale(1.14);
+  transform-origin: center;
+}
+.tool-library-morph-preview::after,
+.manage-scene-background::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
   background:
     radial-gradient(ellipse at 77% 8%, rgba(124, 58, 237, .30) 0%, rgba(124, 58, 237, .10) 34%, transparent 62%),
     radial-gradient(ellipse at 50% 45%, rgba(67, 56, 202, .31) 0%, rgba(67, 56, 202, .12) 42%, transparent 70%),
     radial-gradient(ellipse at 48% 88%, rgba(14, 165, 233, .13) 0%, rgba(14, 165, 233, .04) 36%, transparent 64%),
     radial-gradient(ellipse at 7% 92%, rgba(49, 46, 129, .38) 0%, transparent 58%),
-    linear-gradient(145deg, #070c24 0%, #0d1234 44%, #131033 72%, #080c24 100%);
+    linear-gradient(145deg, rgba(7, 12, 36, .58) 0%, rgba(13, 18, 52, .48) 44%, rgba(19, 16, 51, .54) 72%, rgba(8, 12, 36, .62) 100%);
 }
