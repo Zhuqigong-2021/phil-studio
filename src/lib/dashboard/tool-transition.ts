@@ -338,11 +338,8 @@ const browserTransitionStarter = createToolLibraryTransitionStarter({
     veil.setAttribute("data-tool-library-transition-veil", "true");
     Object.assign(veil.style, {
       position: "fixed",
-      left: window.innerWidth > 950 ? "280px" : "0",
-      top: window.innerWidth > 950 ? "94px" : "0",
-      right: "0",
-      bottom: "0",
-      zIndex: "110",
+      inset: "0",
+      zIndex: "8",
       pointerEvents: "none",
       opacity: "0",
     });

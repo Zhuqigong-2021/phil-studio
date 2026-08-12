@@ -42,9 +42,11 @@ test("manage uses a quiet non-photo background and an integrated library surface
   assert.match(dashboardCss, /124, 58, 237/);
   assert.match(dashboardCss, /67, 56, 202/);
   assert.match(dashboardCss, /14, 165, 233/);
+  assert.match(dashboardCss, /rgba\(124, 58, 237, \.30\)/);
+  assert.doesNotMatch(dashboardCss, /rgba\(124, 58, 237, \.48\)/);
   assert.match(dashboardCss, /\.dashboard-tool-transition-overlay\s*\{[^}]*container-type:\s*inline-size/);
   assert.match(dashboardCss, /\.tool-library-morph-row\s*\{[^}]*font-size:\s*clamp\(/);
-  assert.match(dashboardCss, /\.tool-library-morph-preview\s*\{[\s\S]*radial-gradient\(ellipse at 78% 4%[\s\S]*radial-gradient\(ellipse at 48% 92%/);
+  assert.match(dashboardCss, /\.tool-library-morph-preview,\s*\n\.manage-scene-background\s*\{[\s\S]*radial-gradient\(ellipse at 77% 8%[\s\S]*radial-gradient\(ellipse at 48% 88%/);
 });
 
 test("desktop tool library fits the Dashboard content width without a forced wide table", async () => {
