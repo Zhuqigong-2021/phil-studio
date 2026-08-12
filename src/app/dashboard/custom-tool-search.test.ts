@@ -26,10 +26,11 @@ test("category statistics include local tools and retain unused categories", () 
   ]);
 });
 
-test("dashboard search and cards derive from merged local tools", () => {
+test("dashboard search and cards consume the shared workspace", () => {
   assert.match(page, /function useToolViews/);
+  assert.match(page, /const \{ tools \} = useDashboardWorkspace\(\)/);
   assert.match(page, /matchesToolQuery\(t\.tool, trimmed\)/);
-  assert.match(page, /const \{ tools, categories \} = useCustomTools\(\)/);
+  assert.match(page, /const \{ tools, categories \} = useDashboardWorkspace\(\)/);
   assert.match(page, /buildCategoryStats\(tools, categories\)/);
-  assert.match(page, /pinnedToolIds/);
+  assert.match(page, /selectPinnedTools\(toolViews, pinnedToolIds\)/);
 });
