@@ -12,16 +12,21 @@ import {
   parseStoredTools,
 } from "./custom-tools.ts";
 
-test("Quick Access selects only database-pinned tools in pinned order", () => {
+test("Quick Access selects pinned tools by database update time descending", () => {
   const selectPinnedTools = (customTools as unknown as {
     selectPinnedTools?: <T extends { id: string }>(tools: readonly T[], pinnedIds: readonly string[]) => T[];
   }).selectPinnedTools;
   assert.equal(typeof selectPinnedTools, "function", "selectPinnedTools is not implemented");
 
-  const tools = [{ id: "recent" }, { id: "pinned-2" }, { id: "default" }, { id: "pinned-1" }];
+  const tools = [
+    { id: "recent", updatedAt: "2026-08-12T00:00:00.000Z" },
+    { id: "pinned-2", updatedAt: "2026-08-11T00:00:00.000Z" },
+    { id: "default", updatedAt: "2026-08-09T00:00:00.000Z" },
+    { id: "pinned-1", updatedAt: "2026-08-10T00:00:00.000Z" },
+  ];
   assert.deepEqual(selectPinnedTools!(tools, ["pinned-1", "missing", "pinned-2", "pinned-1"]), [
-    { id: "pinned-1" },
-    { id: "pinned-2" },
+    { id: "pinned-2", updatedAt: "2026-08-11T00:00:00.000Z" },
+    { id: "pinned-1", updatedAt: "2026-08-10T00:00:00.000Z" },
   ]);
 });
 

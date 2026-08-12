@@ -141,6 +141,7 @@ export function toolRowToTool(row: ToolRow, categoryNames: readonly string[]): T
     checkStatus: row.check_status,
     checkColor: row.check_color,
     ...(row.last_checked_at ? { lastCheckedAt: row.last_checked_at } : {}),
+    updatedAt: row.updated_at,
     visible: row.visible,
     sortOrder: row.sort_order,
   };

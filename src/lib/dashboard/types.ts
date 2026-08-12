@@ -39,6 +39,7 @@ export interface Tool {
   checkStatus?: string;
   checkColor?: string;
   lastCheckedAt?: string;
+  updatedAt?: string;
   visible?: boolean;
   sortOrder?: number;
 }

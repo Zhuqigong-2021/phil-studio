@@ -37,7 +37,7 @@ const toolRow = {
   visible: true,
 } satisfies ToolRow;
 
-test("maps a database tool row and related category names to the current Tool contract", () => {
+test("maps a database tool row, update timestamp, and related category names to the current Tool contract", () => {
   assert.deepEqual(toolRowToTool(toolRow, ["Work", "Productivity"]), {
     id: "tool-1",
     name: "Notes",
@@ -54,6 +54,7 @@ test("maps a database tool row and related category names to the current Tool co
     checkStatus: "Working",
     checkColor: "#4ADE80",
     lastCheckedAt: "2026-08-10T01:00:00.000Z",
+    updatedAt: "2026-08-10T00:00:00.000Z",
     visible: true,
     sortOrder: 4,
   });

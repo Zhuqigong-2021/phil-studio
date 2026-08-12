@@ -196,14 +196,22 @@ export function matchesToolQuery(tool: Tool, query: string): boolean {
     .includes(normalized);
 }
 
-export function selectPinnedTools<T extends { id: string }>(
+export function selectPinnedTools<T extends { id: string; updatedAt?: string }>(
   tools: readonly T[],
   pinnedIds: readonly string[],
 ): T[] {
-  const byId = new Map(tools.map((tool) => [tool.id, tool]));
-  return [...new Set(pinnedIds)]
-    .map((id) => byId.get(id))
-    .filter((tool): tool is T => Boolean(tool));
+  const pinned = new Set(pinnedIds);
+  return tools
+    .map((tool, index) => ({ tool, index, timestamp: tool.updatedAt ? Date.parse(tool.updatedAt) : Number.NaN }))
+    .filter(({ tool }) => pinned.has(tool.id))
+    .sort((a, b) => {
+      const aValid = Number.isFinite(a.timestamp);
+      const bValid = Number.isFinite(b.timestamp);
+      if (aValid && bValid && a.timestamp !== b.timestamp) return b.timestamp - a.timestamp;
+      if (aValid !== bValid) return aValid ? -1 : 1;
+      return a.index - b.index || a.tool.id.localeCompare(b.tool.id);
+    })
+    .map(({ tool }) => tool);
 }
 
 export function buildCategoryStats(
