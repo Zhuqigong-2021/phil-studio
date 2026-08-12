@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const migrationUrl = new URL("./20260811190000_allow_custom_tool_colors.sql", import.meta.url);
+const migrationUrl = new URL("./20260812034208_allow_custom_tool_colors.sql", import.meta.url);
 
 test("migration preserves named accents and permits normalized custom hexadecimal colors", async () => {
   const migration = await readFile(migrationUrl, "utf8");
