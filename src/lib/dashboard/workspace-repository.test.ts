@@ -9,6 +9,7 @@ import {
   getWorkspaceSnapshot,
   migrateLocalWorkspace,
   patchWorkspaceTool,
+  WorkspaceToolProtectedError,
   type WorkspaceDatabasePort,
 } from "./workspace-repository.ts";
 
@@ -100,20 +101,11 @@ class MemoryPort implements WorkspaceDatabasePort {
   async deleteTool(ownerEmail: string, id: string) {
     this.ownerQueries.push({ table: "tools", ownerEmail });
     this.deletedToolIds.push(id);
+    const deleted = this.tools.some((row) => row.owner_email === ownerEmail && row.id === id);
     this.tools = this.tools.filter((row) => row.owner_email !== ownerEmail || row.id !== id);
-  }
-  async findOwnedTool(ownerEmail: string, id: string) {
-    this.ownerQueries.push({ table: "tools", ownerEmail });
-    return this.tools.find((row) => row.owner_email === ownerEmail && row.id === id) ?? null;
-  }
-  async deleteToolRelationships(toolId: string) {
-    this.deleteOperations.push(`relationships:${toolId}`);
-    this.relationships = this.relationships.filter((row) => row.tool_id !== toolId);
-  }
-  async deleteOwnedTool(ownerEmail: string, id: string) {
-    this.ownerQueries.push({ table: "tools", ownerEmail });
+    if (deleted) this.relationships = this.relationships.filter((row) => row.tool_id !== id);
     this.deleteOperations.push(`tool:${id}`);
-    this.tools = this.tools.filter((row) => row.owner_email !== ownerEmail || row.id !== id);
+    return deleted;
   }
   async upsertRelationships(rows: Array<{ tool_id: string; category_id: string }>) {
     if (this.failRelationships) throw new Error("relationship failed");
@@ -168,7 +160,7 @@ test("owner-scopes every tool/category query and assembles a snapshot after all 
   assert.equal(snapshot.categories.includes("Work"), true);
 });
 
-test("deletes only the owner's tool after removing its relationships", async () => {
+test("deletes only the owner's custom tool in one owner-scoped statement and relies on cascade", async () => {
   const port = new MemoryPort();
   const otherOwner = "other@example.com";
   port.tools.push(toolRow({ id: "mindmap" }), toolRow({ id: "mindmap-other", owner_email: otherOwner }));
@@ -182,7 +174,32 @@ test("deletes only the owner's tool after removing its relationships", async () 
   assert.equal(port.tools.some((row) => row.id === "mindmap" && row.owner_email === OWNER), false);
   assert.equal(port.tools.some((row) => row.id === "mindmap-other" && row.owner_email === otherOwner), true);
   assert.deepEqual(port.relationships.map((row) => row.tool_id), ["mindmap-other"]);
-  assert.deepEqual(port.deleteOperations, ["relationships:mindmap", "tool:mindmap"]);
+  assert.deepEqual(port.deleteOperations, ["tool:mindmap"]);
+});
+
+test("owner-scoped deletion reports not found without touching another owner's relationships", async () => {
+  const port = new MemoryPort();
+  port.tools.push(toolRow({ id: "custom-private", owner_email: "other@example.com" }));
+  port.relationships.push({ tool_id: "custom-private", category_id: "other-category", created_at: NOW });
+
+  await assert.rejects(() => deleteWorkspaceTool(OWNER, "custom-private", port), /not found/i);
+
+  assert.equal(port.tools.length, 1);
+  assert.equal(port.relationships.length, 1);
+  assert.deepEqual(port.deleteOperations, ["tool:custom-private"]);
+});
+
+test("protects seeded built-in tools before issuing any delete", async () => {
+  const port = new MemoryPort();
+  port.tools.push(toolRow({ id: "ap" }));
+
+  await assert.rejects(
+    () => deleteWorkspaceTool(OWNER, "ap", port),
+    (error: unknown) => error instanceof WorkspaceToolProtectedError,
+  );
+
+  assert.equal(port.tools.length, 1);
+  assert.deepEqual(port.deleteOperations, []);
 });
 
 test("built-in seeding uses duplicate-ignoring upsert and preserves mutable fields", async () => {

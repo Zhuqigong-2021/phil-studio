@@ -1,7 +1,9 @@
 "use client";
 
 import { LoaderCircle, TriangleAlert, X } from "lucide-react";
+import { motion, useReducedMotion } from "motion/react";
 import { useEffect, useRef } from "react";
+import { getOverlayMotion } from "@/lib/dashboard/motion-system";
 
 export default function DeleteToolDialog({
   toolName,
@@ -14,6 +16,7 @@ export default function DeleteToolDialog({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  const overlayMotion = getOverlayMotion(Boolean(useReducedMotion()));
   const dialogRef = useRef<HTMLDivElement>(null);
   const cancelRef = useRef<HTMLButtonElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
@@ -35,10 +38,11 @@ export default function DeleteToolDialog({
   };
 
   return (
-    <div className="delete-tool-backdrop" onMouseDown={(event) => {
+    <motion.div {...overlayMotion.backdrop} className="delete-tool-backdrop" onMouseDown={(event) => {
       if (event.target === event.currentTarget) cancel();
     }}>
-      <div
+      <motion.div
+        {...overlayMotion.surface}
         ref={dialogRef}
         className="delete-tool-dialog"
         role="dialog"
@@ -92,7 +96,7 @@ export default function DeleteToolDialog({
             </div>
           </>
         )}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

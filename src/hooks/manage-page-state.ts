@@ -8,9 +8,11 @@ import type { Tool } from "../lib/dashboard/types.ts";
 import { validateToolPatch, type ToolPatch } from "../lib/dashboard/workspace-data.ts";
 import {
   databaseErrorMessage,
+  databaseRefreshWarningMessage,
   databaseSuccessMessage,
   type DatabaseToastTone,
 } from "../lib/dashboard/tool-mutations.ts";
+import type { WorkspaceMutationOutcome } from "./useCustomTools.ts";
 
 export type ManagePageSize = 10 | 20 | 50;
 
@@ -222,7 +224,7 @@ export function isManagePopoverOpen(open: boolean, disabled: boolean): boolean {
 interface ManageMutationOptions {
   action: "updated" | "deleted";
   toolName: string;
-  mutate(): Promise<void>;
+  mutate(): Promise<WorkspaceMutationOutcome>;
   publish(toast: { tone: DatabaseToastTone; message: string }): void;
 }
 
@@ -231,16 +233,18 @@ export async function runManageMutation({
   toolName,
   mutate,
   publish,
-}: ManageMutationOptions): Promise<boolean> {
+}: ManageMutationOptions): Promise<{ succeeded: boolean; workspaceRefreshFailed: boolean }> {
   try {
-    await mutate();
-    publish({ tone: "success", message: databaseSuccessMessage(action, toolName) });
-    return true;
+    const result = await mutate();
+    publish(result.workspaceRefreshFailed
+      ? { tone: "info", message: databaseRefreshWarningMessage(action, toolName) }
+      : { tone: "success", message: databaseSuccessMessage(action, toolName) });
+    return { succeeded: true, workspaceRefreshFailed: result.workspaceRefreshFailed };
   } catch (error) {
     publish({
       tone: "error",
       message: databaseErrorMessage(error, action === "updated" ? "update" : "delete", toolName),
     });
-    return false;
+    return { succeeded: false, workspaceRefreshFailed: false };
   }
 }

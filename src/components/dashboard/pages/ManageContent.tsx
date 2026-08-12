@@ -1,6 +1,7 @@
 "use client";
 
 import { Plus } from "lucide-react";
+import { AnimatePresence } from "motion/react";
 import type { ManagePageState } from "@/hooks/useManagePageState";
 import DeleteToolDialog from "../manage/DeleteToolDialog";
 import EditableToolRow from "../manage/EditableToolRow";
@@ -85,14 +86,17 @@ export default function ManageContent({ state }: { state: ManagePageState }) {
         onPageSizeChange={state.setPageSize}
       />
 
-      {deleteTarget && (
-        <DeleteToolDialog
-          toolName={deleteTarget.name}
-          deleting={deleting}
-          onCancel={state.cancelDelete}
-          onConfirm={() => { void state.confirmDelete(); }}
-        />
-      )}
+      <AnimatePresence>
+        {deleteTarget && (
+          <DeleteToolDialog
+            key={deleteTarget.id}
+            toolName={deleteTarget.name}
+            deleting={deleting}
+            onCancel={state.cancelDelete}
+            onConfirm={() => { void state.confirmDelete(); }}
+          />
+        )}
+      </AnimatePresence>
     </section>
   );
 }

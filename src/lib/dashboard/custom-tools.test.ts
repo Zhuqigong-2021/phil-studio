@@ -39,6 +39,28 @@ test("rejects malformed stored category, tool, and pinned-id payloads", () => {
   assert.deepEqual(parseStoredToolIds('[4,null]'), []);
 });
 
+test("keeps every valid cached tool when named and custom colors share the same payload", () => {
+  const stored = [
+    {
+      id: "named-tool", name: "Named", url: "https://example.com/named", description: "",
+      mono: "NA", accent: "teal", tags: [], aliases: [], favorite: false,
+      sourceType: "external", iconKey: "globe", iconType: "matching",
+    },
+    {
+      id: "custom-color-tool", name: "Custom Color", url: "https://example.com/custom", description: "",
+      mono: "CC", accent: "#22d3ee", tags: [], aliases: [], favorite: true,
+      sourceType: "external", iconKey: "palette", iconType: "matching",
+    },
+  ];
+
+  const tools = parseStoredTools(JSON.stringify(stored));
+
+  assert.deepEqual(tools.map((tool) => [tool.id, tool.accent]), [
+    ["named-tool", "teal"],
+    ["custom-color-tool", "#22D3EE"],
+  ]);
+});
+
 test("creates a normalized local tool that is searchable by name, alias, and category", () => {
   const tool = createCustomTool(
     {

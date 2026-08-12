@@ -3,7 +3,7 @@
 import { Check, LoaderCircle, Search, Star, Trash2 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { isManagePopoverOpen } from "@/hooks/manage-page-state";
-import { ACCENTS } from "@/lib/dashboard/mock-data";
+import { ACCENTS, isBuiltInToolId } from "@/lib/dashboard/mock-data";
 import type { ToolRowDraft } from "@/lib/dashboard/tool-library";
 import { getToolIcon, searchToolIcons } from "@/lib/dashboard/tool-icons";
 import type { Accent, DecoratedTool } from "@/lib/dashboard/types";
@@ -111,6 +111,7 @@ export default function EditableToolRow({
   onDelete: () => void;
 }) {
   const renderedColor = ACCENTS[draft.color as Accent] ?? draft.color;
+  const builtIn = isBuiltInToolId(tool.id);
 
   return (
     <>
@@ -217,8 +218,9 @@ export default function EditableToolRow({
           <button
             type="button"
             className="tool-delete-button"
-            aria-label={`Delete ${tool.name}`}
-            disabled={updating}
+            aria-label={builtIn ? `Delete unavailable for ${tool.name}. Built-in tools cannot be deleted.` : `Delete ${tool.name}`}
+            title={builtIn ? "Built-in tools cannot be deleted" : `Delete ${tool.name}`}
+            disabled={updating || builtIn}
             onClick={onDelete}
           >
             <Trash2 size={16} aria-hidden="true" />

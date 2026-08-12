@@ -65,7 +65,7 @@ export default function AddToolModal({
   };
 
   return (
-    <AnimatePresence>
+    <AnimatePresence propagate>
       {open && (
         <AddToolForm
           requestClose={requestClose}

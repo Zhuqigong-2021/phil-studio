@@ -177,8 +177,8 @@ test("delete state remains cancellable until the request starts and actionable a
 });
 
 test("publishes update success only after the database promise settles", async () => {
-  let resolveMutation: (() => void) | undefined;
-  const mutation = new Promise<void>((resolve) => { resolveMutation = resolve; });
+  let resolveMutation: ((value: { workspaceRefreshFailed: boolean; workspaceSnapshotApplied: boolean }) => void) | undefined;
+  const mutation = new Promise<{ workspaceRefreshFailed: boolean; workspaceSnapshotApplied: boolean }>((resolve) => { resolveMutation = resolve; });
   const published: { tone: string; message: string }[] = [];
 
   const request = runManageMutation({
@@ -189,8 +189,8 @@ test("publishes update success only after the database promise settles", async (
   });
 
   assert.deepEqual(published, []);
-  resolveMutation?.();
-  assert.equal(await request, true);
+  resolveMutation?.({ workspaceRefreshFailed: false, workspaceSnapshotApplied: true });
+  assert.deepEqual(await request, { succeeded: true, workspaceRefreshFailed: false });
   assert.deepEqual(published, [{ tone: "success", message: "Updated: Notion" }]);
 });
 
@@ -203,10 +203,26 @@ test("publishes a mapped delete error only after the rejected request settles", 
     publish: (toast) => { published.push(toast); },
   });
 
-  assert.equal(result, false);
+  assert.deepEqual(result, { succeeded: false, workspaceRefreshFailed: false });
   assert.equal(published.length, 1);
   assert.equal(published[0].tone, "error");
   assert.match(published[0].message, /permission/i);
+});
+
+test("publishes a non-error success warning when mutation commits but refresh fails", async () => {
+  const published: { tone: string; message: string }[] = [];
+  const result = await runManageMutation({
+    action: "deleted",
+    toolName: "Notion",
+    mutate: async () => ({ workspaceRefreshFailed: true, workspaceSnapshotApplied: false }),
+    publish: (toast) => { published.push(toast); },
+  });
+
+  assert.deepEqual(result, { succeeded: true, workspaceRefreshFailed: true });
+  assert.equal(published[0].tone, "info");
+  assert.match(published[0].message, /deleted/i);
+  assert.match(published[0].message, /refresh failed/i);
+  assert.doesNotMatch(published[0].message, /could not delete|nothing was removed|try again/i);
 });
 
 test("strict alias parsing preserves duplicates so validation can reject them", () => {

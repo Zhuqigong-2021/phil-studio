@@ -228,9 +228,17 @@ export function validateToolPatch(value: unknown): ToolPatch {
 }
 
 export class WorkspaceSyncError extends Error {
-  constructor(message = "Workspace synchronization failed.") {
-    super(message);
+  readonly status: number | null;
+  readonly networkFailure: boolean;
+
+  constructor(
+    message = "Workspace synchronization failed.",
+    options: { status?: number; networkFailure?: boolean; cause?: unknown } = {},
+  ) {
+    super(message, options.cause === undefined ? undefined : { cause: options.cause });
     this.name = "WorkspaceSyncError";
+    this.status = options.status ?? null;
+    this.networkFailure = options.networkFailure ?? false;
   }
 }
 
@@ -242,17 +250,19 @@ async function requestWorkspace<T>(
   let response: Response;
   try {
     response = await fetcher(input, { ...init, cache: "no-store" });
-  } catch {
-    throw new WorkspaceSyncError();
+  } catch (error) {
+    throw new WorkspaceSyncError("Workspace synchronization failed.", {
+      networkFailure: true,
+      cause: error,
+    });
   }
   if (!response.ok) {
+    let message = "Workspace synchronization failed.";
     try {
       const body = await response.json() as { error?: unknown };
-      if (typeof body.error === "string" && body.error) throw new WorkspaceSyncError(body.error);
-    } catch (error) {
-      if (error instanceof WorkspaceSyncError) throw error;
-    }
-    throw new WorkspaceSyncError();
+      if (typeof body.error === "string" && body.error) message = body.error;
+    } catch {}
+    throw new WorkspaceSyncError(message, { status: response.status });
   }
   if (response.status === 204) return undefined as T;
   try {

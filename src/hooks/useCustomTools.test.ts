@@ -8,6 +8,7 @@ import type { WorkspaceSnapshot } from "../lib/dashboard/workspace-data.ts";
 import {
   addWorkspaceToolAndRefresh,
   createFavoritePendingTracker,
+  createWorkspaceMutationGuard,
   deleteWorkspaceToolAndRefresh,
   refreshWorkspaceTools,
   runFavoriteMutationWithPending,
@@ -146,12 +147,13 @@ test("updates only after the server confirms and then applies a fresh snapshot",
     }),
     "tool-1",
     { name: "Notes" },
+    () => snapshot,
     (value) => applied.push(value),
   );
 
   assert.deepEqual(calls, ["patch"]);
   resolvePatch();
-  await pending;
+  assert.deepEqual(await pending, { workspaceRefreshFailed: false, workspaceSnapshotApplied: true });
   assert.deepEqual(calls, ["patch", "fetch"]);
   assert.deepEqual(applied, [next]);
 });
@@ -161,17 +163,103 @@ test("deletes with the injected API then applies its fresh snapshot", async () =
   const next = { ...snapshot, categories: ["Productivity"] };
   const applied: WorkspaceSnapshot[] = [];
 
-  await deleteWorkspaceToolAndRefresh(
+  const result = await deleteWorkspaceToolAndRefresh(
     workspaceApi({
       deleteTool: async () => { calls.push("delete"); },
       fetchSnapshot: async () => { calls.push("fetch"); return next; },
     }),
     "tool-1",
+    () => snapshot,
     (value) => applied.push(value),
   );
 
   assert.deepEqual(calls, ["delete", "fetch"]);
   assert.deepEqual(applied, [next]);
+  assert.deepEqual(result, { workspaceRefreshFailed: false, workspaceSnapshotApplied: true });
+});
+
+test("keeps a successful update locally and reports only a refresh warning", async () => {
+  const before: WorkspaceSnapshot = { ...snapshot, tools: [createdTool], pinnedToolIds: [] };
+  let current = before;
+  const updated = { ...createdTool, name: "Updated Notion", favorite: true };
+
+  const result = await updateWorkspaceToolAndRefresh(
+    workspaceApi({
+      patchTool: async () => updated,
+      fetchSnapshot: async () => { throw new Error("refresh offline"); },
+    }),
+    createdTool.id,
+    { name: updated.name, favorite: true, pinned: true },
+    () => current,
+    (value) => { current = value; },
+  );
+
+  assert.deepEqual(result, { workspaceRefreshFailed: true, workspaceSnapshotApplied: false });
+  assert.equal(current.tools[0].name, updated.name);
+  assert.equal(current.tools[0].favorite, true);
+  assert.deepEqual(current.pinnedToolIds, [createdTool.id]);
+});
+
+test("keeps a successful deletion locally and reports only a refresh warning", async () => {
+  let current = {
+    ...snapshot,
+    tools: [createdTool],
+    pinnedToolIds: [createdTool.id],
+    recentTools: [{ id: createdTool.id, openedAt: 123 }],
+  };
+
+  const result = await deleteWorkspaceToolAndRefresh(
+    workspaceApi({
+      deleteTool: async () => undefined,
+      fetchSnapshot: async () => { throw new Error("refresh offline"); },
+    }),
+    createdTool.id,
+    () => current,
+    (value) => { current = value; },
+  );
+
+  assert.deepEqual(result, { workspaceRefreshFailed: true, workspaceSnapshotApplied: false });
+  assert.deepEqual(current.tools, []);
+  assert.deepEqual(current.pinnedToolIds, []);
+  assert.deepEqual(current.recentTools, []);
+});
+
+test("an older row refresh cannot overwrite a newer row mutation snapshot", async () => {
+  const firstTool = { ...createdTool, id: "first", name: "First before" };
+  const secondTool = { ...createdTool, id: "second", name: "Second before" };
+  const firstUpdated = { ...firstTool, name: "First updated" };
+  const secondUpdated = { ...secondTool, name: "Second updated" };
+  let resolveStale!: (snapshot: WorkspaceSnapshot) => void;
+  const staleRefresh = new Promise<WorkspaceSnapshot>((resolve) => { resolveStale = resolve; });
+  let current = { ...snapshot, tools: [firstTool, secondTool] };
+  const guard = createWorkspaceMutationGuard();
+  const apply = (value: WorkspaceSnapshot) => { current = value; };
+
+  const first = updateWorkspaceToolAndRefresh(
+    workspaceApi({ patchTool: async () => firstUpdated, fetchSnapshot: async () => staleRefresh }),
+    firstTool.id,
+    { name: firstUpdated.name },
+    () => current,
+    apply,
+    guard,
+  );
+  await Promise.resolve();
+  const newerSnapshot = { ...snapshot, tools: [firstUpdated, secondUpdated] };
+  await updateWorkspaceToolAndRefresh(
+    workspaceApi({ patchTool: async () => secondUpdated, fetchSnapshot: async () => newerSnapshot }),
+    secondTool.id,
+    { name: secondUpdated.name },
+    () => current,
+    apply,
+    guard,
+  );
+  resolveStale({
+    ...snapshot,
+    tools: [firstUpdated, secondTool],
+  });
+  await first;
+
+  assert.deepEqual(current.tools.map((tool) => tool.name), [firstUpdated.name, secondUpdated.name]);
 });
 
 test("refreshes tools from the injected API and applies its fresh snapshot", async () => {
@@ -195,6 +283,7 @@ test("leaves committed workspace state untouched when an update fails", async ()
       workspaceApi({ patchTool: async () => { throw new Error("offline"); } }),
       "tool-1",
       { name: "Notes" },
+      () => snapshot,
       (value) => applied.push(value),
     ),
     /offline/,
@@ -214,6 +303,7 @@ test("leaves committed workspace state untouched when a delete fails", async () 
         fetchSnapshot: async () => { fetched = true; return snapshot; },
       }),
       "tool-1",
+      () => snapshot,
       (value) => applied.push(value),
     ),
     /offline/,

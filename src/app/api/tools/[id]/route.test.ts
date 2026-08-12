@@ -61,6 +61,18 @@ test("tool DELETE maps malformed or unknown ids to 404", async () => {
   assert.equal((await handler(deleteRequest, { params: Promise.resolve({ id: "missing" }) })).status, 404);
 });
 
+test("tool DELETE rejects protected seeded tool ids with 403", async () => {
+  let deleteCalls = 0;
+  const response = await createToolDeleteHandler({
+    authorize: async () => "owner@example.com",
+    deleteTool: async () => { deleteCalls += 1; },
+  })(deleteRequest, { params: Promise.resolve({ id: "ap" }) });
+
+  assert.equal(response.status, 403);
+  assert.match(await response.text(), /built-in tools cannot be deleted/i);
+  assert.equal(deleteCalls, 0);
+});
+
 test("tool DELETE safely maps authorization, configuration, and repository failures", async () => {
   for (const [error, status] of [[new OwnerAuthorizationError(401), 401], [new OwnerAuthorizationError(403), 403]] as const) {
     assert.equal((await createToolDeleteHandler({ authorize: async () => { throw error; }, deleteTool: async () => undefined })(deleteRequest, context)).status, status);

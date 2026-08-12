@@ -23,6 +23,7 @@ import {
   readCachedWorkspace,
   runGuardedSync,
   synchronizeWorkspace,
+  writeWorkspaceCache,
   useCustomTools,
   type WorkspaceApi,
   type WorkspaceStorage,
@@ -112,6 +113,26 @@ test("reads the local cache first and later replaces it with the server snapshot
 
   assert.equal(readCachedWorkspace(storage).tools.some((tool) => tool.name === "Cached Tool"), true);
   assert.equal((await synchronizeWorkspace(storage, api())).tools[0].name, "Server Tool");
+});
+
+test("workspace cache round-trip preserves multiple custom tools with named and hexadecimal colors", () => {
+  const storage = new MemoryStorage();
+  const namedTool = { ...customTool, id: "named-tool", accent: "teal" as const };
+  const colorTool = { ...customTool, id: "color-tool", accent: "#22D3EE" as const };
+
+  writeWorkspaceCache(storage, {
+    tools: [...TOOLS_RAW, namedTool, colorTool],
+    categories: ["Research"],
+    pinnedToolIds: [namedTool.id, colorTool.id],
+    recentTools: [],
+  });
+  const restored = readCachedWorkspace(storage);
+
+  assert.deepEqual(
+    restored.tools.filter((tool) => tool.id === namedTool.id || tool.id === colorTool.id)
+      .map((tool) => [tool.id, tool.accent]),
+    [[namedTool.id, "teal"], [colorTool.id, "#22D3EE"]],
+  );
 });
 
 test("authoritative workspace ignores a stale favorite cache and rewrites it", async () => {

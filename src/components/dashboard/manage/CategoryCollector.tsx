@@ -49,7 +49,7 @@ export default function CategoryCollector({
         type="button"
         className="category-collector-trigger"
         aria-label={`Choose categories for ${toolName}`}
-        aria-haspopup="listbox"
+        aria-haspopup="dialog"
         aria-expanded={visibleOpen}
         disabled={disabled}
         onClick={() => setOpen((current) => !current)}
@@ -62,7 +62,7 @@ export default function CategoryCollector({
         <ChevronDown size={14} aria-hidden="true" />
       </button>
       {visibleOpen && (
-        <div className="category-collector-popover">
+        <div className="category-collector-popover" role="dialog" aria-label={`Choose categories for ${toolName}`}>
           <label className="category-search">
             <Search size={14} aria-hidden="true" />
             <span className="sr-only">Search categories for {toolName}</span>
@@ -79,7 +79,7 @@ export default function CategoryCollector({
               </button>
             )}
           </label>
-          <div className="category-options" role="listbox" aria-multiselectable="true">
+          <div className="category-options" role="group" aria-label={`Categories for ${toolName}`}>
             {filtered.map((category) => {
               const checked = selected.includes(category);
               return (

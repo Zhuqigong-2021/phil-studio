@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { AnimatePresence } from "motion/react";
 import type { ShellState } from "@/hooks/useShellState";
 import { useCustomTools } from "@/hooks/useCustomTools";
 import type { PageKey } from "./Sidebar";
@@ -67,7 +68,9 @@ export default function SecondaryPageShell({
       </div>
 
       <CommandPalette state={state} />
-      {state.addToolOpen && <SecondaryAddToolModal state={state} />}
+      <AnimatePresence>
+        {state.addToolOpen && <SecondaryAddToolModal state={state} />}
+      </AnimatePresence>
       <DatabaseToastViewport />
     </div>
   );

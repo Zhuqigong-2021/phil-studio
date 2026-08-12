@@ -40,6 +40,12 @@ export const TOOLS_RAW: Tool[] = [
   { id: "ai", name: "AI Agent Learning Notes", mono: "AI", accent: "violet", tags: ["AI", "Learn"], aliases: ["agent notes", "ai learning"], favorite: false, sourceType: "internal", iconKey: "brain-circuit", iconType: "matching", checkStatus: "Unknown", checkColor: "#7C8698" },
 ];
 
+const BUILT_IN_TOOL_IDS = new Set(TOOLS_RAW.map((tool) => tool.id));
+
+export function isBuiltInToolId(id: string): boolean {
+  return BUILT_IN_TOOL_IDS.has(id);
+}
+
 export const TAGS = [
   "AI",
   "Design",

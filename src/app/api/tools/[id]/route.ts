@@ -1,7 +1,13 @@
 import { OwnerAuthorizationError, requireOwnerEmail } from "../../../../lib/dashboard/owner-session.ts";
-import { deleteWorkspaceTool, patchWorkspaceTool, WorkspaceToolNotFoundError } from "../../../../lib/dashboard/workspace-repository.ts";
+import {
+  deleteWorkspaceTool,
+  patchWorkspaceTool,
+  WorkspaceToolNotFoundError,
+  WorkspaceToolProtectedError,
+} from "../../../../lib/dashboard/workspace-repository.ts";
 import { validateToolPatch, type ToolPatch } from "../../../../lib/dashboard/workspace-data.ts";
 import type { Tool } from "../../../../lib/dashboard/types.ts";
+import { isBuiltInToolId } from "../../../../lib/dashboard/mock-data.ts";
 
 interface PatchContext {
   params: Promise<{ id: string }>;
@@ -19,6 +25,7 @@ interface ToolDeleteDependencies {
 
 function failureResponse(error: unknown): Response {
   if (error instanceof OwnerAuthorizationError) return Response.json({ error: error.status === 401 ? "Authentication is required." : "Access is forbidden." }, { status: error.status });
+  if (error instanceof WorkspaceToolProtectedError) return Response.json({ error: "Built-in tools cannot be deleted." }, { status: 403 });
   if (error instanceof WorkspaceToolNotFoundError) return Response.json({ error: "Tool was not found." }, { status: 404 });
   if (error instanceof Error && error.name === "SupabaseConfigurationError") return Response.json({ error: "Workspace service is unavailable." }, { status: 503 });
   return Response.json({ error: "Workspace data is unavailable." }, { status: 502 });
@@ -48,6 +55,7 @@ export function createToolDeleteHandler(dependencies: ToolDeleteDependencies) {
     try {
       const ownerEmail = await dependencies.authorize();
       const { id } = await context.params;
+      if (isBuiltInToolId(id)) throw new WorkspaceToolProtectedError(id);
       await dependencies.deleteTool(ownerEmail, id);
       return new Response(null, { status: 204 });
     } catch (error) {

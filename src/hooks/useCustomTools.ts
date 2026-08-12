@@ -79,6 +79,34 @@ export interface AddWorkspaceToolResult {
   workspaceRefreshFailed: boolean;
 }
 
+export interface WorkspaceMutationOutcome {
+  workspaceRefreshFailed: boolean;
+  workspaceSnapshotApplied: boolean;
+}
+
+interface WorkspaceMutationToken {
+  id: string;
+  revision: number;
+}
+
+export function createWorkspaceMutationGuard() {
+  let revision = 0;
+  const latestByTool = new Map<string, number>();
+  return {
+    begin(id: string): WorkspaceMutationToken {
+      revision += 1;
+      latestByTool.set(id, revision);
+      return { id, revision };
+    },
+    canApplySnapshot(token: WorkspaceMutationToken): boolean {
+      return token.revision === revision;
+    },
+    canApplyLocalResult(token: WorkspaceMutationToken): boolean {
+      return latestByTool.get(token.id) === token.revision;
+    },
+  };
+}
+
 export async function addWorkspaceToolAndRefresh(
   api: WorkspaceApi,
   draft: CustomToolDraft,
@@ -100,23 +128,49 @@ export async function updateWorkspaceToolAndRefresh(
   api: WorkspaceApi,
   id: string,
   patch: ToolPatch,
+  getCurrent: () => WorkspaceSnapshot,
   apply: (snapshot: WorkspaceSnapshot) => void,
-): Promise<WorkspaceSnapshot> {
-  await api.patchTool(id, patch);
-  const snapshot = await api.fetchSnapshot();
-  apply(snapshot);
-  return snapshot;
+  guard?: ReturnType<typeof createWorkspaceMutationGuard>,
+): Promise<WorkspaceMutationOutcome> {
+  const token = guard?.begin(id);
+  const tool = await api.patchTool(id, patch);
+  let snapshot: WorkspaceSnapshot;
+  try {
+    snapshot = await api.fetchSnapshot();
+  } catch {
+    if (!token || guard?.canApplyLocalResult(token)) apply(mergeUpdatedTool(getCurrent(), tool, patch));
+    return { workspaceRefreshFailed: true, workspaceSnapshotApplied: false };
+  }
+  if (!token || guard?.canApplySnapshot(token)) {
+    apply(snapshot);
+    return { workspaceRefreshFailed: false, workspaceSnapshotApplied: true };
+  }
+  if (guard?.canApplyLocalResult(token)) apply(mergeUpdatedTool(getCurrent(), tool, patch));
+  return { workspaceRefreshFailed: false, workspaceSnapshotApplied: false };
 }
 
 export async function deleteWorkspaceToolAndRefresh(
   api: WorkspaceApi,
   id: string,
+  getCurrent: () => WorkspaceSnapshot,
   apply: (snapshot: WorkspaceSnapshot) => void,
-): Promise<WorkspaceSnapshot> {
+  guard?: ReturnType<typeof createWorkspaceMutationGuard>,
+): Promise<WorkspaceMutationOutcome> {
+  const token = guard?.begin(id);
   await api.deleteTool(id);
-  const snapshot = await api.fetchSnapshot();
-  apply(snapshot);
-  return snapshot;
+  let snapshot: WorkspaceSnapshot;
+  try {
+    snapshot = await api.fetchSnapshot();
+  } catch {
+    if (!token || guard?.canApplyLocalResult(token)) apply(mergeDeletedTool(getCurrent(), id));
+    return { workspaceRefreshFailed: true, workspaceSnapshotApplied: false };
+  }
+  if (!token || guard?.canApplySnapshot(token)) {
+    apply(snapshot);
+    return { workspaceRefreshFailed: false, workspaceSnapshotApplied: true };
+  }
+  if (guard?.canApplyLocalResult(token)) apply(mergeDeletedTool(getCurrent(), id));
+  return { workspaceRefreshFailed: false, workspaceSnapshotApplied: false };
 }
 
 export function createFavoritePendingTracker() {
@@ -206,7 +260,7 @@ export function readCachedWorkspace(
   };
 }
 
-function writeWorkspaceCache(storage: WorkspaceStorage, snapshot: WorkspaceSnapshot): void {
+export function writeWorkspaceCache(storage: WorkspaceStorage, snapshot: WorkspaceSnapshot): void {
   storage.setItem(CUSTOM_TOOLS_KEY, JSON.stringify(snapshot.tools.filter((tool) => !BUILT_IN_IDS.has(tool.id))));
   storage.setItem(CUSTOM_CATEGORIES_KEY, JSON.stringify(
     snapshot.categories.filter((category) => !DEFAULT_CATEGORY_KEYS.has(category.toLocaleLowerCase())),
@@ -258,6 +312,27 @@ export function mergeCreatedTool(current: WorkspaceSnapshot, tool: Tool, pin: bo
     ...current,
     tools: [...current.tools.filter((item) => item.id !== tool.id), tool],
     pinnedToolIds: pin ? [...new Set([...current.pinnedToolIds, tool.id])] : current.pinnedToolIds,
+  };
+}
+
+export function mergeUpdatedTool(current: WorkspaceSnapshot, tool: Tool, patch: ToolPatch): WorkspaceSnapshot {
+  return {
+    ...current,
+    tools: current.tools.map((item) => item.id === tool.id ? tool : item),
+    pinnedToolIds: patch.pinned === undefined
+      ? current.pinnedToolIds
+      : patch.pinned
+        ? [...new Set([...current.pinnedToolIds, tool.id])]
+        : current.pinnedToolIds.filter((id) => id !== tool.id),
+  };
+}
+
+export function mergeDeletedTool(current: WorkspaceSnapshot, id: string): WorkspaceSnapshot {
+  return {
+    ...current,
+    tools: current.tools.filter((tool) => tool.id !== id),
+    pinnedToolIds: current.pinnedToolIds.filter((toolId) => toolId !== id),
+    recentTools: current.recentTools.filter((tool) => tool.id !== id),
   };
 }
 
@@ -382,6 +457,7 @@ export function useCustomTools(api: WorkspaceApi = DEFAULT_WORKSPACE_API) {
   const revisionRef = useRef(0);
   const hasAuthoritativeWorkspaceRef = useRef(false);
   const syncGuardRef = useRef(createSyncGuard());
+  const mutationGuardRef = useRef(createWorkspaceMutationGuard());
   const patchVersionsRef = useRef(new Map<string, symbol>());
   const favoritePendingRef = useRef(createFavoritePendingTracker());
 
@@ -488,18 +564,29 @@ export function useCustomTools(api: WorkspaceApi = DEFAULT_WORKSPACE_API) {
     );
   }, [api, applyWorkspace]);
 
-  const updateTool = useCallback(async (id: string, patch: ToolPatch): Promise<void> => {
-    await updateWorkspaceToolAndRefresh(api, id, patch, (snapshot) => {
-      hasAuthoritativeWorkspaceRef.current = true;
-      applyWorkspace(snapshot);
-    });
+  const updateTool = useCallback(async (id: string, patch: ToolPatch): Promise<WorkspaceMutationOutcome> => {
+    const result = await updateWorkspaceToolAndRefresh(
+      api,
+      id,
+      patch,
+      () => workspaceRef.current,
+      applyWorkspace,
+      mutationGuardRef.current,
+    );
+    if (result.workspaceSnapshotApplied) hasAuthoritativeWorkspaceRef.current = true;
+    return result;
   }, [api, applyWorkspace]);
 
-  const deleteTool = useCallback(async (id: string): Promise<void> => {
-    await deleteWorkspaceToolAndRefresh(api, id, (snapshot) => {
-      hasAuthoritativeWorkspaceRef.current = true;
-      applyWorkspace(snapshot);
-    });
+  const deleteTool = useCallback(async (id: string): Promise<WorkspaceMutationOutcome> => {
+    const result = await deleteWorkspaceToolAndRefresh(
+      api,
+      id,
+      () => workspaceRef.current,
+      applyWorkspace,
+      mutationGuardRef.current,
+    );
+    if (result.workspaceSnapshotApplied) hasAuthoritativeWorkspaceRef.current = true;
+    return result;
   }, [api, applyWorkspace]);
 
   const setToolFavorite = useCallback(async (id: string, favorite: boolean): Promise<void> => {

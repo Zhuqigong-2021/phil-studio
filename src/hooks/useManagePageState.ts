@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
-import { decorate } from "@/lib/dashboard/mock-data";
+import { decorate, isBuiltInToolId } from "@/lib/dashboard/mock-data";
 import { openTool } from "@/lib/dashboard/open-tool";
 import {
   paginateTools,
@@ -94,13 +94,13 @@ export function useManagePageState() {
 
     dispatch({ type: "update/start", id });
     mutationRefreshes.current.set(id, { phase: "pending", original: tool });
-    const succeeded = await runManageMutation({
+    const result = await runManageMutation({
       action: "updated",
       toolName: tool.name,
       mutate: () => updateTool(id, patch),
       publish: publishDatabaseToast,
     });
-    if (succeeded) {
+    if (result.succeeded) {
       const mutation = mutationRefreshes.current.get(id);
       if (!mutation) return;
       mutation.phase = "succeeded";
@@ -120,6 +120,7 @@ export function useManagePageState() {
   }, [categories, rawTools, tableState.aliasInputs, tableState.drafts, tableState.updatingIds, updateTool]);
 
   const requestDelete = useCallback((id: string) => {
+    if (isBuiltInToolId(id)) return;
     dispatch({ type: "delete/request", id });
   }, []);
   const cancelDelete = useCallback(() => {
@@ -132,14 +133,14 @@ export function useManagePageState() {
 
     deletePendingRef.current = true;
     dispatch({ type: "delete/start" });
-    const succeeded = await runManageMutation({
+    const result = await runManageMutation({
       action: "deleted",
       toolName: tool.name,
       mutate: () => deleteTool(id),
       publish: publishDatabaseToast,
     });
     deletePendingRef.current = false;
-    dispatch({ type: succeeded ? "delete/succeeded" : "delete/failed" });
+    dispatch({ type: result.succeeded ? "delete/succeeded" : "delete/failed" });
   }, [deleteTool, rawTools, tableState.deleteTargetId, tableState.deleting]);
 
   const setPage = useCallback((page: number) => {

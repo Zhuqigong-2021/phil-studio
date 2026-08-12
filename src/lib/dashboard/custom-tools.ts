@@ -15,6 +15,7 @@ const ACCENTS = new Set<Accent>([
   "slate",
 ]);
 const SOURCE_TYPES = new Set<SourceType>(["internal", "external"]);
+const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 
 export interface CustomToolDraft {
   name: string;
@@ -86,15 +87,15 @@ export function parseStoredToolIds(raw: string | null): string[] {
   return [...new Set(value.filter(Boolean))];
 }
 
-function isStoredTool(value: unknown): value is Tool {
-  if (!value || typeof value !== "object") return false;
+function normalizeStoredTool(value: unknown): Tool | null {
+  if (!value || typeof value !== "object") return null;
   const tool = value as Partial<Tool>;
-  return (
+  const valid = (
     typeof tool.id === "string" &&
     typeof tool.name === "string" &&
     typeof tool.mono === "string" &&
     typeof tool.accent === "string" &&
-    ACCENTS.has(tool.accent as Accent) &&
+    (ACCENTS.has(tool.accent as Accent) || HEX_COLOR.test(tool.accent)) &&
     Array.isArray(tool.tags) &&
     tool.tags.every((tag) => typeof tag === "string") &&
     typeof tool.favorite === "boolean" &&
@@ -102,12 +103,22 @@ function isStoredTool(value: unknown): value is Tool {
     (tool.aliases === undefined ||
       (Array.isArray(tool.aliases) && tool.aliases.every((alias) => typeof alias === "string")))
   );
+  if (!valid) return null;
+  const accent = tool.accent as string;
+  return {
+    ...(tool as Tool),
+    accent: ACCENTS.has(accent as Accent)
+      ? accent as Accent
+      : accent.toUpperCase() as ToolColor,
+  };
 }
 
 export function parseStoredTools(raw: string | null): Tool[] {
   const value = parseJsonArray(raw);
-  if (!value || !value.every(isStoredTool)) return [];
-  return value;
+  if (!value) return [];
+  const tools = value.map(normalizeStoredTool);
+  if (tools.some((tool) => tool === null)) return [];
+  return tools as Tool[];
 }
 
 function normalizeAliases(aliases: readonly string[]): string[] {

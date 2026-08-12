@@ -32,3 +32,42 @@ test("alias display is controlled by reducer state rather than redundant row-loc
   assert.match(row, /aliasInput: string/);
   assert.doesNotMatch(row, /useState\(draft\.aliases\.join/);
 });
+
+test("category choices expose checkbox-group semantics instead of listbox semantics", async () => {
+  const categories = await readFile(new URL("./CategoryCollector.tsx", import.meta.url), "utf8");
+
+  assert.match(categories, /role="group"/);
+  assert.match(categories, /type="checkbox"/);
+  assert.doesNotMatch(categories, /role="listbox"|aria-multiselectable/);
+});
+
+test("built-in rows explain why Delete is unavailable", async () => {
+  const row = await readFile(new URL("./EditableToolRow.tsx", import.meta.url), "utf8");
+
+  assert.match(row, /isBuiltInToolId\(tool\.id\)/);
+  assert.match(row, /Built-in tools cannot be deleted/);
+  assert.match(row, /disabled=\{updating \|\| builtIn\}/);
+});
+
+test("Manage delete confirmation shares the established overlay exit motion", async () => {
+  const [page, dialog] = await Promise.all([
+    readFile(new URL("../pages/ManageContent.tsx", import.meta.url), "utf8"),
+    readFile(new URL("./DeleteToolDialog.tsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(page, /AnimatePresence/);
+  assert.match(dialog, /getOverlayMotion/);
+  assert.match(dialog, /<motion\.div/);
+  assert.match(dialog, /\.\.\.overlayMotion\.surface/);
+});
+
+test("Manage shared Add Tool modal propagates exit motion before its workspace owner unmounts", async () => {
+  const [shell, modal] = await Promise.all([
+    readFile(new URL("../SecondaryPageShell.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../AddToolModal.tsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(shell, /<AnimatePresence>/);
+  assert.match(shell, /state\.addToolOpen && <SecondaryAddToolModal/);
+  assert.match(modal, /<AnimatePresence propagate>/);
+});

@@ -4,10 +4,12 @@ import test from "node:test";
 import {
   buildMigrationPayload,
   deleteWorkspaceToolRequest,
+  patchWorkspaceTool,
   toolRowToTool,
   validateToolPatch,
   WorkspaceSyncError,
 } from "./workspace-data.ts";
+import { databaseErrorMessage } from "./tool-mutations.ts";
 
 const toolRow = {
   aliases: ["Docs", "Knowledge"],
@@ -178,4 +180,46 @@ test("propagates a parsed API error from tool deletion", async () => {
     () => deleteWorkspaceToolRequest("missing", async () => Response.json({ error: "Tool was not found." }, { status: 404 })),
     (error: unknown) => error instanceof WorkspaceSyncError && error.message === "Tool was not found.",
   );
+});
+
+test("request errors preserve HTTP status through the database Toast mapper", async () => {
+  const cases = [
+    { status: 400, error: "Tool name is required.", copy: /tool name is required/i },
+    { status: 401, error: "Authentication is required.", copy: /sign in/i },
+    { status: 403, error: "Access is forbidden.", copy: /permission/i },
+    { status: 503, error: "Workspace service is unavailable.", copy: /temporarily unavailable/i },
+  ];
+
+  for (const sample of cases) {
+    let caught: unknown;
+    try {
+      await patchWorkspaceTool("tool-1", { name: "Notes" }, async () => Response.json(
+        { error: sample.error },
+        { status: sample.status },
+      ));
+    } catch (error) {
+      caught = error;
+    }
+
+    assert.ok(caught instanceof WorkspaceSyncError);
+    assert.equal(caught.status, sample.status);
+    assert.equal(caught.networkFailure, false);
+    assert.match(databaseErrorMessage(caught, "update", "Notes"), sample.copy);
+  }
+});
+
+test("request errors preserve network failure identity through the database Toast mapper", async () => {
+  let caught: unknown;
+  try {
+    await patchWorkspaceTool("tool-1", { name: "Notes" }, async () => {
+      throw new TypeError("Failed to fetch");
+    });
+  } catch (error) {
+    caught = error;
+  }
+
+  assert.ok(caught instanceof WorkspaceSyncError);
+  assert.equal(caught.status, null);
+  assert.equal(caught.networkFailure, true);
+  assert.match(databaseErrorMessage(caught, "update", "Notes"), /connection/i);
 });

@@ -1,6 +1,6 @@
 import type { Tables, TablesInsert, TablesUpdate } from "../supabase/database.types.ts";
 import { addCategoryToList, createCustomTool, type CustomToolDraft } from "./custom-tools.ts";
-import { TAGS, TOOLS_RAW } from "./mock-data.ts";
+import { isBuiltInToolId, TAGS, TOOLS_RAW } from "./mock-data.ts";
 import {
   buildMigrationPayload,
   toolRowToTool,
@@ -31,10 +31,7 @@ export interface WorkspaceDatabasePort {
   findTool(ownerEmail: string, id: string): Promise<ToolRow | null>;
   insertTool(row: TablesInsert<"tools">): Promise<ToolRow>;
   updateTool(ownerEmail: string, id: string, patch: TablesUpdate<"tools">): Promise<ToolRow | null>;
-  deleteTool(ownerEmail: string, id: string): Promise<void>;
-  findOwnedTool(ownerEmail: string, id: string): Promise<ToolRow | null>;
-  deleteToolRelationships(toolId: string): Promise<void>;
-  deleteOwnedTool(ownerEmail: string, id: string): Promise<void>;
+  deleteTool(ownerEmail: string, id: string): Promise<boolean>;
   upsertRelationships(rows: Array<{ tool_id: string; category_id: string }>): Promise<void>;
   patchToolAtomic(
     ownerEmail: string,
@@ -102,21 +99,13 @@ async function createSupabasePort(): Promise<WorkspaceDatabasePort> {
       return data;
     },
     async deleteTool(ownerEmail, id) {
-      const { error } = await client.from("tools").delete().eq("owner_email", ownerEmail).eq("id", id);
+      const { data, error } = await client.from("tools").delete()
+        .eq("owner_email", ownerEmail)
+        .eq("id", id)
+        .select("id")
+        .maybeSingle();
       throwOnError(error);
-    },
-    async findOwnedTool(ownerEmail, id) {
-      const { data, error } = await client.from("tools").select("*").eq("owner_email", ownerEmail).eq("id", id).maybeSingle();
-      throwOnError(error);
-      return data;
-    },
-    async deleteToolRelationships(toolId) {
-      const { error } = await client.from("tool_categories").delete().eq("tool_id", toolId);
-      throwOnError(error);
-    },
-    async deleteOwnedTool(ownerEmail, id) {
-      const { error } = await client.from("tools").delete().eq("owner_email", ownerEmail).eq("id", id);
-      throwOnError(error);
+      return Boolean(data);
     },
     async upsertRelationships(rows) {
       if (!rows.length) return;
@@ -159,6 +148,13 @@ export class WorkspaceToolNotFoundError extends Error {
   constructor(id: string) {
     super(`Tool was not found: ${id}.`);
     this.name = "WorkspaceToolNotFoundError";
+  }
+}
+
+export class WorkspaceToolProtectedError extends Error {
+  constructor(id: string) {
+    super(`Built-in tools cannot be deleted: ${id}.`);
+    this.name = "WorkspaceToolProtectedError";
   }
 }
 
@@ -304,11 +300,10 @@ export async function deleteWorkspaceTool(
   id: string,
   port?: WorkspaceDatabasePort,
 ): Promise<void> {
+  if (isBuiltInToolId(id)) throw new WorkspaceToolProtectedError(id);
   const database = await resolvePort(port);
-  const tool = await database.findOwnedTool(ownerEmail, id);
-  if (!tool) throw new WorkspaceToolNotFoundError(id);
-  await database.deleteToolRelationships(tool.id);
-  await database.deleteOwnedTool(ownerEmail, tool.id);
+  const deleted = await database.deleteTool(ownerEmail, id);
+  if (!deleted) throw new WorkspaceToolNotFoundError(id);
 }
 
 export async function patchWorkspaceTool(ownerEmail: string, id: string, input: ToolPatch, port?: WorkspaceDatabasePort): Promise<Tool> {
