@@ -63,3 +63,11 @@ test("desktop tool library fits the Dashboard content width without a forced wid
   assert.match(css, /\.tool-library-table\s*\{[\s\S]*?table-layout:\s*fixed/);
   assert.match(css, /\.tool-library-header h1\s*\{[^}]*color:\s*#f2f6ff/);
 });
+
+test("pin switches reuse the Theme switch indigo palette", async () => {
+  const css = await readFile(secondaryCssUrl, "utf8");
+
+  assert.match(css, /\.tool-pin-switch\[aria-checked="true"\]\s*\{[^}]*background:\s*#7255db/);
+  assert.match(css, /\.tool-pin-switch\[aria-checked="true"\] span\s*\{[^}]*background:\s*#cfc4ff/);
+  assert.doesNotMatch(css, /\.tool-pin-switch\[aria-checked="true"\]\s*\{[^}]*rgba\(59, 130, 246/);
+});
