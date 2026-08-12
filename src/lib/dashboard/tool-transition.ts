@@ -343,16 +343,6 @@ const browserTransitionStarter = createToolLibraryTransitionStarter({
       opacity: "0",
     });
     document.body.appendChild(veil);
-    gsap.to(veil, { opacity: 1, duration: 0.48, ease: "power2.inOut" });
-    if (content) {
-      gsap.to(content, {
-        opacity: 0.12,
-        filter: "blur(12px)",
-        scale: 0.988,
-        duration: 0.34,
-        ease: "power2.out",
-      });
-    }
     return () => {
       gsap.killTweensOf(veil);
       veil.remove();
@@ -363,11 +353,21 @@ const browserTransitionStarter = createToolLibraryTransitionStarter({
     const shell = overlay as HTMLElement;
     const sourceContent = shell.querySelector<HTMLElement>("[data-tool-library-source-content]");
     const preview = shell.querySelector<HTMLElement>("[data-tool-library-morph-preview]");
+    const veil = document.querySelector<HTMLElement>("[data-tool-library-transition-veil]");
+    const content = document.querySelector<HTMLElement>("[data-dashboard-transition-content]");
     const timeline = gsap.timeline({ onComplete });
     if (preview) gsap.set(preview, { autoAlpha: 0 });
     if (sourceContent) timeline.to(sourceContent, { autoAlpha: 0, duration: 0.14 }, 0);
     if (preview) timeline.to(preview, { autoAlpha: 1, duration: 0.22, ease: "power2.out" }, 0.06);
     timeline.to(shell, { ...plan }, 0.08);
+    if (content) timeline.to(content, {
+      opacity: 0.48,
+      filter: "blur(7px)",
+      scale: 0.994,
+      duration: 0.48,
+      ease: "power2.inOut",
+    }, 0.22);
+    if (veil) timeline.to(veil, { opacity: 1, duration: 0.38, ease: "power2.inOut" }, 0.70);
     return () => timeline.kill();
   },
 });

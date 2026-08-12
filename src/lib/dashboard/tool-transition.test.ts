@@ -241,6 +241,9 @@ test("browser handoff reuses the Manage scene instead of a dark inline veil", as
   const source = await readFile(new URL("./tool-transition.ts", import.meta.url), "utf8");
   assert.match(source, /className = "manage-scene-background"/);
   assert.doesNotMatch(source, /background: "radial-gradient\(circle at 56%/);
+  assert.match(source, /timeline\.to\(veil, \{ opacity: 1, duration: 0\.38[\s\S]*\}, 0\.70\)/);
+  assert.match(source, /timeline\.to\(content, \{[\s\S]*opacity: 0\.48[\s\S]*\}, 0\.22\)/);
+  assert.doesNotMatch(source, /gsap\.to\(veil, \{ opacity: 1/);
 });
 
 test("handoff registry completes retained transition cleanup only once", () => {
