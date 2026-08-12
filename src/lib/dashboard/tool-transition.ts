@@ -316,11 +316,12 @@ const browserTransitionStarter = createToolLibraryTransitionStarter({
     const paddingRight = Number.parseFloat(styles.paddingRight) || 0;
     const paddingTop = Number.parseFloat(styles.paddingTop) || 0;
     const paddingBottom = Number.parseFloat(styles.paddingBottom) || 0;
+    const surfaceTop = bounds.top + paddingTop + Math.max(18, Math.min(30, window.innerHeight * 0.03));
     return {
       left: bounds.left + paddingLeft,
-      top: bounds.top + paddingTop,
+      top: surfaceTop,
       width: Math.max(1, bounds.width - paddingLeft - paddingRight),
-      height: Math.max(1, bounds.height - paddingTop - paddingBottom),
+      height: Math.max(1, bounds.bottom - paddingBottom - surfaceTop),
     };
   },
   cloneShell: (source, deep) => (source as HTMLElement).cloneNode(deep) as HTMLElement,

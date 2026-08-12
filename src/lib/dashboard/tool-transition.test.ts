@@ -248,6 +248,7 @@ test("browser handoff reuses the Manage scene instead of a dark inline veil", as
   assert.match(source, /const bounds = destination\.getBoundingClientRect\(\)/);
   assert.match(source, /const styles = window\.getComputedStyle\(destination\)/);
   assert.match(source, /bounds\.left \+ paddingLeft/);
+  assert.match(source, /const surfaceTop = bounds\.top \+ paddingTop \+ Math\.max\(18, Math\.min\(30, window\.innerHeight \* 0\.03\)\)/);
   assert.doesNotMatch(source, /const left = desktop \? 300 : 20/);
 });
 

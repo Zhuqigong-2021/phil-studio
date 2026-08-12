@@ -804,7 +804,11 @@
   gap: clamp(4px, 0.65cqw, 9px);
   padding: clamp(14px, 1.4cqw, 24px);
   color: #eef3ff;
-  background: linear-gradient(145deg, #0a1430, #0e1234);
+  background:
+    radial-gradient(ellipse at 78% 4%, rgba(124, 58, 237, .34) 0%, rgba(124, 58, 237, .11) 38%, transparent 66%),
+    radial-gradient(ellipse at 48% 48%, rgba(67, 56, 202, .30) 0%, rgba(67, 56, 202, .10) 44%, transparent 72%),
+    radial-gradient(ellipse at 48% 92%, rgba(14, 165, 233, .13) 0%, transparent 58%),
+    linear-gradient(145deg, #09122d 0%, #11143b 52%, #171039 78%, #090d27 100%);
 }
 .tool-library-morph-heading { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 3px; }
 .tool-library-morph-heading div { display: flex; flex-direction: column; gap: 2px; }
