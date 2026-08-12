@@ -1,6 +1,7 @@
 import gsap from "gsap";
 
 const TOOL_LIBRARY_HANDOFF_KEY = "phil-studio:tool-library-handoff";
+const TOOL_LIBRARY_HANDOFF_TTL_MS = 15_000;
 
 export interface ToolTransitionRect {
   left: number;
@@ -27,6 +28,44 @@ export interface ToolTransitionLock {
 
 export interface ToolTransitionRouter {
   push: (href: string) => void;
+}
+
+export interface ToolTransitionStorage {
+  getItem: (key: string) => string | null;
+  setItem: (key: string, value: string) => void;
+  removeItem: (key: string) => void;
+}
+
+export interface ToolLibraryHandoffMarker {
+  mark: () => void;
+  detect: () => boolean;
+  clear: () => void;
+}
+
+export interface ToolTransitionSource {
+  getBoundingClientRect: () => ToolTransitionRect;
+}
+
+export interface ToolTransitionOverlay {
+  style: object;
+  setAttribute: (name: string, value: string) => void;
+  removeAttribute: (name: string) => void;
+  classList: { add: (...tokens: string[]) => void };
+  remove: () => void;
+}
+
+export interface ToolLibraryTransitionDependencies {
+  lock: ToolTransitionLock;
+  findDestinationRect: () => ToolTransitionRect | null;
+  cloneShell: (source: ToolTransitionSource, deep: false) => ToolTransitionOverlay;
+  appendOverlay: (overlay: ToolTransitionOverlay) => void;
+  prefersReducedMotion: () => boolean;
+  marker: ToolLibraryHandoffMarker;
+  animate: (
+    overlay: ToolTransitionOverlay,
+    plan: ToolTransitionPlan,
+    onComplete: () => void,
+  ) => () => void;
 }
 
 export function createToolTransitionLock(): ToolTransitionLock {
@@ -74,97 +113,177 @@ export function getToolTransitionPlan(
   };
 }
 
-const activeTransitionLock = createToolTransitionLock();
-let inMemoryHandoff = false;
+export function createToolLibraryHandoffMarker({
+  storage,
+  now = Date.now,
+  ttlMs = TOOL_LIBRARY_HANDOFF_TTL_MS,
+}: {
+  storage: () => ToolTransitionStorage | null;
+  now?: () => number;
+  ttlMs?: number;
+}): ToolLibraryHandoffMarker {
+  let inMemoryTimestamp: number | null = null;
 
-function markToolLibraryHandoff() {
-  inMemoryHandoff = true;
-  try {
-    window.sessionStorage.setItem(TOOL_LIBRARY_HANDOFF_KEY, "1");
-  } catch {
-    // The in-memory marker still covers normal App Router client navigation.
-  }
+  const clear = () => {
+    inMemoryTimestamp = null;
+    try {
+      storage()?.removeItem(TOOL_LIBRARY_HANDOFF_KEY);
+    } catch {
+      // Storage can be unavailable in privacy-restricted browsing contexts.
+    }
+  };
+
+  return {
+    mark() {
+      const timestamp = now();
+      inMemoryTimestamp = timestamp;
+      try {
+        storage()?.setItem(TOOL_LIBRARY_HANDOFF_KEY, JSON.stringify({ timestamp }));
+      } catch {
+        // The in-memory timestamp still covers normal App Router navigation.
+      }
+    },
+    detect() {
+      let timestamp = inMemoryTimestamp;
+      try {
+        const raw = storage()?.getItem(TOOL_LIBRARY_HANDOFF_KEY);
+        if (raw) {
+          const stored = JSON.parse(raw) as { timestamp?: unknown };
+          if (typeof stored.timestamp === "number" && Number.isFinite(stored.timestamp)) {
+            timestamp = timestamp === null ? stored.timestamp : Math.max(timestamp, stored.timestamp);
+          }
+        }
+      } catch {
+        // Fall back to the in-memory timestamp.
+      }
+
+      const age = timestamp === null ? Number.POSITIVE_INFINITY : now() - timestamp;
+      if (age < 0 || age > ttlMs) {
+        clear();
+        return false;
+      }
+      return true;
+    },
+    clear,
+  };
 }
 
-export function consumeToolLibraryHandoff(): boolean {
-  let marked = inMemoryHandoff;
-  inMemoryHandoff = false;
+const browserHandoffMarker = createToolLibraryHandoffMarker({
+  storage: () => {
+    try {
+      return typeof window === "undefined" ? null : window.sessionStorage;
+    } catch {
+      return null;
+    }
+  },
+});
 
-  try {
-    marked = marked || window.sessionStorage.getItem(TOOL_LIBRARY_HANDOFF_KEY) === "1";
-    window.sessionStorage.removeItem(TOOL_LIBRARY_HANDOFF_KEY);
-  } catch {
-    // Session storage can be unavailable in privacy-restricted browsing contexts.
-  }
-
-  return marked;
+export function beginToolLibraryHandoffEntrance(
+  marker: ToolLibraryHandoffMarker = browserHandoffMarker,
+) {
+  const handoff = marker.detect();
+  return {
+    handoff,
+    establish(schedule: (callback: () => void) => () => void) {
+      return handoff ? schedule(marker.clear) : () => undefined;
+    },
+  };
 }
+
+export function createToolLibraryTransitionStarter(
+  dependencies: ToolLibraryTransitionDependencies,
+) {
+  return (
+    sourceElement: ToolTransitionSource,
+    router: ToolTransitionRouter,
+  ): (() => void) | null => {
+    if (!dependencies.lock.acquire()) return null;
+
+    const sourceRect = sourceElement.getBoundingClientRect();
+    const destinationRect = dependencies.findDestinationRect();
+    let cleaned = false;
+    let navigated = false;
+    let cancelAnimation: (() => void) | null = null;
+    let overlay: ToolTransitionOverlay | null = null;
+
+    const cleanup = () => {
+      if (cleaned) return;
+      cleaned = true;
+      cancelAnimation?.();
+      cancelAnimation = null;
+      overlay?.remove();
+      dependencies.lock.release();
+    };
+
+    if (!destinationRect) {
+      navigated = true;
+      router.push("/manage");
+      return cleanup;
+    }
+
+    const plan = getToolTransitionPlan(
+      sourceRect,
+      destinationRect,
+      dependencies.prefersReducedMotion(),
+    );
+    overlay = dependencies.cloneShell(sourceElement, false);
+    overlay.setAttribute("aria-hidden", "true");
+    overlay.removeAttribute("role");
+    overlay.removeAttribute("tabindex");
+    overlay.classList.add("dashboard-tool-transition-overlay");
+    Object.assign(overlay.style, {
+      position: "fixed",
+      left: `${sourceRect.left}px`,
+      top: `${sourceRect.top}px`,
+      width: `${sourceRect.width}px`,
+      height: `${sourceRect.height}px`,
+      margin: "0",
+      zIndex: "120",
+      pointerEvents: "none",
+      transformOrigin: "0 0",
+      overflow: "hidden",
+      willChange: "transform, opacity, border-radius",
+    });
+    dependencies.appendOverlay(overlay);
+
+    cancelAnimation = dependencies.animate(overlay, plan, () => {
+      if (cleaned || navigated) return;
+      navigated = true;
+      dependencies.marker.mark();
+      cleanup();
+      router.push("/manage");
+    });
+    if (cleaned) {
+      cancelAnimation();
+      cancelAnimation = null;
+    }
+
+    return cleanup;
+  };
+}
+
+const browserTransitionStarter = createToolLibraryTransitionStarter({
+  lock: createToolTransitionLock(),
+  findDestinationRect: () =>
+    document
+      .querySelector<HTMLElement>("[data-tool-library-transition-destination]")
+      ?.getBoundingClientRect() ?? null,
+  cloneShell: (source, deep) => (source as HTMLElement).cloneNode(deep) as HTMLElement,
+  appendOverlay: (overlay) => document.body.appendChild(overlay as HTMLElement),
+  prefersReducedMotion: () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+  marker: browserHandoffMarker,
+  animate: (overlay, plan, onComplete) => {
+    gsap.to(overlay, {
+      ...plan,
+      onComplete,
+    });
+    return () => gsap.killTweensOf(overlay);
+  },
+});
 
 export function startToolLibraryTransition(
   sourceElement: HTMLElement,
   router: ToolTransitionRouter,
 ): (() => void) | null {
-  if (!activeTransitionLock.acquire()) return null;
-
-  const destinationElement = document.querySelector<HTMLElement>(
-    "[data-tool-library-transition-destination]",
-  );
-
-  if (!destinationElement) {
-    activeTransitionLock.release();
-    router.push("/manage");
-    return null;
-  }
-
-  const sourceRect = sourceElement.getBoundingClientRect();
-  const destinationRect = destinationElement.getBoundingClientRect();
-  const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const plan = getToolTransitionPlan(sourceRect, destinationRect, reduceMotion);
-  const overlay = sourceElement.cloneNode(false) as HTMLElement;
-  let navigated = false;
-
-  overlay.setAttribute("aria-hidden", "true");
-  overlay.removeAttribute("role");
-  overlay.removeAttribute("tabindex");
-  overlay.classList.add("dashboard-tool-transition-overlay");
-  Object.assign(overlay.style, {
-    position: "fixed",
-    left: `${sourceRect.left}px`,
-    top: `${sourceRect.top}px`,
-    width: `${sourceRect.width}px`,
-    height: `${sourceRect.height}px`,
-    margin: "0",
-    zIndex: "120",
-    pointerEvents: "none",
-    transformOrigin: "0 0",
-    overflow: "hidden",
-    willChange: "transform, opacity, border-radius",
-  });
-  document.body.appendChild(overlay);
-
-  const cleanup = () => {
-    gsap.killTweensOf(overlay);
-    overlay.remove();
-    activeTransitionLock.release();
-  };
-
-  gsap.to(overlay, {
-    x: plan.x,
-    y: plan.y,
-    scaleX: plan.scaleX,
-    scaleY: plan.scaleY,
-    opacity: plan.opacity,
-    borderRadius: plan.borderRadius,
-    duration: plan.duration,
-    ease: plan.ease,
-    onComplete: () => {
-      if (navigated) return;
-      navigated = true;
-      markToolLibraryHandoff();
-      cleanup();
-      router.push("/manage");
-    },
-  });
-
-  return cleanup;
+  return browserTransitionStarter(sourceElement, router);
 }

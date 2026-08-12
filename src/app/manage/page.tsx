@@ -6,7 +6,7 @@ import "@/styles/secondary.css";
 import { useManagePageState } from "@/hooks/useManagePageState";
 import SecondaryPageShell from "@/components/dashboard/SecondaryPageShell";
 import ManageContent from "@/components/dashboard/pages/ManageContent";
-import { consumeToolLibraryHandoff } from "@/lib/dashboard/tool-transition";
+import { beginToolLibraryHandoffEntrance } from "@/lib/dashboard/tool-transition";
 
 export default function ManagePage() {
   const state = useManagePageState();
@@ -16,10 +16,10 @@ export default function ManagePage() {
     const root = entranceRef.current;
     if (!root) return;
 
-    const handoff = consumeToolLibraryHandoff();
+    const entrance = beginToolLibraryHandoffEntrance();
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const context = gsap.context(() => {
-      if (handoff) {
+      if (entrance.handoff) {
         const targets = root.querySelectorAll(
           ".tool-library-header, .tool-library-sync-error, .tool-library-table-scroll, .tool-library-pagination",
         );
@@ -44,7 +44,15 @@ export default function ManagePage() {
       );
     }, root);
 
-    return () => context.revert();
+    const cancelMarkerClear = entrance.establish((clearMarker) => {
+      const timeoutId = window.setTimeout(clearMarker, 0);
+      return () => window.clearTimeout(timeoutId);
+    });
+
+    return () => {
+      cancelMarkerClear();
+      context.revert();
+    };
   }, []);
 
   return (

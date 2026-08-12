@@ -2,9 +2,55 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  beginToolLibraryHandoffEntrance,
+  createToolLibraryHandoffMarker,
   createToolTransitionLock,
+  createToolLibraryTransitionStarter,
   getToolTransitionPlan,
+  type ToolTransitionOverlay,
+  type ToolTransitionRect,
 } from "./tool-transition.ts";
+
+class MemoryStorage {
+  private readonly values = new Map<string, string>();
+
+  getItem(key: string) {
+    return this.values.get(key) ?? null;
+  }
+
+  setItem(key: string, value: string) {
+    this.values.set(key, value);
+  }
+
+  removeItem(key: string) {
+    this.values.delete(key);
+  }
+}
+
+class FakeOverlay implements ToolTransitionOverlay {
+  readonly attributes = new Map<string, string>();
+  readonly classes: string[] = [];
+  readonly style: Record<string, string> = {};
+  removed = false;
+
+  setAttribute(name: string, value: string) {
+    this.attributes.set(name, value);
+  }
+
+  removeAttribute(name: string) {
+    this.attributes.delete(name);
+  }
+
+  classList = {
+    add: (name: string) => {
+      this.classes.push(name);
+    },
+  };
+
+  remove() {
+    this.removed = true;
+  }
+}
 
 test("maps the source shell onto the destination bounds over the approved timing", () => {
   const plan = getToolTransitionPlan(
@@ -52,4 +98,129 @@ test("the transition lock rejects repeat activation until cleanup releases it", 
 
   lock.release();
   assert.equal(lock.acquire(), true);
+});
+
+test("Strict Mode setup replay preserves the handoff until the committed entrance clears it", () => {
+  const storage = new MemoryStorage();
+  let now = 1_000;
+  const marker = createToolLibraryHandoffMarker({ storage: () => storage, now: () => now });
+  const scheduled = new Map<number, () => void>();
+  let nextId = 0;
+  const schedule = (callback: () => void) => {
+    const id = ++nextId;
+    scheduled.set(id, callback);
+    return () => scheduled.delete(id);
+  };
+
+  marker.mark();
+  const firstSetup = beginToolLibraryHandoffEntrance(marker);
+  assert.equal(firstSetup.handoff, true);
+  const firstCleanup = firstSetup.establish(schedule);
+  firstCleanup();
+
+  now += 1;
+  const replayedSetup = beginToolLibraryHandoffEntrance(marker);
+  assert.equal(replayedSetup.handoff, true);
+  replayedSetup.establish(schedule);
+
+  for (const callback of scheduled.values()) callback();
+  assert.equal(marker.detect(), false);
+  assert.equal(storage.getItem("phil-studio:tool-library-handoff"), null);
+});
+
+test("handoff markers expire instead of leaking into a later direct navigation", () => {
+  const storage = new MemoryStorage();
+  let now = 10_000;
+  const marker = createToolLibraryHandoffMarker({
+    storage: () => storage,
+    now: () => now,
+    ttlMs: 5_000,
+  });
+
+  marker.mark();
+  assert.equal(marker.detect(), true);
+
+  now += 5_001;
+  assert.equal(marker.detect(), false);
+  assert.equal(storage.getItem("phil-studio:tool-library-handoff"), null);
+});
+
+test("transition starter owns marker, overlay, lock, cleanup, and route-once lifecycle", () => {
+  const sourceRect: ToolTransitionRect = { left: 10, top: 20, width: 200, height: 100 };
+  const destinationRect: ToolTransitionRect = { left: 30, top: 50, width: 400, height: 300 };
+  const overlay = new FakeOverlay();
+  const storage = new MemoryStorage();
+  const marker = createToolLibraryHandoffMarker({ storage: () => storage, now: () => 1_000 });
+  const pushes: string[] = [];
+  const appended: ToolTransitionOverlay[] = [];
+  let cloneDepth: boolean | undefined;
+  let animationComplete: (() => void) | undefined;
+  let animationCancels = 0;
+  let animationPlan: ReturnType<typeof getToolTransitionPlan> | undefined;
+  const start = createToolLibraryTransitionStarter({
+    lock: createToolTransitionLock(),
+    findDestinationRect: () => destinationRect,
+    cloneShell: (_source, deep) => {
+      cloneDepth = deep;
+      return overlay;
+    },
+    appendOverlay: (node) => appended.push(node),
+    prefersReducedMotion: () => false,
+    marker,
+    animate: (_node, plan, onComplete) => {
+      animationPlan = plan;
+      animationComplete = onComplete;
+      return () => { animationCancels += 1; };
+    },
+  });
+  const router = { push: (href: string) => pushes.push(href) };
+  const source = { getBoundingClientRect: () => sourceRect };
+
+  const cleanup = start(source, router);
+  assert.equal(typeof cleanup, "function");
+  assert.equal(start(source, router), null);
+  assert.equal(cloneDepth, false);
+  assert.deepEqual(appended, [overlay]);
+  assert.deepEqual(animationPlan, getToolTransitionPlan(sourceRect, destinationRect, false));
+
+  animationComplete?.();
+  animationComplete?.();
+  cleanup?.();
+
+  assert.deepEqual(pushes, ["/manage"]);
+  assert.equal(marker.detect(), true);
+  marker.clear();
+  assert.equal(marker.detect(), false);
+  assert.equal(overlay.removed, true);
+  assert.equal(animationCancels, 1);
+  assert.notEqual(start(source, router), null);
+});
+
+test("manual transition cleanup releases the lock without marking or navigating", () => {
+  const sourceRect: ToolTransitionRect = { left: 0, top: 0, width: 100, height: 50 };
+  const overlay = new FakeOverlay();
+  const storage = new MemoryStorage();
+  const marker = createToolLibraryHandoffMarker({ storage: () => storage, now: () => 1_000 });
+  let cancels = 0;
+  const pushes: string[] = [];
+  const start = createToolLibraryTransitionStarter({
+    lock: createToolTransitionLock(),
+    findDestinationRect: () => ({ left: 20, top: 20, width: 200, height: 100 }),
+    cloneShell: () => overlay,
+    appendOverlay: () => undefined,
+    prefersReducedMotion: () => false,
+    marker,
+    animate: () => () => { cancels += 1; },
+  });
+  const source = { getBoundingClientRect: () => sourceRect };
+  const router = { push: (href: string) => pushes.push(href) };
+
+  const cleanup = start(source, router);
+  cleanup?.();
+  cleanup?.();
+
+  assert.equal(cancels, 1);
+  assert.equal(marker.detect(), false);
+  assert.deepEqual(pushes, []);
+  assert.notEqual(start(source, router), null);
 });
