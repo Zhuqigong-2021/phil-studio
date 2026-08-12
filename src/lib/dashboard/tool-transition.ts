@@ -357,10 +357,13 @@ const browserTransitionStarter = createToolLibraryTransitionStarter({
     const veil = document.querySelector<HTMLElement>("[data-tool-library-transition-veil]");
     const content = document.querySelector<HTMLElement>("[data-dashboard-transition-content]");
     const timeline = gsap.timeline({ onComplete });
+    const expansionStart = 0.08;
+    const backgroundStart = expansionStart + plan.duration * 0.35;
+    const backgroundDuration = plan.duration * 0.65;
     if (preview) gsap.set(preview, { autoAlpha: 0 });
     if (sourceContent) timeline.to(sourceContent, { autoAlpha: 0, duration: 0.14 }, 0);
     if (preview) timeline.to(preview, { autoAlpha: 1, duration: 0.22, ease: "power2.out" }, 0.06);
-    timeline.to(shell, { ...plan }, 0.08);
+    timeline.to(shell, { ...plan }, expansionStart);
     if (content) timeline.to(content, {
       opacity: 0.48,
       filter: "blur(7px)",
@@ -368,7 +371,7 @@ const browserTransitionStarter = createToolLibraryTransitionStarter({
       duration: 0.48,
       ease: "power2.inOut",
     }, 0.22);
-    if (veil) timeline.to(veil, { opacity: 1, duration: 0.38, ease: "power2.inOut" }, 0.70);
+    if (veil) timeline.to(veil, { opacity: 1, duration: backgroundDuration, ease: "power2.inOut" }, backgroundStart);
     return () => timeline.kill();
   },
 });

@@ -241,7 +241,10 @@ test("browser handoff reuses the Manage scene instead of a dark inline veil", as
   const source = await readFile(new URL("./tool-transition.ts", import.meta.url), "utf8");
   assert.match(source, /className = "manage-scene-background"/);
   assert.doesNotMatch(source, /background: "radial-gradient\(circle at 56%/);
-  assert.match(source, /timeline\.to\(veil, \{ opacity: 1, duration: 0\.38[\s\S]*\}, 0\.70\)/);
+  assert.match(source, /const expansionStart = 0\.08/);
+  assert.match(source, /const backgroundStart = expansionStart \+ plan\.duration \* 0\.35/);
+  assert.match(source, /const backgroundDuration = plan\.duration \* 0\.65/);
+  assert.match(source, /timeline\.to\(veil, \{ opacity: 1, duration: backgroundDuration[\s\S]*\}, backgroundStart\)/);
   assert.match(source, /timeline\.to\(content, \{[\s\S]*opacity: 0\.48[\s\S]*\}, 0\.22\)/);
   assert.doesNotMatch(source, /gsap\.to\(veil, \{ opacity: 1/);
   assert.match(source, /querySelector<HTMLElement>\("\[data-dashboard-transition-content\]"\)/);
