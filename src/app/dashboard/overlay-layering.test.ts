@@ -37,3 +37,15 @@ test("sidebar items and their active layer share explicit rounded corners", () =
   assert.match(navSource, /const radius = emphasized \? 11 : 9/);
   assert.equal(navSource.match(/borderRadius: radius/g)?.length, 2);
 });
+
+test("mobile Dashboard navigation closes the drawer and returns from Manage", () => {
+  const source = readFileSync("src/app/dashboard/page.tsx", "utf8");
+  const drawerStart = source.indexOf("function MobileNavDrawer(");
+  const sidebarStart = source.indexOf("function Sidebar(", drawerStart);
+  const drawerSource = source.slice(drawerStart, sidebarStart);
+
+  assert.match(
+    drawerSource,
+    /label="Dashboard"[\s\S]*?onClick=\{\(\) => \{[\s\S]*?onClose\(\);[\s\S]*?router\.push\("\/dashboard"\)/,
+  );
+});

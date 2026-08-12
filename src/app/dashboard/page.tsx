@@ -1224,6 +1224,7 @@ function MobileNavDrawer({ onClose }: { onClose: () => void }) {
               onClick={() => {
                 setActiveNav("Dashboard");
                 onClose();
+                router.push("/dashboard");
               }}
               emphasized
             />
