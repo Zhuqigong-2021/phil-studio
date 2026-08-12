@@ -2813,7 +2813,6 @@ function HeroSection() {
               text="Bonjour, Phil !"
               colors={["#A97CF8", "#818CF8", "#67E8F9"]}
               textColor="#ffffff"
-              sessionKey="phil-studio:dashboard-greeting-reveal"
             />{" "}
             <span aria-hidden="true">👋</span>
           </h1>

@@ -10,12 +10,13 @@ const dashboardSource = readFileSync("src/app/dashboard/page.tsx", "utf8");
 
 test("dashboard greeting uses a one-session Dia reveal and keeps the wave stable", () => {
   assert.match(dashboardSource, /<DiaTextReveal[\s\S]*text="Bonjour, Phil !"/);
-  assert.match(
-    dashboardSource,
-    /sessionKey="phil-studio:dashboard-greeting-reveal"/,
-  );
   assert.match(dashboardSource, /<span aria-hidden="true">👋<\/span>/);
   assert.match(componentSource, /useReducedMotion/);
-  assert.match(componentSource, /claimDiaTextReveal\(window\.sessionStorage/);
+  assert.doesNotMatch(componentSource, /sessionStorage|performance\.timeOrigin/);
+  assert.match(componentSource, /requestAnimationFrame\(\(\) => setMounted\(true\)\)/);
+  assert.match(componentSource, /clipPath: \[/);
+  assert.match(componentSource, /inset\(0 100% 0 0\)/);
+  assert.match(componentSource, /inset\(0 0 0 100%\)/);
+  assert.match(componentSource, /position: "absolute"/);
   assert.match(componentSource, /onAnimationComplete=\{\(\) => setSettled\(true\)\}/);
 });
