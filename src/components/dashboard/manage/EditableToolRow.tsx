@@ -112,7 +112,7 @@ export default function EditableToolRow({
   const renderedColor = ACCENTS[draft.color as Accent] ?? draft.color;
 
   return (
-      <tr className={updating ? "tool-library-row is-updating" : "tool-library-row"} aria-busy={updating}>
+      <tr data-manage-entrance-row className={updating ? "tool-library-row is-updating" : "tool-library-row"} aria-busy={updating}>
       <td>
         <InlineIconPicker
           key={updating ? "pending" : "ready"}

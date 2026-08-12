@@ -21,7 +21,7 @@ export default function ManageContent({ state }: { state: ManagePageState }) {
 
   return (
     <section data-tool-library-surface className="tool-library" data-page-size={state.pageSize} aria-labelledby="tool-library-title">
-      <header className="tool-library-header">
+      <header className="tool-library-header" data-manage-entrance-header>
         <div>
           <h1 id="tool-library-title">Tool Library</h1>
           <p>Edit tools inline. Changes are saved only when you choose Update.</p>
@@ -31,7 +31,7 @@ export default function ManageContent({ state }: { state: ManagePageState }) {
         </button>
       </header>
 
-      <div className="tool-library-table-scroll">
+      <div className="tool-library-table-scroll" data-manage-entrance-table>
         <table className="tool-library-table">
           <thead>
             <tr>

@@ -8,20 +8,23 @@ import { DiaTextReveal } from "@/components/magicui/DiaTextReveal";
 import { getTypedText } from "./dashboard-greeting-state";
 
 const TITLE = "Bonjour, Phil !";
+const WELCOME = "Welcome to your AI Tools Dashboard";
 const CHARACTER_MS = 55;
+const WELCOME_CHARACTER_MS = 38;
 const TYPEWRITER_DELAY_MS = 850;
 
 export default function DashboardGreeting({ paddingTop }: { paddingTop: string }) {
   const reduceMotion = Boolean(useReducedMotion());
   const [typedText, setTypedText] = React.useState(reduceMotion ? TITLE : "");
-  const [typingComplete, setTypingComplete] = React.useState(reduceMotion);
+  const [typedWelcome, setTypedWelcome] = React.useState(reduceMotion ? WELCOME : "");
+  const [titleTypingComplete, setTitleTypingComplete] = React.useState(reduceMotion);
+  const [subtitleTypingComplete, setSubtitleTypingComplete] = React.useState(reduceMotion);
   const [revealComplete, setRevealComplete] = React.useState(reduceMotion);
 
   React.useEffect(() => {
     if (reduceMotion) return;
     const startedAt = performance.now();
     let frame = 0;
-    const onTypingComplete = () => setTypingComplete(true);
     const tick = (now: number) => {
       const next = getTypedText(
         TITLE,
@@ -30,7 +33,7 @@ export default function DashboardGreeting({ paddingTop }: { paddingTop: string }
       );
       setTypedText(next.text);
       if (next.complete) {
-        onTypingComplete();
+        setTitleTypingComplete(true);
         return;
       }
       frame = requestAnimationFrame(tick);
@@ -38,6 +41,23 @@ export default function DashboardGreeting({ paddingTop }: { paddingTop: string }
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
   }, [reduceMotion]);
+
+  React.useEffect(() => {
+    if (reduceMotion || !titleTypingComplete) return;
+    const startedAt = performance.now();
+    let frame = 0;
+    const tick = (now: number) => {
+      const next = getTypedText(WELCOME, now - startedAt, WELCOME_CHARACTER_MS);
+      setTypedWelcome(next.text);
+      if (next.complete) {
+        setSubtitleTypingComplete(true);
+        return;
+      }
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [reduceMotion, titleTypingComplete]);
 
   const onRevealComplete = React.useCallback(() => setRevealComplete(true), []);
 
@@ -53,25 +73,35 @@ export default function DashboardGreeting({ paddingTop }: { paddingTop: string }
       <h1 className="text-white font-semibold text-[34px] leading-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.6)]">
         <DiaTextReveal
           text={typedText}
-          active={typingComplete && !reduceMotion}
+          active={titleTypingComplete && !reduceMotion}
           colors={["#A97CF8", "#818CF8", "#67E8F9"]}
           textColor="#ffffff"
           onRevealComplete={onRevealComplete}
         />{" "}
-        <span aria-hidden="true">👋</span>
+        {titleTypingComplete && <span aria-hidden="true">👋</span>}
       </h1>
-      <p className="text-[#e4e7f1] font-medium text-[16px] mt-[14px] drop-shadow-[0_1px_6px_rgba(0,0,0,0.5)]">
-        Welcome to your AI Tools Dashboard
-      </p>
-      <motion.div
-        data-dashboard-location
-        animate={revealComplete && !reduceMotion ? { y: [0, -18, 0, -10, 0, -5, 0, -2, 0] } : { y: 0 }}
-        transition={{ duration: 1.45, ease: "easeOut" }}
-        className="inline-flex items-center gap-[6px] mt-[12px] text-[#aab4cc]"
+      <motion.p
+        aria-hidden={!titleTypingComplete}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: titleTypingComplete ? 1 : 0 }}
+        className="text-[#e4e7f1] font-medium text-[16px] mt-[14px] drop-shadow-[0_1px_6px_rgba(0,0,0,0.5)]"
       >
-        <MapPin className="flex-shrink-0" style={{ width: 15, height: 15 }} strokeWidth={2} fill="none" />
-        <span className="text-[15px] font-medium drop-shadow-[0_1px_6px_rgba(0,0,0,0.5)]">Montréal, Canada</span>
-      </motion.div>
+        {typedWelcome}
+      </motion.p>
+      {subtitleTypingComplete && (
+        <motion.div
+          data-dashboard-location
+          initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 0 }}
+          animate={revealComplete && !reduceMotion
+            ? { opacity: 1, y: [0, -18, 0, -10, 0, -5, 0, -2, 0] }
+            : { opacity: 1, y: 0 }}
+          transition={{ duration: reduceMotion ? 0.16 : 1.45, ease: "easeOut" }}
+          className="inline-flex items-center gap-[6px] mt-[12px] text-[#aab4cc]"
+        >
+          <MapPin className="flex-shrink-0" style={{ width: 15, height: 15 }} strokeWidth={2} fill="none" />
+          <span className="text-[15px] font-medium drop-shadow-[0_1px_6px_rgba(0,0,0,0.5)]">Montréal, Canada</span>
+        </motion.div>
+      )}
     </motion.div>
   );
 }

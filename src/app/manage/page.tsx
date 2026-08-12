@@ -12,6 +12,7 @@ import {
   beginToolLibraryHandoffEntrance,
   completeToolLibraryHandoff,
 } from "@/lib/dashboard/tool-transition";
+import { getManageDirectEntrancePlan } from "@/lib/dashboard/manage-entrance-motion";
 
 export default function ManagePage() {
   return (
@@ -53,11 +54,24 @@ function ManageWorkspace() {
         return;
       }
 
-      gsap.fromTo(
-        root,
-        { opacity: 0, y: reduceMotion ? 0 : 8 },
-        { opacity: 1, y: 0, duration: reduceMotion ? 0.16 : 0.28, ease: "power2.out" },
-      );
+      const plan = getManageDirectEntrancePlan(reduceMotion);
+      const sidebar = document.querySelector("[data-dashboard-sidebar]");
+      const navbar = document.querySelector("[data-dashboard-navbar]");
+      const header = root.querySelector("[data-manage-entrance-header]");
+      const table = root.querySelector("[data-manage-entrance-table]");
+      const rows = root.querySelectorAll("[data-manage-entrance-row]");
+      const pagination = root.querySelector("[data-manage-entrance-pagination]");
+      const timeline = gsap.timeline({ paused: true });
+
+      if (sidebar) timeline.fromTo(sidebar, plan.sidebar.from, plan.sidebar.to, 0);
+      if (navbar) timeline.fromTo(navbar, plan.navbar.from, plan.navbar.to, 0);
+      if (header) timeline.fromTo(header, plan.header.from, plan.header.to, reduceMotion ? 0 : 0.06);
+      if (table) timeline.fromTo(table, plan.table.from, plan.table.to, reduceMotion ? 0 : 0.1);
+      if (rows.length) timeline.fromTo(rows, plan.rows.from, plan.rows.to, reduceMotion ? 0 : 0.3);
+      if (pagination) {
+        timeline.fromTo(pagination, plan.pagination.from, plan.pagination.to, reduceMotion ? 0 : 0.14);
+      }
+      timeline.play(0);
     }, root);
 
     const cancelMarkerClear = entrance.establish((clearMarker) => {

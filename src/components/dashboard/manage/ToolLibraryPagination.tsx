@@ -26,7 +26,7 @@ export default function ToolLibraryPagination({
   const atEnd = page >= pageCount;
 
   return (
-    <nav className="tool-library-pagination" data-page-size={pageSize} aria-label="Tool Library pagination">
+    <nav data-manage-entrance-pagination className="tool-library-pagination" data-page-size={pageSize} aria-label="Tool Library pagination">
       <div className="tool-pagination-status">Showing {start}–{end} of {total} tools</div>
       <div className="tool-pagination-controls">
         <label className="tool-page-size">
