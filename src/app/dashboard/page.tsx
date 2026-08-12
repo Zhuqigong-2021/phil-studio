@@ -23,6 +23,7 @@ import {
 import WorkspaceSplashCursor from "@/components/dashboard/WorkspaceSplashCursor";
 import EnergySandVolume from "@/components/dashboard/EnergySandVolume";
 import SyncedLyrics from "@/components/dashboard/SyncedLyrics";
+import { DiaTextReveal } from "@/components/magicui/DiaTextReveal";
 import { useAudioAnalyser } from "@/hooks/useAudioAnalyser";
 import { useLyricsTimeline } from "@/hooks/useLyricsTimeline";
 import MagicRings from "@/components/dashboard/MagicRings";
@@ -2808,7 +2809,13 @@ function HeroSection() {
           style={{ paddingTop: heroPt }}
         >
           <h1 className="text-white font-semibold text-[34px] leading-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.6)]">
-            Bonjour, Phil ! 👋
+            <DiaTextReveal
+              text="Bonjour, Phil !"
+              colors={["#A97CF8", "#818CF8", "#67E8F9"]}
+              textColor="#ffffff"
+              sessionKey="phil-studio:dashboard-greeting-reveal"
+            />{" "}
+            <span aria-hidden="true">👋</span>
           </h1>
           <p className="text-[#e4e7f1] font-medium text-[16px] mt-[14px] drop-shadow-[0_1px_6px_rgba(0,0,0,0.5)]">
             Welcome to your AI Tools Dashboard
