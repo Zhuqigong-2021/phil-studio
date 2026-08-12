@@ -2,6 +2,7 @@
 
 import React from "react";
 import { createPortal, flushSync } from "react-dom";
+import { useRouter } from "next/navigation";
 import gsap from "gsap";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import "./dashboard.css";
@@ -28,6 +29,7 @@ import MagicRings from "@/components/dashboard/MagicRings";
 import SideRays from "@/components/dashboard/SideRays";
 import AddToolModal from "@/components/dashboard/AddToolModal";
 import DatabaseToastViewport from "@/components/dashboard/DatabaseToastViewport";
+import DashboardToolTransition from "@/components/dashboard/DashboardToolTransition";
 import DynamicToolIcon from "@/components/dashboard/DynamicToolIcon";
 import type { IconType } from "react-icons";
 import {
@@ -546,6 +548,7 @@ interface GlassPanelProps {
   highlightSpread?: number;
   highlightOpacity?: number;
   onClick?: () => void;
+  panelRef?: React.Ref<HTMLDivElement>;
 }
 
 function GlassPanel({
@@ -558,6 +561,7 @@ function GlassPanel({
   highlightSpread = 1.0,
   highlightOpacity = 1.0,
   onClick,
+  panelRef,
 }: GlassPanelProps) {
   const s = highlightSpread;
   const o = highlightOpacity;
@@ -566,6 +570,7 @@ function GlassPanel({
 
   return (
     <div
+      ref={panelRef}
       className={`glass-shine-card rounded-2xl overflow-hidden ${onClick ? "cursor-pointer ui-interactive-card" : ""} ${className}`}
       onClick={onClick}
       role={onClick ? "button" : undefined}
@@ -806,10 +811,10 @@ const aiTools: { icon: React.ReactNode; label: string; indent?: boolean }[] = [
   { icon: <Bot className={iconCls} />, label: "AI Agents" },
 ];
 
-const systemLinks: { icon: React.ReactNode; label: string }[] = [
-  { icon: <Star className={iconCls} />, label: "Favorites" },
+const systemLinks: { icon: React.ReactNode; label: string; href?: string }[] = [
+  { icon: <Settings2 className={iconCls} />, label: "Manage", href: "/manage" },
   { icon: <Clock className={iconCls} />, label: "Recent Activity" },
-  { icon: <Settings2 className={iconCls} />, label: "Settings" },
+  { icon: <Settings className={iconCls} />, label: "Settings" },
 ];
 
 function NavItem({
@@ -1131,6 +1136,7 @@ function SettingsModalDark({ onClose }: { onClose: () => void }) {
 // brand button; its own Settings row opens SettingsModalDark instead of just navigating. ──
 
 function MobileNavDrawer({ onClose }: { onClose: () => void }) {
+  const router = useRouter();
   const reduceMotion = Boolean(useReducedMotion());
   const overlayMotion = getOverlayMotion(reduceMotion);
   const drawerMotion = getDrawerMotion(reduceMotion);
@@ -1259,7 +1265,7 @@ function MobileNavDrawer({ onClose }: { onClose: () => void }) {
               SYSTEM
             </p>
             <nav className="flex flex-col gap-[1px]">
-              {systemLinks.map(({ icon, label }) => (
+              {systemLinks.map(({ icon, label, href }) => (
                 <NavItem
                   key={label}
                   icon={icon}
@@ -1270,7 +1276,10 @@ function MobileNavDrawer({ onClose }: { onClose: () => void }) {
                     setActiveNav(label);
                     // Settings opens the theme/logout modal instead of just navigating.
                     if (label === "Settings") setSettingsOpen(true);
-                    else onClose();
+                    else {
+                      onClose();
+                      if (href) router.push(href);
+                    }
                   }}
                 />
               ))}
@@ -1332,6 +1341,7 @@ function MobileNavDrawer({ onClose }: { onClose: () => void }) {
 }
 
 function Sidebar() {
+  const router = useRouter();
   const [collapsed, setCollapsed] = React.useState(false);
   const [hovered, setHovered] = React.useState(false);
   const [activeNav, setActiveNav] = React.useState("Dashboard");
@@ -1473,14 +1483,17 @@ function Sidebar() {
             </p>
           )}
           <nav className="flex flex-col gap-[1px]">
-            {systemLinks.map(({ icon, label }) => (
+            {systemLinks.map(({ icon, label, href }) => (
               <NavItem
                 key={label}
                 icon={icon}
                 label={label}
                 expanded={expanded}
                 active={activeNav === label}
-                onClick={() => setActiveNav(label)}
+                onClick={() => {
+                  setActiveNav(label);
+                  if (href) router.push(href);
+                }}
               />
             ))}
             {narrow && (
@@ -4627,40 +4640,49 @@ function TaskCompletionPanel({
 function AllToolsPanel() {
   const toolViews = useToolViews();
   return (
-    <GlassPanel
-      className="flex-1 min-w-0 flex flex-col px-5 py-4 overflow-hidden max-[950px]:w-full max-[950px]:min-h-[320px] max-[950px]:order-2"
-      tint="30,24,50"
-      opacity={0.3}
-      blur="14px"
-      lightAngle={188}
-      highlightOpacity={0.55}
-    >
-      <div className="flex items-center justify-between mb-8 min-[1180px]:mb-5 flex-shrink-0">
-        <p className="text-white font-semibold text-[18px]">All Tools</p>
-        <button className="text-[#9a70ff] text-[14px] font-medium hover:text-[#b590ff] transition-colors">
-          View All
-        </button>
-      </div>
-      {/* Single row at >=1180px; below that it wraps into 2 rows (grid-auto-flow: column packs
-          tiles column-first into 2 rows) while staying horizontally scrollable to the right. */}
-      <div
-        className="grid grid-flow-col grid-rows-2 gap-x-[31px] gap-y-0.5 min-[1180px]:grid-rows-1 min-[1180px]:items-center overflow-x-auto flex-1 [&::-webkit-scrollbar]:hidden"
-        style={{ scrollbarWidth: "none" }}
-      >
-        {toolViews.map((t) => (
-          <ToolTile
-            key={t.label}
-            id={t.id}
-            icon={t.icon}
-            label={t.label}
-            borderColor={t.border}
-            bgColor={t.bg}
-            shadowColor={t.shadow}
-            href={t.href}
-          />
-        ))}
-      </div>
-    </GlassPanel>
+    <DashboardToolTransition>
+      {({ sourceRef, startTransition }) => (
+        <GlassPanel
+          panelRef={sourceRef}
+          className="flex-1 min-w-0 flex flex-col px-5 py-4 overflow-hidden max-[950px]:w-full max-[950px]:min-h-[320px] max-[950px]:order-2"
+          tint="30,24,50"
+          opacity={0.3}
+          blur="14px"
+          lightAngle={188}
+          highlightOpacity={0.55}
+        >
+          <div className="flex items-center justify-between mb-8 min-[1180px]:mb-5 flex-shrink-0">
+            <p className="text-white font-semibold text-[18px]">All Tools</p>
+            <button
+              type="button"
+              onClick={startTransition}
+              className="text-[#9a70ff] text-[14px] font-medium hover:text-[#b590ff] transition-colors"
+            >
+              View All
+            </button>
+          </div>
+          {/* Single row at >=1180px; below that it wraps into 2 rows (grid-auto-flow: column packs
+              tiles column-first into 2 rows) while staying horizontally scrollable to the right. */}
+          <div
+            className="grid grid-flow-col grid-rows-2 gap-x-[31px] gap-y-0.5 min-[1180px]:grid-rows-1 min-[1180px]:items-center overflow-x-auto flex-1 [&::-webkit-scrollbar]:hidden"
+            style={{ scrollbarWidth: "none" }}
+          >
+            {toolViews.map((t) => (
+              <ToolTile
+                key={t.label}
+                id={t.id}
+                icon={t.icon}
+                label={t.label}
+                borderColor={t.border}
+                bgColor={t.bg}
+                shadowColor={t.shadow}
+                href={t.href}
+              />
+            ))}
+          </div>
+        </GlassPanel>
+      )}
+    </DashboardToolTransition>
   );
 }
 

@@ -39,12 +39,13 @@ const NAV_ITEMS: { key: PageKey; name: string; href: string; icon: React.ReactNo
     ),
   },
   {
-    key: "favs",
-    name: "Favorites",
-    href: "/favs",
+    key: "manage",
+    name: "Manage",
+    href: "/manage",
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-        <path d="m12 2 3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14l-5-4.87 6.91-1.01L12 2z" />
+        <line x1="4" y1="7" x2="20" y2="7" /><circle cx="9" cy="7" r="2" />
+        <line x1="4" y1="17" x2="20" y2="17" /><circle cx="15" cy="17" r="2" />
       </svg>
     ),
   },
@@ -55,17 +56,6 @@ const NAV_ITEMS: { key: PageKey; name: string; href: string; icon: React.ReactNo
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 3" />
-      </svg>
-    ),
-  },
-  {
-    key: "manage",
-    name: "Manage",
-    href: "/manage",
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-        <line x1="4" y1="7" x2="20" y2="7" /><circle cx="9" cy="7" r="2" />
-        <line x1="4" y1="17" x2="20" y2="17" /><circle cx="15" cy="17" r="2" />
       </svg>
     ),
   },
@@ -166,6 +156,7 @@ export default function Sidebar({ state, variant = "desktop", active, solid = fa
             <Link
               key={item.key}
               href={item.href}
+              onClick={variant === "mobile" ? closeMobileDrawer : undefined}
               className="sidebar-nav-link"
               style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 13, color: "#A9B2C3", justifyContent: navJustify }}
             >
