@@ -144,3 +144,28 @@ test("maps retryable Add Tool failures without claiming a save succeeded", async
   assert.match(published[0]?.message ?? "", /temporarily unavailable/i);
   assert.doesNotMatch(published[0]?.message ?? "", /added successfully/i);
 });
+
+test("closes after creation when workspace refresh failed without inviting a duplicate retry", async () => {
+  const errors: string[] = [];
+  const published: AddToolSubmissionToast[] = [];
+  let closeCalls = 0;
+
+  const result = await runAddToolSubmission({
+    guard: createAddToolSubmissionGuard(),
+    toolName: "Notion",
+    save: async () => ({ workspaceRefreshFailed: true }),
+    setPending: () => undefined,
+    setError: (message) => errors.push(message),
+    close: () => { closeCalls += 1; },
+    publish: (toast) => published.push(toast),
+  });
+
+  assert.equal(result, true);
+  assert.equal(closeCalls, 1);
+  assert.deepEqual(errors, [""]);
+  assert.deepEqual(published, [{
+    tone: "success",
+    message: "Notion added successfully. Workspace refresh failed and will retry later.",
+  }]);
+  assert.doesNotMatch(published[0]?.message ?? "", /could not add|try adding/i);
+});

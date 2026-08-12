@@ -74,3 +74,42 @@ Output: exit 0; 0 errors, 0 warnings.
 `git diff --check`: exit 0; only the repository CRLF conversion notices were printed.
 
 `npx tsc --noEmit`: exit 1 on the same documented baseline errors (`RouteContext`, strict pre-existing test fixtures, Favorite Toast inference, lyric optional timing, and ES2018 regex target). No changed Task 5 production or review-test path appeared.
+
+## Review fix round 2
+
+### Implemented
+
+- Split Add Tool persistence into two truthful outcomes. A failed `postTool` still rejects, retains the populated form, and uses the existing Add failure Toast. Once `postTool` succeeds, creation is treated as successful even if the following workspace fetch fails.
+- On post-success refresh failure, `addWorkspaceToolAndRefresh` merges the server-returned tool into the latest local workspace with `mergeCreatedTool`, including its requested pin, and returns `workspaceRefreshFailed: true` instead of rejecting.
+- Because the existing database Toast viewport replaces its current Toast, the modal publishes one combined non-error result: `<Tool> added successfully. Workspace refresh failed and will retry later.` It closes/reset-unmounts the successful form and does not invite another create attempt.
+- A successful authoritative refresh still applies the database snapshot before the normal added-success Toast and records the workspace as authoritative.
+
+### RED evidence
+
+Command:
+
+`node --test --experimental-strip-types src/hooks/useCustomTools.test.ts src/lib/dashboard/add-tool-submission.test.ts`
+
+Output: exit 1; 14 passed, 3 failed. The failures showed the old raw-Tool success result, the refresh error still rejecting after a successful POST, and the missing combined refresh-warning success copy.
+
+### GREEN evidence
+
+Focused command:
+
+`node --test --experimental-strip-types src/hooks/useCustomTools.test.ts src/lib/dashboard/add-tool-submission.test.ts`
+
+Output: exit 0; 17 passed, 0 failed, duration 302.9368 ms. Coverage distinguishes pre-POST failure from post-success refresh failure, verifies local merge/pin fallback, close-as-success behavior, and absence of duplicate-retry wording.
+
+Complete Task 5 regression command:
+
+`node --test --experimental-strip-types src/app/dashboard/add-tool-icon-picker-integration.test.ts src/app/dashboard/add-tool-local-save.test.ts src/app/dashboard/database-dashboard-state.test.ts src/app/dashboard/overlay-layering.test.ts src/components/dashboard/AddToolModal.icon-picker.test.ts src/components/dashboard/FavoriteToastHost.test.ts src/hooks/useCustomTools.supabase.test.ts src/hooks/useCustomTools.test.ts src/lib/dashboard/add-tool-submission.test.ts src/lib/dashboard/favorite-toast.test.ts src/lib/dashboard/tool-mutations.test.ts`
+
+Output: exit 0; 55 passed, 0 failed, duration 878.2137 ms.
+
+Targeted lint command:
+
+`npx eslint src/components/dashboard/AddToolModal.tsx src/hooks/useCustomTools.ts src/hooks/useCustomTools.test.ts src/lib/dashboard/add-tool-submission.ts src/lib/dashboard/add-tool-submission.test.ts`
+
+Output: exit 0; 0 errors, 0 warnings.
+
+`npx tsc --noEmit`: exit 1 on only the same documented baseline errors. No round-2 path appears in the output.

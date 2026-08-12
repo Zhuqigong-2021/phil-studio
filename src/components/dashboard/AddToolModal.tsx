@@ -150,7 +150,7 @@ function AddToolForm({
       guard: submissionGuard,
       toolName: form.name,
       save: async () => {
-        await addTool(
+        const result = await addTool(
           {
             name: form.name,
             url: form.url,
@@ -163,6 +163,7 @@ function AddToolForm({
           },
           form.pin,
         );
+        return result;
       },
       setPending: setSaving,
       setError: setSaveError,

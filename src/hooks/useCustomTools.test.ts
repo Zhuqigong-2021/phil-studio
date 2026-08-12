@@ -74,6 +74,7 @@ test("adds through POST, then fetches and applies the authoritative database sna
     }),
     toolDraft,
     true,
+    () => snapshot,
     (value) => applied.push(value),
   );
 
@@ -82,26 +83,53 @@ test("adds through POST, then fetches and applies the authoritative database sna
   assert.deepEqual(applied, []);
 
   resolveFetch(authoritative);
-  assert.equal(await pending, createdTool);
+  assert.deepEqual(await pending, { tool: createdTool, workspaceRefreshFailed: false });
   assert.deepEqual(applied, [authoritative]);
 });
 
-test("does not apply a POST response when the authoritative refresh fails", async () => {
+test("keeps the created tool locally and resolves as successful when its refresh fails", async () => {
   const applied: WorkspaceSnapshot[] = [];
+  const current = { ...snapshot, categories: ["Existing"] };
+
+  const result = await addWorkspaceToolAndRefresh(
+    workspaceApi({
+      postTool: async () => createdTool,
+      fetchSnapshot: async () => { throw new Error("refresh offline"); },
+    }),
+    toolDraft,
+    true,
+    () => current,
+    (value) => applied.push(value),
+  );
+
+  assert.deepEqual(result, { tool: createdTool, workspaceRefreshFailed: true });
+  assert.deepEqual(applied, [{
+    tools: [createdTool],
+    categories: ["Existing"],
+    pinnedToolIds: [createdTool.id],
+    recentTools: [],
+  }]);
+});
+
+test("rejects a pre-creation POST failure without fetching or applying workspace state", async () => {
+  const applied: WorkspaceSnapshot[] = [];
+  let fetched = false;
 
   await assert.rejects(
     () => addWorkspaceToolAndRefresh(
       workspaceApi({
-        postTool: async () => createdTool,
-        fetchSnapshot: async () => { throw new Error("refresh offline"); },
+        postTool: async () => { throw new Error("post offline"); },
+        fetchSnapshot: async () => { fetched = true; return snapshot; },
       }),
       toolDraft,
       false,
+      () => snapshot,
       (value) => applied.push(value),
     ),
-    /refresh offline/,
+    /post offline/,
   );
 
+  assert.equal(fetched, false);
   assert.deepEqual(applied, []);
 });
 

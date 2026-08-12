@@ -6,6 +6,10 @@ export interface AddToolSubmissionToast {
   message: string;
 }
 
+export interface AddToolSaveResult {
+  workspaceRefreshFailed: boolean;
+}
+
 export interface AddToolFormState {
   url: string;
   name: string;
@@ -74,7 +78,7 @@ export function createAddToolSubmissionGuard() {
 interface AddToolSubmissionOptions {
   guard: ReturnType<typeof createAddToolSubmissionGuard>;
   toolName: string;
-  save(): Promise<void>;
+  save(): Promise<void | AddToolSaveResult>;
   setPending(pending: boolean): void;
   setError(message: string): void;
   close(): void;
@@ -108,8 +112,11 @@ export async function runAddToolSubmission({
   setPending(true);
   setError("");
   try {
-    await save();
-    publish({ tone: "success", message: `${toolName || "Tool"} added successfully` });
+    const saveResult = await save();
+    const message = saveResult?.workspaceRefreshFailed
+      ? `${toolName || "Tool"} added successfully. Workspace refresh failed and will retry later.`
+      : `${toolName || "Tool"} added successfully`;
+    publish({ tone: "success", message });
     if (guard.isCurrent(submission)) close();
     return true;
   } catch (error) {

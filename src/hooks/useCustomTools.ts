@@ -74,15 +74,26 @@ export async function refreshWorkspaceTools(
   return snapshot;
 }
 
+export interface AddWorkspaceToolResult {
+  tool: Tool;
+  workspaceRefreshFailed: boolean;
+}
+
 export async function addWorkspaceToolAndRefresh(
   api: WorkspaceApi,
   draft: CustomToolDraft,
   pin: boolean,
+  getCurrent: () => WorkspaceSnapshot,
   apply: (snapshot: WorkspaceSnapshot) => void,
-): Promise<Tool> {
+): Promise<AddWorkspaceToolResult> {
   const tool = await api.postTool(draft, pin);
-  await refreshWorkspaceTools(api, apply);
-  return tool;
+  try {
+    await refreshWorkspaceTools(api, apply);
+    return { tool, workspaceRefreshFailed: false };
+  } catch {
+    apply(mergeCreatedTool(getCurrent(), tool, pin));
+    return { tool, workspaceRefreshFailed: true };
+  }
 }
 
 export async function updateWorkspaceToolAndRefresh(
@@ -456,11 +467,19 @@ export function useCustomTools(api: WorkspaceApi = DEFAULT_WORKSPACE_API) {
     return { categories: next.categories, category: category.name };
   }, [api, applyWorkspace]);
 
-  const addTool = useCallback(async (draft: CustomToolDraft, pin: boolean): Promise<Tool> => {
-    return addWorkspaceToolAndRefresh(api, draft, pin, (snapshot) => {
-      hasAuthoritativeWorkspaceRef.current = true;
-      applyWorkspace(snapshot);
-    });
+  const addTool = useCallback(async (
+    draft: CustomToolDraft,
+    pin: boolean,
+  ): Promise<AddWorkspaceToolResult> => {
+    const result = await addWorkspaceToolAndRefresh(
+      api,
+      draft,
+      pin,
+      () => workspaceRef.current,
+      applyWorkspace,
+    );
+    if (!result.workspaceRefreshFailed) hasAuthoritativeWorkspaceRef.current = true;
+    return result;
   }, [api, applyWorkspace]);
 
   const setToolPinned = useCallback(async (id: string, pinned: boolean): Promise<void> => {
