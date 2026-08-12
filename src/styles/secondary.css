@@ -689,6 +689,9 @@
   .tool-library-table-scroll {
     overflow-x: hidden;
   }
+  .tool-library-pagination[data-page-size="10"] {
+    margin-top: auto;
+  }
 }
 
 @media (max-width: 899px) {

@@ -78,6 +78,8 @@ test("desktop library fits ten rows with naturally spaced pagination and offers 
   assert.match(css, /\.tool-library-row td\s*\{[^}]*height:\s*54px/);
   assert.match(css, /\.tool-library-pagination\s*\{[^}]*margin-top:\s*10px/);
   assert.doesNotMatch(css, /\.tool-library-pagination\s*\{[^}]*margin-top:\s*auto/);
+  assert.match(pagination, /data-page-size=\{pageSize\}/);
+  assert.match(css, /@media \(min-width:\s*900px\)[\s\S]*\.tool-library-pagination\[data-page-size="10"\]\s*\{[^}]*margin-top:\s*auto/);
 });
 
 test("Manage delete confirmation shares the established overlay exit motion", async () => {
