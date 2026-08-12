@@ -2,14 +2,18 @@
 
 import { useLayoutEffect, useRef } from "react";
 import gsap from "gsap";
+import { AnimatePresence } from "motion/react";
 import "@/styles/secondary.css";
+import { DashboardPageView } from "@/app/dashboard/page";
+import AddToolModal from "@/components/dashboard/AddToolModal";
 import { useManagePageState } from "@/hooks/useManagePageState";
-import SecondaryPageShell from "@/components/dashboard/SecondaryPageShell";
+import { useCustomTools } from "@/hooks/useCustomTools";
 import ManageContent from "@/components/dashboard/pages/ManageContent";
 import { beginToolLibraryHandoffEntrance } from "@/lib/dashboard/tool-transition";
 
 export default function ManagePage() {
   const state = useManagePageState();
+  const workspace = useCustomTools();
   const entranceRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
@@ -56,10 +60,24 @@ export default function ManagePage() {
   }, []);
 
   return (
-    <SecondaryPageShell state={state} active="manage">
-      <div ref={entranceRef} className="tool-library-page-enter">
-        <ManageContent state={state} />
-      </div>
-    </SecondaryPageShell>
+    <DashboardPageView
+      activeRoute="manage"
+      mainContent={(
+        <>
+          <div ref={entranceRef} className="tool-library-page-enter">
+            <ManageContent state={state} />
+          </div>
+          <AnimatePresence>
+            {state.addToolOpen && (
+              <AddToolModal
+                open
+                onClose={state.closeAddTool}
+                workspace={workspace}
+              />
+            )}
+          </AnimatePresence>
+        </>
+      )}
+    />
   );
 }

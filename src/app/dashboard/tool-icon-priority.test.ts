@@ -22,10 +22,9 @@ test("built-in tools prefer a valid icon key and retain their legacy icon as fal
 test("custom tool catalog icons use their selected accent color", async () => {
   const source = await readFile(pageUrl, "utf8");
   const toolViews = source.slice(source.indexOf("function useToolViews"), source.indexOf("function GlobalSearchBar"));
-  const customBranch = source.slice(
-    source.indexOf("return {\n        id: tool.id", source.indexOf("if (builtIn)")),
-    source.indexOf("};", source.indexOf("return {\n        id: tool.id", source.indexOf("if (builtIn)"))) + 2,
-  );
+  const customBranch = source.match(
+    /if \(builtIn\)[\s\S]*?return \{\s*id: tool\.id,[\s\S]*?\n\s*\};/,
+  )?.[0] ?? "";
 
   assert.match(toolViews, /const rgb = toolColorRgb\(tool\.accent\);/);
   assert.match(customBranch, /color=\{`rgb\(\$\{rgb\}\)`\}/);

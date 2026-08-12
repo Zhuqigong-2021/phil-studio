@@ -14,8 +14,8 @@ test("dashboard uses one workspace snapshot for counts, favorites, and mutations
 
   const customToolCalls = source.match(/useCustomTools\(\)/g) ?? [];
   assert.equal(customToolCalls.length, 1);
-  assert.match(source, /function DashboardPageContent\(\)/);
-  assert.match(source, /<DashboardWorkspaceProvider>\s*<DashboardPageContent \/>\s*<\/DashboardWorkspaceProvider>/);
+  assert.match(source, /function DashboardPageContent\(\{/);
+  assert.match(source, /<DashboardWorkspaceProvider>\s*<DashboardPageContent mainContent=\{mainContent\} activeRoute=\{activeRoute\} \/>\s*<\/DashboardWorkspaceProvider>/);
 
   assert.match(source, /favoritePendingIds/);
   assert.match(source, /if \(favoritePendingIds\.includes\(id\)\) return/);

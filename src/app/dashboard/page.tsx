@@ -1340,11 +1340,14 @@ function MobileNavDrawer({ onClose }: { onClose: () => void }) {
   );
 }
 
-function Sidebar() {
+function Sidebar({ activeRoute = "dashboard" }: { activeRoute?: "dashboard" | "manage" }) {
   const router = useRouter();
   const [collapsed, setCollapsed] = React.useState(false);
   const [hovered, setHovered] = React.useState(false);
-  const [activeNav, setActiveNav] = React.useState("Dashboard");
+  const [activeNav, setActiveNav] = React.useState(
+    activeRoute === "manage" ? "Manage" : "Dashboard",
+  );
+  const resolvedActiveNav = activeRoute === "manage" ? "Manage" : activeNav;
   // Below 1180px the hero's weather panel can end up squeezed out of easy reach, so a Weather
   // shortcut appears under SYSTEM at that width, opening a modal with the same live weather info.
   const [narrow, setNarrow] = React.useState(false);
@@ -1440,8 +1443,11 @@ function Sidebar() {
             icon={<HomeIcon />}
             label="Dashboard"
             expanded={expanded}
-            active={activeNav === "Dashboard"}
-            onClick={() => setActiveNav("Dashboard")}
+            active={resolvedActiveNav === "Dashboard"}
+            onClick={() => {
+              setActiveNav("Dashboard");
+              router.push("/dashboard");
+            }}
             emphasized
           />
         </div>
@@ -1468,7 +1474,7 @@ function Sidebar() {
                 label={label}
                 expanded={expanded}
                 indent={indent}
-                active={activeNav === label}
+                active={resolvedActiveNav === label}
                 onClick={() => setActiveNav(label)}
               />
             ))}
@@ -1489,7 +1495,7 @@ function Sidebar() {
                 icon={icon}
                 label={label}
                 expanded={expanded}
-                active={activeNav === label}
+                active={resolvedActiveNav === label}
                 onClick={() => {
                   setActiveNav(label);
                   if (href) router.push(href);
@@ -4992,7 +4998,13 @@ function BottomRow({
 
 // ─── App root ──────────────────────────────────────────────────────────────────
 
-function DashboardPageContent() {
+function DashboardPageContent({
+  mainContent,
+  activeRoute,
+}: {
+  mainContent?: React.ReactNode;
+  activeRoute: "dashboard" | "manage";
+}) {
   const rootRef = React.useRef<HTMLDivElement>(null);
   const reduceMotion = Boolean(useReducedMotion());
   const narrowNav = useBelowWidth(MOBILE_NAV_BREAKPOINT);
@@ -5211,7 +5223,7 @@ function DashboardPageContent() {
       {/* Sidebar — replaced below 951px by a drawer opened from the topbar's brand button */}
       {!narrowNav && (
         <div data-dashboard-enter className="relative z-10 flex-shrink-0 self-stretch flex flex-col">
-          <Sidebar />
+          <Sidebar activeRoute={activeRoute} />
         </div>
       )}
 
@@ -5221,34 +5233,40 @@ function DashboardPageContent() {
         {/* Content stack — flex-col, each section flex-shrink-0 except BottomRow which is flex-1
             (except below 951px, where the whole page scrolls instead — see the root div and
             BottomRow's max-[950px] overrides). */}
-        <div className="flex-1 flex flex-col gap-[clamp(12px,2vh,32px)] overflow-hidden pt-3 min-h-0 max-[950px]:overflow-visible max-[950px]:min-h-0">
-          <HeroSection />
-          <StatsRow
-            active={activeStat}
-            onSelect={setActiveStat}
-            completionPercent={completionPercent}
-            focusEntryCount={focusEntries.length}
-            categoryCount={categoryCount}
-            favoriteCount={favoriteCount}
-          />
-          <BottomRow
-            active={activeStat}
-            tasks={tasks}
-            addTask={addTask}
-            toggleTask={toggleTask}
-            updateTask={updateTask}
-            deleteTask={deleteTask}
-            favoriteTools={favoriteTools}
-            favoritePendingIds={favoritePendingIds}
-            onToggleFavorite={toggleFavorite}
-            focusEntries={focusEntries}
-            focusSession={focusSession}
-            focusRemainingMs={focusRemainingMs}
-            onOpenFocusSettings={() => setFocusSettingsOpen(true)}
-            onCancelFocusSession={cancelFocusSession}
-            music={music}
-          />
-        </div>
+        {mainContent ? (
+          <div className="flex-1 min-h-0 overflow-hidden px-5 pb-5 pt-3 max-[950px]:overflow-visible">
+            {mainContent}
+          </div>
+        ) : (
+          <div className="flex-1 flex flex-col gap-[clamp(12px,2vh,32px)] overflow-hidden pt-3 min-h-0 max-[950px]:overflow-visible max-[950px]:min-h-0">
+            <HeroSection />
+            <StatsRow
+              active={activeStat}
+              onSelect={setActiveStat}
+              completionPercent={completionPercent}
+              focusEntryCount={focusEntries.length}
+              categoryCount={categoryCount}
+              favoriteCount={favoriteCount}
+            />
+            <BottomRow
+              active={activeStat}
+              tasks={tasks}
+              addTask={addTask}
+              toggleTask={toggleTask}
+              updateTask={updateTask}
+              deleteTask={deleteTask}
+              favoriteTools={favoriteTools}
+              favoritePendingIds={favoritePendingIds}
+              onToggleFavorite={toggleFavorite}
+              focusEntries={focusEntries}
+              focusSession={focusSession}
+              focusRemainingMs={focusRemainingMs}
+              onOpenFocusSettings={() => setFocusSettingsOpen(true)}
+              onCancelFocusSession={cancelFocusSession}
+              music={music}
+            />
+          </div>
+        )}
       </main>
 
       <AnimatePresence>
@@ -5280,10 +5298,20 @@ function DashboardPageContent() {
   );
 }
 
-export default function DashboardPage() {
+export function DashboardPageView({
+  mainContent,
+  activeRoute = "dashboard",
+}: {
+  mainContent?: React.ReactNode;
+  activeRoute?: "dashboard" | "manage";
+}) {
   return (
     <DashboardWorkspaceProvider>
-      <DashboardPageContent />
+      <DashboardPageContent mainContent={mainContent} activeRoute={activeRoute} />
     </DashboardWorkspaceProvider>
   );
+}
+
+export default function DashboardPage() {
+  return <DashboardPageView />;
 }
