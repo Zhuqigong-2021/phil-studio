@@ -20,7 +20,7 @@ export default function ManageContent({ state }: { state: ManagePageState }) {
   } = state;
 
   return (
-    <section className="tool-library" aria-labelledby="tool-library-title">
+    <section className="tool-library" data-page-size={state.pageSize} aria-labelledby="tool-library-title">
       <header className="tool-library-header">
         <div>
           <h1 id="tool-library-title">Tool Library</h1>

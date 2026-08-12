@@ -686,6 +686,9 @@
 }
 
 @media (min-width: 900px) {
+  .tool-library[data-page-size="10"] {
+    padding-top: clamp(42px, 5.5vh, 54px);
+  }
   .tool-library-table-scroll {
     overflow-x: hidden;
   }

@@ -13,6 +13,8 @@ export interface ToolTransitionRect {
 export interface ToolTransitionPlan {
   x: number;
   y: number;
+  width?: number;
+  height?: number;
   scaleX: number;
   scaleY: number;
   opacity: number;
@@ -131,8 +133,10 @@ export function getToolTransitionPlan(
   return {
     x: destinationRect.left - sourceRect.left,
     y: destinationRect.top - sourceRect.top,
-    scaleX: destinationRect.width / sourceRect.width,
-    scaleY: destinationRect.height / sourceRect.height,
+    width: destinationRect.width,
+    height: destinationRect.height,
+    scaleX: 1,
+    scaleY: 1,
     opacity: 1,
     borderRadius: 20,
     duration: 0.62,
@@ -279,7 +283,7 @@ export function createToolLibraryTransitionStarter(
       pointerEvents: "none",
       transformOrigin: "0 0",
       overflow: "hidden",
-      willChange: "transform, opacity, border-radius",
+      willChange: "transform, width, height, opacity, border-radius",
     });
     dependencies.appendOverlay(overlay);
 

@@ -79,6 +79,8 @@ test("desktop library fits ten rows with naturally spaced pagination and offers 
   assert.match(css, /\.tool-library-pagination\s*\{[^}]*margin-top:\s*10px/);
   assert.doesNotMatch(css, /\.tool-library-pagination\s*\{[^}]*margin-top:\s*auto/);
   assert.match(pagination, /data-page-size=\{pageSize\}/);
+  assert.match(await readFile(new URL("../pages/ManageContent.tsx", import.meta.url), "utf8"), /data-page-size=\{state\.pageSize\}/);
+  assert.match(css, /\.tool-library\[data-page-size="10"\]\s*\{[^}]*padding-top:\s*clamp\(/);
   assert.match(css, /@media \(min-width:\s*900px\)[\s\S]*\.tool-library-pagination\[data-page-size="10"\]\s*\{[^}]*margin-top:\s*auto/);
 });
 

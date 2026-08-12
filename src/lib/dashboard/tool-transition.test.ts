@@ -63,8 +63,10 @@ test("maps the source shell onto the destination bounds over the approved timing
   assert.deepEqual(plan, {
     x: 252,
     y: -100,
-    scaleX: 2.8,
-    scaleY: 704 / 240,
+    width: 1120,
+    height: 704,
+    scaleX: 1,
+    scaleY: 1,
     opacity: 1,
     borderRadius: 20,
     duration: 0.62,
