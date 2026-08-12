@@ -24,6 +24,7 @@ import WorkspaceSplashCursor from "@/components/dashboard/WorkspaceSplashCursor"
 import EnergySandVolume from "@/components/dashboard/EnergySandVolume";
 import SyncedLyrics from "@/components/dashboard/SyncedLyrics";
 import DashboardGreeting from "@/components/dashboard/DashboardGreeting";
+import { usePersistentMusic, type MusicPlayMode } from "@/components/dashboard/PersistentMusicProvider";
 import { useAudioAnalyser } from "@/hooks/useAudioAnalyser";
 import { useLyricsTimeline } from "@/hooks/useLyricsTimeline";
 import MagicRings from "@/components/dashboard/MagicRings";
@@ -2310,8 +2311,6 @@ function formatDuration(totalSeconds: number) {
   return `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
-type MusicPlayMode = "sequential" | "shuffle" | "repeat-one";
-
 const EQUALIZER_NEON_COLORS = [
   "#38bdf8",
   "#499cf5",
@@ -2321,7 +2320,26 @@ const EQUALIZER_NEON_COLORS = [
 ];
 const EQUALIZER_DURATIONS = [0.6, 0.85, 0.55, 0.95, 0.7];
 
-function useMusicPlayer(audioRef: React.RefObject<HTMLAudioElement | null>) {
+function useMusicPlayer() {
+  const persistent = usePersistentMusic();
+  const audioRef = persistent.audioRef;
+  const {
+    currentIndex, isPlaying, playMode, currentTime, duration, volume,
+    playAt, playNext, playPrev, togglePlay, cyclePlayMode, seek, setVolume,
+  } = persistent;
+  const track = TRACKS[currentIndex];
+  const {
+    bassRef, midRef, trebleRef, energyRef, loudnessRef, beatPulseRef, audioLevelRef, bandsRef,
+  } = useAudioAnalyser(audioRef, isPlaying);
+  return {
+    ...persistent,
+    track,
+    playAt, playNext, playPrev, togglePlay, cyclePlayMode, seek, setVolume,
+    audioLevelRef, bassRef, midRef, trebleRef, energyRef, loudnessRef, beatPulseRef, bandsRef,
+  };
+}
+
+function useMusicPlayerLegacy(audioRef: React.RefObject<HTMLAudioElement | null>) {
   const [currentIndex, setCurrentIndex] = React.useState(0);
   const [isPlaying, setIsPlaying] = React.useState(false);
   // One button cycles through all three modes rather than separate shuffle/repeat toggles.
@@ -3530,6 +3548,8 @@ function MusicPlayerPanel({
   loudnessRef,
   beatPulseRef,
   bandsRef,
+  showLyrics,
+  onShowLyricsChange,
 }: {
   track: Track;
   currentIndex: number;
@@ -3553,6 +3573,8 @@ function MusicPlayerPanel({
   loudnessRef: React.RefObject<number>;
   beatPulseRef: React.RefObject<number>;
   bandsRef: React.RefObject<Float32Array>;
+  showLyrics: boolean;
+  onShowLyricsChange: React.Dispatch<React.SetStateAction<boolean>>;
 }) {
   const progressPct =
     duration > 0
@@ -3561,7 +3583,6 @@ function MusicPlayerPanel({
   // The list toggle covers the transport row (prev/play/next) below the now-playing
   // header, not the header itself — see the mode/list icon row further down.
   const [showList, setShowList] = React.useState(false);
-  const [showLyrics, setShowLyrics] = React.useState(false);
   const lyricLines = useLyricsTimeline(track.lyricsSlug, showLyrics, duration);
 
   const isPlayingRef = React.useRef(isPlaying);
@@ -4363,7 +4384,7 @@ function MusicPlayerPanel({
 
             <button
               type="button"
-              onClick={() => setShowLyrics((v) => !v)}
+              onClick={() => onShowLyricsChange((v) => !v)}
               aria-label={showLyrics ? "Hide lyrics" : "Show lyrics"}
               className="flex items-center justify-center rounded-[8px] flex-shrink-0 cursor-pointer transition-colors hover:bg-[rgba(255,255,255,0.06)]"
               style={{ width: 26, height: 26 }}
@@ -4975,6 +4996,8 @@ function BottomRow({
             loudnessRef={music.loudnessRef}
             beatPulseRef={music.beatPulseRef}
             bandsRef={music.bandsRef}
+            showLyrics={music.showLyrics}
+            onShowLyricsChange={music.setShowLyrics}
           />
         ) : (
           <RecentActivityPanel
@@ -5041,8 +5064,7 @@ function DashboardPageContent({
     addFocusEntry(completed.task, completed.durationMin),
   );
 
-  const musicAudioRef = React.useRef<HTMLAudioElement>(null);
-  const music = useMusicPlayer(musicAudioRef);
+  const music = useMusicPlayer();
 
   React.useLayoutEffect(() => {
     if (activeRoute === "manage" || reduceMotion) return;
@@ -5221,15 +5243,6 @@ function DashboardPageContent({
         />
       </div>
 
-      {/* Always mounted (not inside MusicPlayerPanel, which only renders while "Favorite
-          Music" is the active tab) so playback survives switching to another stat card. */}
-      <audio
-        ref={musicAudioRef}
-        src={music.track.src}
-        onEnded={music.handleEnded}
-        onError={music.stop}
-      />
-
       {/* Sidebar — replaced below 951px by a drawer opened from the topbar's brand button */}
       {!narrowNav && (
         <div data-dashboard-sidebar className="relative z-10 flex-shrink-0 self-stretch flex flex-col">
@@ -5327,7 +5340,6 @@ export function DashboardPageView({
     </DashboardWorkspaceProvider>
   );
 }
-
 export default function DashboardPage() {
   return <DashboardPageView />;
 }

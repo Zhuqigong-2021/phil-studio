@@ -12,6 +12,8 @@ test("greeting sequences title typing, subtitle typing, then the location bounce
   assert.match(source, /titleRevealActive/);
   assert.match(source, /active=\{titleRevealActive && !reduceMotion\}/);
   assert.match(source, /TITLE_REVEAL_DELAY_MS/);
+  assert.match(source, /ENTRANCE_SETTLE_MS/);
+  assert.match(source, /Math\.max\(0, ENTRANCE_SETTLE_MS - elapsedMs\)/);
   assert.match(source, /WELCOME/);
   assert.match(source, /setTypedWelcome/);
   assert.match(source, /aria-hidden=\{!titleTypingComplete\}/);

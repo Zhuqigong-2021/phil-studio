@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Inter } from "next/font/google";
 import FavoriteToastHost from "@/components/dashboard/FavoriteToastHost";
+import { PersistentMusicProvider } from "@/components/dashboard/PersistentMusicProvider";
 import "./globals.css";
 import "./visual-editor.generated.css";
 
@@ -35,8 +36,10 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} ${inter.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
-        {children}
-        <FavoriteToastHost />
+        <PersistentMusicProvider>
+          {children}
+          <FavoriteToastHost />
+        </PersistentMusicProvider>
       </body>
     </html>
   );

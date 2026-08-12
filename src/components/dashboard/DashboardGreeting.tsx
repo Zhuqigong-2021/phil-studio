@@ -9,10 +9,11 @@ import { getTypedText } from "./dashboard-greeting-state";
 
 const TITLE = "Bonjour, Phil !";
 const WELCOME = "Welcome to your AI Tools Dashboard";
-const CHARACTER_MS = 55;
-const WELCOME_CHARACTER_MS = 38;
-const TYPEWRITER_DELAY_MS = 850;
-const TITLE_REVEAL_DELAY_MS = 1_050;
+const CHARACTER_MS = 34;
+const WELCOME_CHARACTER_MS = 20;
+const TYPEWRITER_DELAY_MS = 180;
+const ENTRANCE_SETTLE_MS = 1_450;
+const TITLE_REVEAL_DELAY_MS = 120;
 
 export default function DashboardGreeting({ paddingTop }: { paddingTop: string }) {
   const reduceMotion = Boolean(useReducedMotion());
@@ -62,9 +63,12 @@ export default function DashboardGreeting({ paddingTop }: { paddingTop: string }
 
   React.useEffect(() => {
     if (reduceMotion || !subtitleTypingComplete) return;
+    const elapsedMs = TYPEWRITER_DELAY_MS
+      + TITLE.length * CHARACTER_MS
+      + WELCOME.length * WELCOME_CHARACTER_MS;
     const timeoutId = window.setTimeout(
       () => setTitleRevealActive(true),
-      TITLE_REVEAL_DELAY_MS,
+      Math.max(0, ENTRANCE_SETTLE_MS - elapsedMs) + TITLE_REVEAL_DELAY_MS,
     );
     return () => window.clearTimeout(timeoutId);
   }, [reduceMotion, subtitleTypingComplete]);
