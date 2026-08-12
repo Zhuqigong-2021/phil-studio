@@ -65,9 +65,9 @@ test("maps the source shell onto the destination bounds over the approved timing
     y: -100,
     scaleX: 2.8,
     scaleY: 704 / 240,
-    opacity: 0.16,
+    opacity: 1,
     borderRadius: 20,
-    duration: 0.42,
+    duration: 0.62,
     ease: "power3.inOut",
   });
 });

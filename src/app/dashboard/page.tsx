@@ -4650,13 +4650,14 @@ function AllToolsPanel() {
       {({ sourceRef, startTransition }) => (
         <GlassPanel
           panelRef={sourceRef}
-          className="flex-1 min-w-0 flex flex-col px-5 py-4 overflow-hidden max-[950px]:w-full max-[950px]:min-h-[320px] max-[950px]:order-2"
+          className="relative flex-1 min-w-0 flex flex-col px-5 py-4 overflow-hidden max-[950px]:w-full max-[950px]:min-h-[320px] max-[950px]:order-2"
           tint="30,24,50"
           opacity={0.3}
           blur="14px"
           lightAngle={188}
           highlightOpacity={0.55}
         >
+          <div data-tool-library-source-content className="flex min-h-0 flex-1 flex-col">
           <div className="flex items-center justify-between mb-8 min-[1180px]:mb-5 flex-shrink-0">
             <p className="text-white font-semibold text-[18px]">All Tools</p>
             <button
@@ -4684,6 +4685,17 @@ function AllToolsPanel() {
                 shadowColor={t.shadow}
                 href={t.href}
               />
+            ))}
+          </div>
+          </div>
+          <div data-tool-library-morph-preview aria-hidden="true" className="tool-library-morph-preview">
+            <div className="tool-library-morph-heading"><div><strong>Tool Library</strong><span>Manage your tools</span></div><b>+</b></div>
+            <div className="tool-library-morph-columns"><span>Name</span><span>Category</span><span>Link</span><span>Pin</span><span>Favorite</span><span>Operation</span></div>
+            {toolViews.slice(0, 6).map((tool) => (
+              <div className="tool-library-morph-row" key={tool.id}>
+                <span className="tool-library-morph-name"><i style={{ background: tool.border }} />{tool.label}</span>
+                <span>AI Tools</span><span className="tool-library-morph-line" /><span>●</span><span>★</span><span>✓　⌫</span>
+              </div>
             ))}
           </div>
         </GlassPanel>
@@ -5051,13 +5063,14 @@ function DashboardPageContent({
   const music = useMusicPlayer(musicAudioRef);
 
   React.useLayoutEffect(() => {
+    if (activeRoute === "manage" || reduceMotion) return;
     const values = getDashboardEntranceMotion(reduceMotion);
     const context = gsap.context(() => {
       gsap.fromTo("[data-dashboard-enter]", values.from, values.to);
     }, rootRef);
 
     return () => context.revert();
-  }, [reduceMotion]);
+  }, [activeRoute, reduceMotion]);
 
   return (
     <div
@@ -5247,11 +5260,11 @@ function DashboardPageContent({
             (except below 951px, where the whole page scrolls instead — see the root div and
             BottomRow's max-[950px] overrides). */}
         {mainContent ? (
-          <div className="flex flex-col flex-1 min-h-0 overflow-hidden px-5 pb-5 pt-3 max-[950px]:overflow-visible">
+          <div data-dashboard-transition-content className="flex flex-col flex-1 min-h-0 overflow-hidden px-5 pb-5 pt-3 max-[950px]:overflow-visible">
             {mainContent}
           </div>
         ) : (
-          <div className="flex-1 flex flex-col gap-[clamp(12px,2vh,32px)] overflow-hidden pt-3 min-h-0 max-[950px]:overflow-visible max-[950px]:min-h-0">
+          <div data-dashboard-transition-content className="flex-1 flex flex-col gap-[clamp(12px,2vh,32px)] overflow-hidden pt-3 min-h-0 max-[950px]:overflow-visible max-[950px]:min-h-0">
             <HeroSection />
             <StatsRow
               active={activeStat}

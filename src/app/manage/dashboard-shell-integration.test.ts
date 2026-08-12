@@ -31,6 +31,8 @@ test("manage uses a quiet non-photo background and an integrated library surface
   assert.match(managePage, /backgroundMode="manage"/);
   assert.match(dashboardPage, /backgroundMode === "manage"/);
   assert.doesNotMatch(manageContent, /secondary-page-flow-border/);
+  assert.match(dashboardPage, /activeRoute === "manage" \|\| reduceMotion/);
+  assert.match(dashboardPage, /data-tool-library-morph-preview/);
 });
 
 test("desktop tool library fits the Dashboard content width without a forced wide table", async () => {

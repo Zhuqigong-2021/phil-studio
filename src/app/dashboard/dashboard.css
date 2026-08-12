@@ -793,3 +793,28 @@
     animation: none !important;
   }
 }
+/* Compact destination preview used only by the View All shared-element transition. */
+.tool-library-morph-preview {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  visibility: hidden;
+  flex-direction: column;
+  gap: 7px;
+  padding: 16px 18px;
+  color: #eef3ff;
+  background: linear-gradient(145deg, rgba(10, 20, 48, 0.98), rgba(14, 18, 52, 0.98));
+}
+.tool-library-morph-heading { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 3px; }
+.tool-library-morph-heading div { display: flex; flex-direction: column; gap: 2px; }
+.tool-library-morph-heading strong { font-size: 14px; }
+.tool-library-morph-heading span { color: #929fba; font-size: 8px; }
+.tool-library-morph-heading b { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 6px; background: #7557e8; }
+.tool-library-morph-columns,
+.tool-library-morph-row { display: grid; grid-template-columns: 1.4fr 1fr 1.5fr .45fr .6fr .75fr; align-items: center; gap: 8px; }
+.tool-library-morph-columns { color: #7f8da8; font-size: 6px; letter-spacing: .08em; text-transform: uppercase; }
+.tool-library-morph-row { min-height: 22px; padding: 3px 6px; border: 1px solid rgba(148, 163, 184, .13); border-radius: 6px; color: #aab6cb; font-size: 7px; background: rgba(5, 13, 35, .5); }
+.tool-library-morph-name { display: flex; align-items: center; gap: 6px; color: #eef3ff; }
+.tool-library-morph-name i { width: 9px; height: 9px; border-radius: 3px; box-shadow: 0 0 9px currentColor; }
+.tool-library-morph-line { height: 5px; border-radius: 4px; background: rgba(148, 163, 184, .16); }

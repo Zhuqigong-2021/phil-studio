@@ -66,7 +66,7 @@ test("management popovers are mutually exclusive and scroll without visible scro
   assert.match(css, /\.category-options[\s\S]*scrollbar-width:\s*none/);
 });
 
-test("desktop library fits ten rows above bottom-aligned pagination and offers five rows", async () => {
+test("desktop library fits ten rows with naturally spaced pagination and offers five rows", async () => {
   const [pagination, state, css] = await Promise.all([
     readFile(new URL("./ToolLibraryPagination.tsx", import.meta.url), "utf8"),
     readFile(new URL("../../../hooks/manage-page-state.ts", import.meta.url), "utf8"),
@@ -76,7 +76,8 @@ test("desktop library fits ten rows above bottom-aligned pagination and offers f
   assert.match(pagination, /<option value=\{5\}>5<\/option>/);
   assert.match(state, /ManagePageSize = 5 \| 10 \| 20 \| 50/);
   assert.match(css, /\.tool-library-row td\s*\{[^}]*height:\s*54px/);
-  assert.match(css, /\.tool-library-pagination\s*\{[^}]*margin-top:\s*auto/);
+  assert.match(css, /\.tool-library-pagination\s*\{[^}]*margin-top:\s*10px/);
+  assert.doesNotMatch(css, /\.tool-library-pagination\s*\{[^}]*margin-top:\s*auto/);
 });
 
 test("Manage delete confirmation shares the established overlay exit motion", async () => {
