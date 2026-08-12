@@ -119,5 +119,8 @@ test("Category table header provides an accessible multi-select filter separate 
   assert.match(filter, /type="checkbox"/);
   assert.match(filter, /aria-label="Filter tools by category"/);
   assert.match(filter, /Escape/);
+  assert.match(filter, /createPortal/);
+  assert.match(filter, /position:\s*"fixed"/);
+  assert.match(filter, /getBoundingClientRect/);
   assert.match(css, /\.category-table-filter-options[\s\S]*scrollbar-width:\s*none/);
 });

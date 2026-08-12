@@ -160,10 +160,7 @@
 .category-table-filter-trigger[aria-expanded="true"] { color: #c4b5fd; background: rgba(124, 92, 246, .14); }
 .category-table-filter-count { min-width: 16px; height: 16px; display: grid; place-items: center; border-radius: 999px; background: #6d5ce7; color: white; font-size: 9px; }
 .category-table-filter-popover {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-  z-index: 40;
+  z-index: 100;
   width: 218px;
   padding: 8px;
   border: 1px solid rgba(129, 140, 248, .28);
