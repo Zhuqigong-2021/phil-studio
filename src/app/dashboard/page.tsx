@@ -4691,7 +4691,7 @@ function AllToolsPanel() {
           <div data-tool-library-morph-preview aria-hidden="true" className="tool-library-morph-preview">
             <div className="tool-library-morph-heading"><div><strong>Tool Library</strong><span>Manage your tools</span></div><b>+</b></div>
             <div className="tool-library-morph-columns"><span>Name</span><span>Category</span><span>Link</span><span>Pin</span><span>Favorite</span><span>Operation</span></div>
-            {toolViews.slice(0, 6).map((tool) => (
+            {toolViews.slice(0, 10).map((tool) => (
               <div className="tool-library-morph-row" key={tool.id}>
                 <span className="tool-library-morph-name"><i style={{ background: tool.border }} />{tool.label}</span>
                 <span>AI Tools</span><span className="tool-library-morph-line" /><span>●</span><span>★</span><span>✓　⌫</span>
@@ -5092,11 +5092,7 @@ function DashboardPageContent({
         {backgroundMode === "manage" ? (
           <div
             data-manage-background
-            className="absolute inset-0"
-            style={{
-              background:
-                "radial-gradient(circle at 58% 0%, rgba(101, 78, 214, 0.20), transparent 38%), radial-gradient(circle at 18% 72%, rgba(20, 117, 154, 0.12), transparent 42%), linear-gradient(145deg, #050b1d 0%, #08122b 48%, #090d24 100%)",
-            }}
+            className="manage-scene-background absolute inset-0"
           />
         ) : (
           <DashboardBackground />

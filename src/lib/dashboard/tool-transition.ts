@@ -330,6 +330,7 @@ const browserTransitionStarter = createToolLibraryTransitionStarter({
     const root = sourceNode.closest<HTMLElement>(".dashboard-motion-root");
     const content = root?.querySelector<HTMLElement>("[data-dashboard-transition-content]");
     const veil = document.createElement("div");
+    veil.className = "manage-scene-background";
     veil.setAttribute("data-tool-library-transition-veil", "true");
     Object.assign(veil.style, {
       position: "fixed",
@@ -340,10 +341,9 @@ const browserTransitionStarter = createToolLibraryTransitionStarter({
       zIndex: "110",
       pointerEvents: "none",
       opacity: "0",
-      background: "radial-gradient(circle at 56% 12%, rgba(89, 72, 180, 0.22), transparent 42%), linear-gradient(145deg, rgba(2, 8, 23, 0.76), rgba(8, 15, 38, 0.94))",
     });
     document.body.appendChild(veil);
-    gsap.to(veil, { opacity: 1, duration: 0.34, ease: "power2.out" });
+    gsap.to(veil, { opacity: 1, duration: 0.48, ease: "power2.inOut" });
     if (content) {
       gsap.to(content, {
         opacity: 0.12,

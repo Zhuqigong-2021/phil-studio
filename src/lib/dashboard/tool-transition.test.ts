@@ -236,6 +236,13 @@ test("manual transition cleanup releases the lock without marking or navigating"
   assert.notEqual(start(source, router), null);
 });
 
+test("browser handoff reuses the Manage scene instead of a dark inline veil", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const source = await readFile(new URL("./tool-transition.ts", import.meta.url), "utf8");
+  assert.match(source, /className = "manage-scene-background"/);
+  assert.doesNotMatch(source, /background: "radial-gradient\(circle at 56%/);
+});
+
 test("handoff registry completes retained transition cleanup only once", () => {
   const handoff = createToolLibraryHandoffRegistry();
   let cleanups = 0;

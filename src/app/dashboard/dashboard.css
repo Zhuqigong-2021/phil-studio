@@ -801,20 +801,29 @@
   display: flex;
   visibility: hidden;
   flex-direction: column;
-  gap: 7px;
-  padding: 16px 18px;
+  gap: clamp(4px, 0.65cqw, 9px);
+  padding: clamp(14px, 1.4cqw, 24px);
   color: #eef3ff;
   background: linear-gradient(145deg, #0a1430, #0e1234);
 }
 .tool-library-morph-heading { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 3px; }
 .tool-library-morph-heading div { display: flex; flex-direction: column; gap: 2px; }
-.tool-library-morph-heading strong { font-size: 14px; }
-.tool-library-morph-heading span { color: #929fba; font-size: 8px; }
-.tool-library-morph-heading b { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 6px; background: #7557e8; }
+.dashboard-tool-transition-overlay { container-type: inline-size; }
+.tool-library-morph-heading strong { font-size: clamp(14px, 1.35cqw, 24px); }
+.tool-library-morph-heading span { color: #929fba; font-size: clamp(8px, .7cqw, 12px); }
+.tool-library-morph-heading b { display: grid; place-items: center; width: clamp(20px, 2.2cqw, 38px); height: clamp(20px, 2.2cqw, 38px); border-radius: 9px; background: #7557e8; }
 .tool-library-morph-columns,
 .tool-library-morph-row { display: grid; grid-template-columns: 1.4fr 1fr 1.5fr .45fr .6fr .75fr; align-items: center; gap: 8px; }
-.tool-library-morph-columns { color: #7f8da8; font-size: 6px; letter-spacing: .08em; text-transform: uppercase; }
-.tool-library-morph-row { min-height: 22px; padding: 3px 6px; border: 1px solid rgba(148, 163, 184, .13); border-radius: 6px; color: #aab6cb; font-size: 7px; background: rgba(5, 13, 35, .5); }
+.tool-library-morph-columns { color: #7f8da8; font-size: clamp(6px, .56cqw, 10px); letter-spacing: .08em; text-transform: uppercase; }
+.tool-library-morph-row { min-height: clamp(22px, 3.1cqw, 54px); padding: clamp(3px, .45cqw, 7px) clamp(6px, .7cqw, 11px); border: 1px solid rgba(148, 163, 184, .13); border-radius: 7px; color: #aab6cb; font-size: clamp(7px, .7cqw, 12px); background: rgba(5, 13, 35, .78); }
 .tool-library-morph-name { display: flex; align-items: center; gap: 6px; color: #eef3ff; }
 .tool-library-morph-name i { width: 9px; height: 9px; border-radius: 3px; box-shadow: 0 0 9px currentColor; }
 .tool-library-morph-line { height: 5px; border-radius: 4px; background: rgba(148, 163, 184, .16); }
+.manage-scene-background {
+  background:
+    radial-gradient(ellipse at 77% 8%, rgba(124, 58, 237, .48) 0%, rgba(124, 58, 237, .16) 34%, transparent 62%),
+    radial-gradient(ellipse at 50% 45%, rgba(67, 56, 202, .48) 0%, rgba(67, 56, 202, .19) 42%, transparent 70%),
+    radial-gradient(ellipse at 48% 88%, rgba(14, 165, 233, .19) 0%, rgba(14, 165, 233, .06) 36%, transparent 64%),
+    radial-gradient(ellipse at 7% 92%, rgba(49, 46, 129, .58) 0%, transparent 58%),
+    linear-gradient(145deg, #080d27 0%, #11143d 44%, #17113d 72%, #0a0d25 100%);
+}
