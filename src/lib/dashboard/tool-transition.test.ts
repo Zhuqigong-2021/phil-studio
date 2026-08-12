@@ -244,6 +244,11 @@ test("browser handoff reuses the Manage scene instead of a dark inline veil", as
   assert.match(source, /timeline\.to\(veil, \{ opacity: 1, duration: 0\.38[\s\S]*\}, 0\.70\)/);
   assert.match(source, /timeline\.to\(content, \{[\s\S]*opacity: 0\.48[\s\S]*\}, 0\.22\)/);
   assert.doesNotMatch(source, /gsap\.to\(veil, \{ opacity: 1/);
+  assert.match(source, /querySelector<HTMLElement>\("\[data-dashboard-transition-content\]"\)/);
+  assert.match(source, /const bounds = destination\.getBoundingClientRect\(\)/);
+  assert.match(source, /const styles = window\.getComputedStyle\(destination\)/);
+  assert.match(source, /bounds\.left \+ paddingLeft/);
+  assert.doesNotMatch(source, /const left = desktop \? 300 : 20/);
 });
 
 test("handoff registry completes retained transition cleanup only once", () => {

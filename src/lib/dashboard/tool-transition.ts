@@ -308,16 +308,19 @@ const browserHandoffRegistry = createToolLibraryHandoffRegistry();
 const browserTransitionStarter = createToolLibraryTransitionStarter({
   lock: createToolTransitionLock(),
   findDestinationRect: () => {
-    const desktop = window.innerWidth >= 900;
-    const left = desktop ? 300 : 20;
-    const top = desktop ? 102 : 82;
-    const right = 20;
-    const bottom = 20;
+    const destination = document.querySelector<HTMLElement>("[data-dashboard-transition-content]");
+    if (!destination) return null;
+    const bounds = destination.getBoundingClientRect();
+    const styles = window.getComputedStyle(destination);
+    const paddingLeft = Number.parseFloat(styles.paddingLeft) || 0;
+    const paddingRight = Number.parseFloat(styles.paddingRight) || 0;
+    const paddingTop = Number.parseFloat(styles.paddingTop) || 0;
+    const paddingBottom = Number.parseFloat(styles.paddingBottom) || 0;
     return {
-      left,
-      top,
-      width: Math.max(1, window.innerWidth - left - right),
-      height: Math.max(1, window.innerHeight - top - bottom),
+      left: bounds.left + paddingLeft,
+      top: bounds.top + paddingTop,
+      width: Math.max(1, bounds.width - paddingLeft - paddingRight),
+      height: Math.max(1, bounds.height - paddingTop - paddingBottom),
     };
   },
   cloneShell: (source, deep) => (source as HTMLElement).cloneNode(deep) as HTMLElement,
