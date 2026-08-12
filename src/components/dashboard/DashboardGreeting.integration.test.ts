@@ -9,12 +9,13 @@ test("greeting sequences title typing, subtitle typing, then the location bounce
   assert.match(page, /<DashboardGreeting/);
   assert.match(source, /titleTypingComplete/);
   assert.match(source, /subtitleTypingComplete/);
-  assert.match(source, /active=\{titleTypingComplete && !reduceMotion\}/);
+  assert.match(source, /titleRevealActive/);
+  assert.match(source, /active=\{titleRevealActive && !reduceMotion\}/);
+  assert.match(source, /TITLE_REVEAL_DELAY_MS/);
   assert.match(source, /WELCOME/);
   assert.match(source, /setTypedWelcome/);
   assert.match(source, /aria-hidden=\{!titleTypingComplete\}/);
   assert.match(source, /subtitleTypingComplete && \(/);
-  assert.match(source, /onRevealComplete/);
   assert.match(source, /data-dashboard-location/);
   assert.match(source, /y: \[0, -18, 0, -10, 0, -5, 0, -2, 0\]/);
   assert.match(source, /Bonjour, Phil !/);

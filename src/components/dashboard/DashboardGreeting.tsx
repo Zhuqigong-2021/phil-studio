@@ -12,6 +12,7 @@ const WELCOME = "Welcome to your AI Tools Dashboard";
 const CHARACTER_MS = 55;
 const WELCOME_CHARACTER_MS = 38;
 const TYPEWRITER_DELAY_MS = 850;
+const TITLE_REVEAL_DELAY_MS = 1_050;
 
 export default function DashboardGreeting({ paddingTop }: { paddingTop: string }) {
   const reduceMotion = Boolean(useReducedMotion());
@@ -19,7 +20,7 @@ export default function DashboardGreeting({ paddingTop }: { paddingTop: string }
   const [typedWelcome, setTypedWelcome] = React.useState(reduceMotion ? WELCOME : "");
   const [titleTypingComplete, setTitleTypingComplete] = React.useState(reduceMotion);
   const [subtitleTypingComplete, setSubtitleTypingComplete] = React.useState(reduceMotion);
-  const [revealComplete, setRevealComplete] = React.useState(reduceMotion);
+  const [titleRevealActive, setTitleRevealActive] = React.useState(reduceMotion);
 
   React.useEffect(() => {
     if (reduceMotion) return;
@@ -59,7 +60,14 @@ export default function DashboardGreeting({ paddingTop }: { paddingTop: string }
     return () => cancelAnimationFrame(frame);
   }, [reduceMotion, titleTypingComplete]);
 
-  const onRevealComplete = React.useCallback(() => setRevealComplete(true), []);
+  React.useEffect(() => {
+    if (reduceMotion || !subtitleTypingComplete) return;
+    const timeoutId = window.setTimeout(
+      () => setTitleRevealActive(true),
+      TITLE_REVEAL_DELAY_MS,
+    );
+    return () => window.clearTimeout(timeoutId);
+  }, [reduceMotion, subtitleTypingComplete]);
 
   return (
     <motion.div
@@ -73,10 +81,9 @@ export default function DashboardGreeting({ paddingTop }: { paddingTop: string }
       <h1 className="text-white font-semibold text-[34px] leading-tight drop-shadow-[0_2px_12px_rgba(0,0,0,0.6)]">
         <DiaTextReveal
           text={typedText}
-          active={titleTypingComplete && !reduceMotion}
+          active={titleRevealActive && !reduceMotion}
           colors={["#A97CF8", "#818CF8", "#67E8F9"]}
           textColor="#ffffff"
-          onRevealComplete={onRevealComplete}
         />{" "}
         {titleTypingComplete && <span aria-hidden="true">👋</span>}
       </h1>
@@ -92,7 +99,7 @@ export default function DashboardGreeting({ paddingTop }: { paddingTop: string }
         <motion.div
           data-dashboard-location
           initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 0 }}
-          animate={revealComplete && !reduceMotion
+          animate={!reduceMotion
             ? { opacity: 1, y: [0, -18, 0, -10, 0, -5, 0, -2, 0] }
             : { opacity: 1, y: 0 }}
           transition={{ duration: reduceMotion ? 0.16 : 1.45, ease: "easeOut" }}
