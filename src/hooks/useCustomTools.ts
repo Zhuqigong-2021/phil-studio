@@ -416,9 +416,14 @@ export async function createOptimisticToolPatch(
     const currentWorkspace = getCurrent();
     const confirmed = {
       ...currentWorkspace,
-      tools: currentWorkspace.tools.map((tool) => tool.id === id && patch.favorite !== undefined && isLatest("favorite")
-        ? { ...tool, favorite: persisted.favorite }
-        : tool),
+      tools: currentWorkspace.tools.map((tool) => {
+        if (tool.id !== id) return tool;
+        const favorite = patch.favorite !== undefined && isLatest("favorite")
+          ? persisted.favorite
+          : tool.favorite;
+        const updatedAt = fields.some(isLatest) ? persisted.updatedAt : tool.updatedAt;
+        return { ...tool, favorite, updatedAt };
+      }),
     };
     apply(confirmed);
     return confirmed;

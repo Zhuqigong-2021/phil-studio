@@ -211,6 +211,24 @@ test("optimistic pin and favorite patches roll back the exact previous snapshot 
   assert.deepEqual(applied.at(-1), initial);
 });
 
+test("a confirmed pin patch adopts the database update time for Quick Access ordering", async () => {
+  const older = { ...customTool, updatedAt: "2026-08-10T00:00:00.000Z" };
+  const persisted = { ...older, updatedAt: "2026-08-12T12:00:00.000Z" };
+  let current: WorkspaceSnapshot = { ...snapshot(older), pinnedToolIds: [] };
+
+  await createOptimisticToolPatch(
+    current,
+    older.id,
+    { pinned: true },
+    api({ patchTool: async () => persisted }),
+    (next) => { current = next; },
+    () => current,
+  );
+
+  assert.equal(current.tools[0].updatedAt, persisted.updatedAt);
+  assert.deepEqual(current.pinnedToolIds, [older.id]);
+});
+
 test("setToolFavorite writes a confirmed server favorite to the cache", async () => {
   const storage = new MemoryStorage();
   const ap = TOOLS_RAW.find((tool) => tool.id === "ap");

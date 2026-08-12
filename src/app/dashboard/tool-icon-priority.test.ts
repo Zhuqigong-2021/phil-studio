@@ -68,3 +68,17 @@ test("quick access labels match their responsive icon width and use the same ell
   assert.match(quickTileSource, /whitespace-nowrap/);
   assert.match(quickTileSource, /truncate/);
 });
+
+test("Quick Access keeps four visible slots and horizontally scrolls additional pins", async () => {
+  const source = await readFile(pageUrl, "utf8");
+  const quickTileSource = source.slice(
+    source.indexOf("function QuickTile"),
+    source.indexOf("// 鈹€鈹€鈹€", source.indexOf("function QuickTile") + 1),
+  );
+
+  assert.match(quickTileSource, /min-\[1180px\]:w-\[calc\(\(100%-48px\)\/4\)\]/);
+
+  const panelSource = source.slice(source.indexOf("const quickAccessPanel"), source.indexOf("return (", source.indexOf("const quickAccessPanel")));
+  assert.match(panelSource, /min-\[1180px\]:gap-\[16px\]/);
+  assert.match(panelSource, /overflow-x-auto/);
+});
