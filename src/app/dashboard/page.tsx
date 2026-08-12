@@ -5247,7 +5247,7 @@ function DashboardPageContent({
             (except below 951px, where the whole page scrolls instead — see the root div and
             BottomRow's max-[950px] overrides). */}
         {mainContent ? (
-          <div className="flex-1 min-h-0 overflow-hidden px-5 pb-5 pt-3 max-[950px]:overflow-visible">
+          <div className="flex flex-col flex-1 min-h-0 overflow-hidden px-5 pb-5 pt-3 max-[950px]:overflow-visible">
             {mainContent}
           </div>
         ) : (

@@ -14,7 +14,7 @@ import {
 } from "../lib/dashboard/tool-mutations.ts";
 import type { WorkspaceMutationOutcome } from "./useCustomTools.ts";
 
-export type ManagePageSize = 10 | 20 | 50;
+export type ManagePageSize = 5 | 10 | 20 | 50;
 
 export interface ManageTableState {
   drafts: Record<string, ToolRowDraft>;
