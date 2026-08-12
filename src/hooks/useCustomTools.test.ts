@@ -2,8 +2,11 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { addPinnedToolId, removePinnedToolId } from "../lib/dashboard/custom-tools.ts";
+import type { CustomToolDraft } from "../lib/dashboard/custom-tools.ts";
+import type { Tool } from "../lib/dashboard/types.ts";
 import type { WorkspaceSnapshot } from "../lib/dashboard/workspace-data.ts";
 import {
+  addWorkspaceToolAndRefresh,
   createFavoritePendingTracker,
   deleteWorkspaceToolAndRefresh,
   refreshWorkspaceTools,
@@ -30,6 +33,77 @@ function workspaceApi(overrides: Partial<WorkspaceApi> = {}): WorkspaceApi {
     ...overrides,
   };
 }
+
+const createdTool: Tool = {
+  id: "tool-1",
+  name: "Notion",
+  url: "https://notion.so",
+  description: "Connected notes workspace",
+  mono: "NO",
+  accent: "violet",
+  tags: ["Productivity", "AI"],
+  aliases: ["Notes", "Wiki"],
+  favorite: false,
+  sourceType: "external",
+  iconKey: "notion",
+  iconType: "matching",
+};
+
+const toolDraft: CustomToolDraft = {
+  name: createdTool.name,
+  url: createdTool.url ?? "",
+  description: createdTool.description ?? "",
+  iconKey: createdTool.iconKey ?? "notion",
+  accent: createdTool.accent,
+  tags: createdTool.tags,
+  aliases: createdTool.aliases ?? [],
+  sourceType: createdTool.sourceType ?? "external",
+};
+
+test("adds through POST, then fetches and applies the authoritative database snapshot", async () => {
+  const calls: string[] = [];
+  const authoritative = { ...snapshot, tools: [createdTool], pinnedToolIds: [createdTool.id] };
+  const applied: WorkspaceSnapshot[] = [];
+  let resolveFetch!: (value: WorkspaceSnapshot) => void;
+  const fetch = new Promise<WorkspaceSnapshot>((resolve) => { resolveFetch = resolve; });
+
+  const pending = addWorkspaceToolAndRefresh(
+    workspaceApi({
+      postTool: async () => { calls.push("post"); return createdTool; },
+      fetchSnapshot: async () => { calls.push("fetch"); return fetch; },
+    }),
+    toolDraft,
+    true,
+    (value) => applied.push(value),
+  );
+
+  await Promise.resolve();
+  assert.deepEqual(calls, ["post", "fetch"]);
+  assert.deepEqual(applied, []);
+
+  resolveFetch(authoritative);
+  assert.equal(await pending, createdTool);
+  assert.deepEqual(applied, [authoritative]);
+});
+
+test("does not apply a POST response when the authoritative refresh fails", async () => {
+  const applied: WorkspaceSnapshot[] = [];
+
+  await assert.rejects(
+    () => addWorkspaceToolAndRefresh(
+      workspaceApi({
+        postTool: async () => createdTool,
+        fetchSnapshot: async () => { throw new Error("refresh offline"); },
+      }),
+      toolDraft,
+      false,
+      (value) => applied.push(value),
+    ),
+    /refresh offline/,
+  );
+
+  assert.deepEqual(applied, []);
+});
 
 test("updates only after the server confirms and then applies a fresh snapshot", async () => {
   const calls: string[] = [];

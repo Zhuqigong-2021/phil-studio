@@ -7,12 +7,16 @@ const sharedModalUrl = new URL(
   "../../components/dashboard/AddToolModal.tsx",
   import.meta.url,
 );
+const addToolSubmissionUrl = new URL(
+  "../../lib/dashboard/add-tool-submission.ts",
+  import.meta.url,
+);
 
-function assertPickerContract(source: string) {
+function assertPickerContract(source: string, stateSource: string) {
   assert.match(source, /import ToolIconPicker from/);
-  assert.match(source, /DEFAULT_TOOL_ICON_KEY/);
-  assert.match(source, /iconKey:\s*DEFAULT_TOOL_ICON_KEY/);
-  assert.match(source, /accent:\s*"blue"/);
+  assert.match(source, /createEmptyAddToolForm/);
+  assert.match(stateSource, /iconKey:\s*"app-window"/);
+  assert.match(stateSource, /accent:\s*"blue"/);
   assert.match(source, /<ToolIconPicker/);
   assert.match(source, /iconKey=\{form\.iconKey\}/);
   assert.match(source, /accent=\{form\.accent\}/);
@@ -42,9 +46,10 @@ function assertIndigoControlContract(source: string) {
 
 test("the shared Add Tool modal uses the controlled icon picker", async () => {
   const source = await readFile(sharedModalUrl, "utf8");
+  const stateSource = await readFile(addToolSubmissionUrl, "utf8");
 
   assert.match(source, /import "@\/app\/dashboard\/dashboard\.css"/);
-  assertPickerContract(source);
+  assertPickerContract(source, stateSource);
   assertIndigoControlContract(source);
 });
 

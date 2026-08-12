@@ -3,16 +3,16 @@
 import "@/app/dashboard/dashboard.css";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { LoaderCircle, X } from "lucide-react";
-import { useRef, useState, type CSSProperties } from "react";
+import { useEffect, useReducer, useState, type CSSProperties } from "react";
 import type { useCustomTools } from "@/hooks/useCustomTools";
 import {
+  addToolFormReducer,
+  createEmptyAddToolForm,
   createAddToolSubmissionGuard,
   runAddToolSubmission,
 } from "@/lib/dashboard/add-tool-submission";
 import { getListItemMotion, getOverlayMotion, getPopoverMotion } from "@/lib/dashboard/motion-system";
 import { publishDatabaseToast } from "@/lib/dashboard/tool-mutations";
-import { DEFAULT_TOOL_ICON_KEY } from "@/lib/dashboard/tool-icons";
-import type { Accent } from "@/lib/dashboard/types";
 import CategorySelector from "./CategorySelector";
 import ToolIconPicker from "./ToolIconPicker";
 
@@ -45,21 +45,6 @@ function suggestNameFromUrl(url: string): string {
   }
 }
 
-function emptyAddToolForm() {
-  return {
-    url: "",
-    name: "",
-    description: "",
-    tags: new Set<string>(),
-    aliasInput: "",
-    aliases: [] as string[],
-    source: "internal" as "internal" | "external",
-    iconKey: DEFAULT_TOOL_ICON_KEY,
-    accent: "blue" as Accent,
-    pin: false,
-  };
-}
-
 export default function AddToolModal({
   open,
   onClose,
@@ -69,18 +54,39 @@ export default function AddToolModal({
   onClose: () => void;
   workspace: AddToolWorkspace;
 }) {
+  const [submissionGuard] = useState(createAddToolSubmissionGuard);
+
+  useEffect(() => {
+    if (open) submissionGuard.openSession();
+  }, [open, submissionGuard]);
+
+  const requestClose = () => {
+    submissionGuard.requestClose(onClose);
+  };
+
   return (
     <AnimatePresence>
-      {open && <AddToolForm closeAddTool={onClose} workspace={workspace} />}
+      {open && (
+        <AddToolForm
+          requestClose={requestClose}
+          completeClose={onClose}
+          submissionGuard={submissionGuard}
+          workspace={workspace}
+        />
+      )}
     </AnimatePresence>
   );
 }
 
 function AddToolForm({
-  closeAddTool,
+  requestClose,
+  completeClose,
+  submissionGuard,
   workspace,
 }: {
-  closeAddTool: () => void;
+  requestClose: () => void;
+  completeClose: () => void;
+  submissionGuard: ReturnType<typeof createAddToolSubmissionGuard>;
   workspace: AddToolWorkspace;
 }) {
   const ADD_TOOL_SECONDARY_BACKGROUND = "rgba(99, 102, 241, 0.14)";
@@ -90,11 +96,10 @@ function AddToolForm({
   const overlayMotion = getOverlayMotion(reduceMotion);
   const popoverMotion = getPopoverMotion(reduceMotion);
   const listItemMotion = getListItemMotion(reduceMotion);
-  const [form, setForm] = useState(emptyAddToolForm);
+  const [form, setForm] = useReducer(addToolFormReducer, undefined, createEmptyAddToolForm);
   const [status, setStatus] = useState<AddToolStatus>("idle");
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
-  const submissionGuard = useRef(createAddToolSubmissionGuard());
   const { categories, addCategory, addTool } = workspace;
 
   const getDetails = () => {
@@ -142,7 +147,7 @@ function AddToolForm({
 
   const handleSave = async () => {
     await runAddToolSubmission({
-      guard: submissionGuard.current,
+      guard: submissionGuard,
       toolName: form.name,
       save: async () => {
         await addTool(
@@ -161,7 +166,7 @@ function AddToolForm({
       },
       setPending: setSaving,
       setError: setSaveError,
-      close: closeAddTool,
+      close: completeClose,
       publish: publishDatabaseToast,
     });
   };
@@ -175,7 +180,7 @@ function AddToolForm({
   return (
     <motion.div
       {...overlayMotion.backdrop}
-      onClick={closeAddTool}
+      onClick={requestClose}
       className="dashboard-motion-root dashboard-overlay-backdrop fixed inset-0 z-[90] flex items-start justify-center"
       style={{ background: "rgba(2,6,23,0.6)", padding: "8vh 16px" }}
     >
@@ -199,7 +204,8 @@ function AddToolForm({
           <div className="text-[#f2f4fa] text-[17px] font-semibold">Add Tool</div>
           <button
             type="button"
-            onClick={closeAddTool}
+            onClick={requestClose}
+            disabled={saving}
             aria-label="Close"
             className="flex items-center justify-center rounded-[8px]"
             style={{
@@ -450,7 +456,8 @@ function AddToolForm({
         >
           <button
             type="button"
-            onClick={closeAddTool}
+            onClick={requestClose}
+            disabled={saving}
             className="flex-1 h-[42px] rounded-[11px] text-[13px] font-semibold"
             style={{
               background: ADD_TOOL_SECONDARY_BACKGROUND,

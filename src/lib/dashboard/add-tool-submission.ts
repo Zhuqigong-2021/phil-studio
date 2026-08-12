@@ -1,20 +1,72 @@
 import { databaseErrorMessage } from "./tool-mutations.ts";
+import type { Accent, SourceType } from "./types.ts";
 
 export interface AddToolSubmissionToast {
   tone: "success" | "error";
   message: string;
 }
 
-export function createAddToolSubmissionGuard() {
-  let pending = false;
+export interface AddToolFormState {
+  url: string;
+  name: string;
+  description: string;
+  tags: Set<string>;
+  aliasInput: string;
+  aliases: string[];
+  source: SourceType;
+  iconKey: string;
+  accent: Accent;
+  pin: boolean;
+}
+
+export type AddToolFormUpdate =
+  | Partial<AddToolFormState>
+  | ((current: AddToolFormState) => AddToolFormState);
+
+export function createEmptyAddToolForm(): AddToolFormState {
   return {
-    begin(): boolean {
-      if (pending) return false;
-      pending = true;
+    url: "",
+    name: "",
+    description: "",
+    tags: new Set<string>(),
+    aliasInput: "",
+    aliases: [],
+    source: "internal",
+    iconKey: "app-window",
+    accent: "blue",
+    pin: false,
+  };
+}
+
+export function addToolFormReducer(
+  current: AddToolFormState,
+  update: AddToolFormUpdate,
+): AddToolFormState {
+  return typeof update === "function" ? update(current) : { ...current, ...update };
+}
+
+export function createAddToolSubmissionGuard() {
+  let session = 0;
+  let activeSubmission: { session: number } | null = null;
+  return {
+    openSession(): void {
+      session += 1;
+    },
+    begin(): { session: number } | null {
+      if (activeSubmission) return null;
+      activeSubmission = { session };
+      return activeSubmission;
+    },
+    requestClose(close: () => void): boolean {
+      if (activeSubmission) return false;
+      close();
       return true;
     },
-    finish(): void {
-      pending = false;
+    isCurrent(submission: { session: number }): boolean {
+      return submission.session === session;
+    },
+    finish(submission: { session: number }): void {
+      if (activeSubmission === submission) activeSubmission = null;
     },
   };
 }
@@ -51,13 +103,14 @@ export async function runAddToolSubmission({
   close,
   publish,
 }: AddToolSubmissionOptions): Promise<boolean> {
-  if (!guard.begin()) return false;
+  const submission = guard.begin();
+  if (!submission) return false;
   setPending(true);
   setError("");
   try {
     await save();
     publish({ tone: "success", message: `${toolName || "Tool"} added successfully` });
-    close();
+    if (guard.isCurrent(submission)) close();
     return true;
   } catch (error) {
     const message = addToolErrorMessage(error, toolName);
@@ -65,7 +118,7 @@ export async function runAddToolSubmission({
     publish({ tone: "error", message });
     return false;
   } finally {
-    guard.finish();
+    guard.finish(submission);
     setPending(false);
   }
 }

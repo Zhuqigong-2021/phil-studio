@@ -7,7 +7,7 @@ const sourceUrl = new URL("./AddToolModal.tsx", import.meta.url);
 test("Add Tool owns stable icon and accent values", async () => {
   const source = await readFile(sourceUrl, "utf8");
 
-  assert.match(source, /iconKey:\s*DEFAULT_TOOL_ICON_KEY/);
+  assert.match(source, /createEmptyAddToolForm/);
   assert.match(source, /<ToolIconPicker/);
   assert.match(source, /iconKey=\{form\.iconKey\}/);
   assert.match(source, /accent=\{form\.accent\}/);

@@ -74,6 +74,17 @@ export async function refreshWorkspaceTools(
   return snapshot;
 }
 
+export async function addWorkspaceToolAndRefresh(
+  api: WorkspaceApi,
+  draft: CustomToolDraft,
+  pin: boolean,
+  apply: (snapshot: WorkspaceSnapshot) => void,
+): Promise<Tool> {
+  const tool = await api.postTool(draft, pin);
+  await refreshWorkspaceTools(api, apply);
+  return tool;
+}
+
 export async function updateWorkspaceToolAndRefresh(
   api: WorkspaceApi,
   id: string,
@@ -446,9 +457,10 @@ export function useCustomTools(api: WorkspaceApi = DEFAULT_WORKSPACE_API) {
   }, [api, applyWorkspace]);
 
   const addTool = useCallback(async (draft: CustomToolDraft, pin: boolean): Promise<Tool> => {
-    const tool = await api.postTool(draft, pin);
-    applyWorkspace(mergeCreatedTool(workspaceRef.current, tool, pin));
-    return tool;
+    return addWorkspaceToolAndRefresh(api, draft, pin, (snapshot) => {
+      hasAuthoritativeWorkspaceRef.current = true;
+      applyWorkspace(snapshot);
+    });
   }, [api, applyWorkspace]);
 
   const setToolPinned = useCallback(async (id: string, pinned: boolean): Promise<void> => {

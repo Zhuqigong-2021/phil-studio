@@ -33,6 +33,13 @@ test("canonical Add Tool awaits dynamic categories and database persistence", ()
   assert.doesNotMatch(modal, /setTimeout\(\(\) => \{\s*setSaving\(false\)/);
 });
 
+test("every visible close path is guarded while Add Tool is saving", () => {
+  assert.equal((modal.match(/onClick=\{requestClose\}/g) ?? []).length, 3);
+  assert.match(modal, /aria-label="Close"[\s\S]*?disabled=\{saving\}/);
+  assert.match(modal, /onClick=\{requestClose\}\s*disabled=\{saving\}[\s\S]*?>\s*Cancel/);
+  assert.match(modal, /submissionGuard\.requestClose\(onClose\)/);
+});
+
 test("save forwards aliases, categories, icon, color, source, and pin", () => {
   for (const field of [
     "name: form.name",

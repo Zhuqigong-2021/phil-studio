@@ -30,3 +30,47 @@
 - `npx tsc --noEmit` still exits 1 only on the documented untouched baseline errors: missing `RouteContext`, strict test fixture typing, Favorite Toast test inference, optional lyric timing, and ES2018 regular-expression target mismatches. No Task 5 path appears in the error list.
 - The documented source-string baseline command for `custom-tool-search.test.ts` and `workspace-surfaces.test.ts` remains red (2 passed, 3 failed) because those tests still expect pre-context Dashboard hook/source text. Task 5 did not rewrite those unrelated stale expectations.
 - Live authenticated browser/database acceptance is not claimed in this task; it remains part of the later end-to-end verification work.
+
+## Review fix round 1
+
+### Implemented
+
+- Moved the submission guard to the stable `AddToolModal` boundary. Backdrop, X, and Cancel now share its guarded close request; X and Cancel are also disabled while saving. A pending submission therefore keeps the modal mounted and blocks duplicate POST activation across every attempted close path.
+- Added form-session generations. If a later form session is opened by external state while an older request is still pending, the older completion can report its result but cannot close the newer form.
+- Changed Add Tool persistence to `POST -> fetch authoritative workspace snapshot -> apply snapshot`. Success Toast and close remain downstream of the entire `addTool` promise, so a failed refresh retains the form and produces the existing error feedback instead of a false success.
+- Made the canonical component use the exported Add Tool form reducer. The rejection test now populates URL, name, description, tags, alias draft, aliases, source, icon, accent, and pin through that reducer and verifies those values after persistence rejects.
+- The deferred Manage exit-motion Minor was not changed.
+
+### RED evidence
+
+Command:
+
+`node --test --experimental-strip-types src/lib/dashboard/add-tool-submission.test.ts src/hooks/useCustomTools.test.ts`
+
+Output: exit 1; 0 passed, 2 test files failed to load. The failures named the intentionally missing `addToolFormReducer` and `addWorkspaceToolAndRefresh` exports.
+
+The first complete regression run after implementation also surfaced one exact source-contract failure: 52 passed, 1 failed because the icon-default assertion still looked for local `DEFAULT_TOOL_ICON_KEY` state after the real form owner moved to the shared reducer. The assertion was updated to verify the reducer-owned `app-window` and `blue` defaults.
+
+### GREEN evidence
+
+Focused behavior command:
+
+`node --test --experimental-strip-types src/lib/dashboard/add-tool-submission.test.ts src/hooks/useCustomTools.test.ts`
+
+Output: exit 0; 15 passed, 0 failed.
+
+Final Task 5 regression command:
+
+`node --test --experimental-strip-types src/app/dashboard/add-tool-icon-picker-integration.test.ts src/app/dashboard/add-tool-local-save.test.ts src/app/dashboard/database-dashboard-state.test.ts src/app/dashboard/overlay-layering.test.ts src/components/dashboard/AddToolModal.icon-picker.test.ts src/components/dashboard/FavoriteToastHost.test.ts src/hooks/useCustomTools.supabase.test.ts src/hooks/useCustomTools.test.ts src/lib/dashboard/add-tool-submission.test.ts src/lib/dashboard/favorite-toast.test.ts src/lib/dashboard/tool-mutations.test.ts`
+
+Output: exit 0; 53 passed, 0 failed, duration 535.5289 ms.
+
+Targeted lint command:
+
+`npx eslint src/components/dashboard/AddToolModal.tsx src/hooks/useCustomTools.ts src/hooks/useCustomTools.test.ts src/lib/dashboard/add-tool-submission.ts src/lib/dashboard/add-tool-submission.test.ts src/app/dashboard/add-tool-local-save.test.ts src/app/dashboard/add-tool-icon-picker-integration.test.ts src/components/dashboard/AddToolModal.icon-picker.test.ts`
+
+Output: exit 0; 0 errors, 0 warnings.
+
+`git diff --check`: exit 0; only the repository CRLF conversion notices were printed.
+
+`npx tsc --noEmit`: exit 1 on the same documented baseline errors (`RouteContext`, strict pre-existing test fixtures, Favorite Toast inference, lyric optional timing, and ES2018 regex target). No changed Task 5 production or review-test path appeared.
