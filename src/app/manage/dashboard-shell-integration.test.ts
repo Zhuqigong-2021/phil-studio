@@ -40,13 +40,16 @@ test("manage and its transition preview share an unrecognizably blurred harbour 
   assert.match(dashboardPage, /manage-scene-background/);
   assert.match(dashboardCss, /\.manage-scene-background\s*\{/);
   assert.match(dashboardCss, /124, 58, 237/);
-  assert.match(dashboardCss, /67, 56, 202/);
   assert.match(dashboardCss, /14, 165, 233/);
-  assert.match(dashboardCss, /rgba\(124, 58, 237, \.30\)/);
+  assert.match(dashboardCss, /rgba\(124, 58, 237, \.10\)/);
   assert.doesNotMatch(dashboardCss, /rgba\(124, 58, 237, \.48\)/);
   assert.match(dashboardCss, /url\("\/backgrounds\/dark-old-port-background-layout-final\.png"\)/);
   assert.match(dashboardCss, /filter:\s*blur\(80px\) brightness\(\.48\) saturate\(\.86\)/);
   assert.match(dashboardCss, /\.tool-library-morph-preview::before,\s*\n\.manage-scene-background::before/);
+  assert.match(dashboardCss, /\.tool-library-morph-preview::before,[\s\S]*?z-index:\s*0/);
+  assert.match(dashboardCss, /\.tool-library-morph-preview::after,[\s\S]*?z-index:\s*1/);
+  assert.match(dashboardCss, /\.tool-library-morph-preview\s*>\s*\*,[\s\S]*?z-index:\s*2/);
+  assert.doesNotMatch(dashboardCss, /\.manage-scene-background::before[\s\S]*?z-index:\s*-2/);
   assert.match(dashboardCss, /\.dashboard-tool-transition-overlay\s*\{[^}]*container-type:\s*inline-size/);
   assert.match(dashboardCss, /\.tool-library-morph-row\s*\{[^}]*font-size:\s*clamp\(/);
   assert.match(dashboardCss, /\.tool-library-morph-preview::after,\s*\n\.manage-scene-background::after\s*\{[\s\S]*radial-gradient\(ellipse at 77% 8%[\s\S]*radial-gradient\(ellipse at 48% 88%/);
