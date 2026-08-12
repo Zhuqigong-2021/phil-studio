@@ -24,6 +24,7 @@ import WorkspaceSplashCursor from "@/components/dashboard/WorkspaceSplashCursor"
 import EnergySandVolume from "@/components/dashboard/EnergySandVolume";
 import SyncedLyrics from "@/components/dashboard/SyncedLyrics";
 import DashboardGreeting from "@/components/dashboard/DashboardGreeting";
+import CategoryProgressRow from "@/components/dashboard/CategoryProgressRow";
 import { usePersistentMusic, type MusicPlayMode } from "@/components/dashboard/PersistentMusicProvider";
 import { useAudioAnalyser } from "@/hooks/useAudioAnalyser";
 import { useLyricsTimeline } from "@/hooks/useLyricsTimeline";
@@ -4754,26 +4755,13 @@ function CategoriesPanel() {
           }}
         >
           {categoryStats.map(({ tag, percent }, i) => (
-            <div key={tag} className="flex items-center gap-3 flex-shrink-0">
-              <span className="text-[#d7dcee] text-[13px] font-medium w-[100px] flex-shrink-0 truncate">
-                {tag}
-              </span>
-              <div
-                className="flex-1 h-[8px] rounded-full overflow-hidden"
-                style={{ background: "rgba(255,255,255,0.08)" }}
-              >
-                <div
-                  className="h-full rounded-full transition-[width] duration-300"
-                  style={{
-                    width: `${percent}%`,
-                    background: categoryBarColors[i % categoryBarColors.length],
-                  }}
-                />
-              </div>
-              <span className="text-[#b7bed6] text-[13px] font-semibold w-[38px] flex-shrink-0 text-right">
-                {percent}%
-              </span>
-            </div>
+            <CategoryProgressRow
+              key={tag}
+              tag={tag}
+              percent={percent}
+              index={i}
+              color={categoryBarColors[i % categoryBarColors.length]}
+            />
           ))}
         </div>
       </div>

@@ -71,7 +71,7 @@
 .signin-brand > div:last-child { display: flex; flex-direction: column; gap: 2px; }
 .signin-brand strong { font-size: 16px; }
 .signin-brand span { color: rgba(220, 225, 244, 0.68); font-size: 12px; }
-.signin-brand-mark { width: 38px; height: 38px; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--signin-mark); border: 1px solid rgba(184, 157, 255, 0.38); box-shadow: 0 9px 24px rgba(83, 48, 172, 0.35); }
+.signin-brand-mark { width: 38px; height: 38px; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; background: var(--signin-mark); border: 1px solid rgba(184, 157, 255, 0.38); box-shadow: 0 9px 24px rgba(83, 48, 172, 0.35); font-size: 21px; line-height: 1; }
 
 .signin-message h1 { margin: 0; font-size: clamp(30px, 3.6vw, 44px); font-weight: 800; line-height: 1.14; letter-spacing: -0.025em; }
 .signin-message p { max-width: 430px; margin: 17px 0 0; color: rgba(220, 225, 244, 0.78); font-size: 15px; line-height: 1.55; }
@@ -107,7 +107,7 @@
   .signin-form-col { width: 100%; min-height: 100dvh; padding: 24px 18px; }
   .signin-form-card { max-width: 440px; padding: 30px 24px; }
   .signin-mobile-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 34px; color: var(--signin-title); font-size: 15px; font-weight: 700; }
-  .signin-mobile-brand .signin-brand-mark { width: 34px; height: 34px; }
+  .signin-mobile-brand .signin-brand-mark { width: 34px; height: 34px; font-size: 19px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
