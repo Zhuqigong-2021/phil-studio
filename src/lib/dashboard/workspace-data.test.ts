@@ -8,6 +8,7 @@ import {
   toolRowToTool,
   validateToolPatch,
   WorkspaceSyncError,
+  type ToolRow,
 } from "./workspace-data.ts";
 import { databaseErrorMessage } from "./tool-mutations.ts";
 
@@ -34,7 +35,7 @@ const toolRow = {
   url: "https://example.com/notes",
   use_count: 3,
   visible: true,
-} as const;
+} satisfies ToolRow;
 
 test("maps a database tool row and related category names to the current Tool contract", () => {
   assert.deepEqual(toolRowToTool(toolRow, ["Work", "Productivity"]), {

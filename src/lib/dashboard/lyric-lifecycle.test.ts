@@ -17,6 +17,7 @@ test("compresses both transitions for a short lyric without overlap", () => {
 
   assert.ok(lifecycle.gatherDurationMs < 620);
   assert.ok(lifecycle.blurExitDurationMs < 360);
+  assert.ok(lifecycle.blurExitDelayMs !== undefined);
   assert.equal(
     lifecycle.blurExitDelayMs + lifecycle.blurExitDurationMs,
     1200,

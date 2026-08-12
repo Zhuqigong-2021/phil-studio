@@ -14,14 +14,14 @@ const source = readFileSync(
 test("gives the particle lyric canvas a measurable full-width parent", () => {
   assert.match(
     css,
-    /\.synced-lyrics-line--current\s*\{[^}]*width:\s*100%/s,
+    /\.synced-lyrics-line--current\s*\{[^}]*width:\s*100%/,
   );
 });
 
 test("overrides the official 240px particle minimum inside the lyric stage", () => {
   assert.match(
     css,
-    /\.synced-lyrics-line\s+\.synced-lyrics-particle-text\s*\{[^}]*height:\s*28px[^}]*min-height:\s*0/s,
+    /\.synced-lyrics-line\s+\.synced-lyrics-particle-text\s*\{[^}]*height:\s*28px[^}]*min-height:\s*0/,
   );
 });
 

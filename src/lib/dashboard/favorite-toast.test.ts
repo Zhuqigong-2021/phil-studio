@@ -6,6 +6,10 @@ import {
   type FavoriteToastDetail,
 } from "./favorite-toast.ts";
 
+function firstPublishedToast(toasts: FavoriteToastDetail[]): FavoriteToastDetail | undefined {
+  return toasts[0];
+}
+
 test("publishes favorite success only after the database mutation resolves", async () => {
   const published: FavoriteToastDetail[] = [];
   let resolveMutation!: () => void;
@@ -24,8 +28,10 @@ test("publishes favorite success only after the database mutation resolves", asy
   resolveMutation();
   await pending;
   assert.equal(published.length, 1);
+  const publishedToast = firstPublishedToast(published);
+  assert.ok(publishedToast);
   assert.deepEqual(
-    { tone: published[0]?.tone, message: published[0]?.message },
+    { tone: publishedToast.tone, message: publishedToast.message },
     { tone: "success", message: "Favorited: Notion" },
   );
 });

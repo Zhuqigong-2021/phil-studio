@@ -108,7 +108,7 @@ test("validates category creation and appends tools immutably", () => {
     },
     "tool-2",
   );
-  const original = [];
+  const original: typeof tool[] = [];
   const next = appendCustomTool(original, tool);
   assert.deepEqual(original, []);
   assert.deepEqual(next, [tool]);

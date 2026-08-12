@@ -8,6 +8,7 @@ import { CUSTOM_CATEGORIES_KEY, CUSTOM_TOOLS_KEY, PINNED_TOOLS_KEY } from "../li
 import { FAVORITES_STORAGE_KEY } from "../lib/dashboard/favorites.ts";
 import { RECENT_TOOLS_STORAGE_KEY } from "../lib/dashboard/recent-tools.ts";
 import { TOOLS_RAW } from "../lib/dashboard/mock-data.ts";
+import type { Tool } from "../lib/dashboard/types.ts";
 import {
   WorkspaceSyncError,
   fetchWorkspaceSnapshot,
@@ -44,7 +45,7 @@ class MemoryStorage implements WorkspaceStorage {
   removeItem(key: string) { this.values.delete(key); }
 }
 
-function snapshot(tool = serverTool): WorkspaceSnapshot {
+function snapshot(tool: Tool = serverTool): WorkspaceSnapshot {
   return { tools: [tool], categories: ["Research"], pinnedToolIds: [tool.id], recentTools: [] };
 }
 
