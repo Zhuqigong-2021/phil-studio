@@ -5047,13 +5047,13 @@ function AllToolsPanel() {
   const renderToolTiles = (duplicate = false) => toolViews.map((t, index) => (
     <ToolTile
       key={`${duplicate ? "duplicate-" : ""}${t.id}`}
-      id={duplicate ? undefined : t.id}
+      id={t.id}
       icon={t.icon}
       label={t.label}
       borderColor={t.border}
       bgColor={t.bg}
       shadowColor={t.shadow}
-      href={duplicate ? undefined : t.href}
+      href={t.href}
       layeredGlass
       lightVariant={index % 6}
     />
