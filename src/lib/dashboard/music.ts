@@ -19,7 +19,7 @@ const RAW_TRACKS: { file: string; title: string; artist: string; cover?: string;
   { file: "Monsters-Timeflies&Katie Sky.mp3", title: "Monsters", artist: "Timeflies & Katie Sky", cover: "/music/covers/Monsters.png", lyricsSlug: "Monsters" },
   { file: "S.H.E-Ring Ring Ring .mp3", title: "Ring Ring Ring", artist: "S.H.E", cover: "/music/covers/ringringring.png", lyricsSlug: "ringringring", lyricsEndTime: 194 },
   { file: "attraction.mp3", title: "Attraction", artist: "小泽正澄", cover: "/music/covers/Attraction.png", lyricsSlug: "Attraction", lyricsLoop: true },
-  { file: "soldout.mp3", title: "Sold Out", artist: "Hawk Nelson, Jonathan Steingard", cover: "/music/covers/soldout.png", lyricsSlug: "Soldout" },
+  { file: "soldout.mp3", title: "Sold Out", artist: "Hawk Nelson, Jonathan Steingard", cover: "/music/covers/soldout.png", lyricsSlug: "soldout" },
   { file: "superstar.mp3", title: "Super Star", artist: "S.H.E", cover: "/music/covers/superstar.png", lyricsSlug: "superstar" },
   { file: "the shape of u.mp3", title: "Shape of You", artist: "Ed Sheeran", cover: "/music/covers/shapeofu.png", lyricsSlug: "shapeofyou" },
   { file: "unstoppable.mp3", title: "Unstoppable", artist: "Sia", cover: "/music/covers/Unstoppable.png", lyricsSlug: "Unstoppable" },
