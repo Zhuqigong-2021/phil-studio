@@ -13,8 +13,8 @@ export default function WorkspaceSplashCursor() {
       SPLAT_FORCE={6000}
       COLOR_UPDATE_SPEED={11}
       SHADING
-      RAINBOW_MODE
-      COLOR="#6b55f7"
+      RAINBOW_MODE={false}
+      COLOR="#bb8af0"
     />
   );
 }
