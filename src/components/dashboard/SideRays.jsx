@@ -45,6 +45,9 @@ const SideRays = ({
   const meshRef = useRef(null);
   const cleanupFunctionRef = useRef(null);
   const [isVisible, setIsVisible] = useState(false);
+  const [isPageVisible, setIsPageVisible] = useState(() =>
+    typeof document === "undefined" ? true : !document.hidden
+  );
   const observerRef = useRef(null);
 
   useEffect(() => {
@@ -69,7 +72,13 @@ const SideRays = ({
   }, []);
 
   useEffect(() => {
-    if (!isVisible || !containerRef.current) return;
+    const onVisibility = () => setIsPageVisible(!document.hidden);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, []);
+
+  useEffect(() => {
+    if (!isVisible || !isPageVisible || !containerRef.current) return;
 
     if (cleanupFunctionRef.current) {
       cleanupFunctionRef.current();
@@ -249,7 +258,7 @@ void main() {
         cleanupFunctionRef.current = null;
       }
     };
-  }, [isVisible, speed, rayColor1, rayColor2, intensity, spread, origin, tilt, saturation, blend, falloff, opacity]);
+  }, [isVisible, isPageVisible, speed, rayColor1, rayColor2, intensity, spread, origin, tilt, saturation, blend, falloff, opacity]);
 
   useEffect(() => {
     if (!uniformsRef.current) return;

@@ -7,10 +7,53 @@ import {
   createToolLibraryHandoffRegistry,
   createToolTransitionLock,
   createToolLibraryTransitionStarter,
+  getToolLibraryTargetRect,
+  getToolLibraryTransitionTiming,
   getToolTransitionPlan,
   type ToolTransitionOverlay,
   type ToolTransitionRect,
 } from "./tool-transition.ts";
+
+test("derives the Tool Library surface from content bounds, padding, and viewport spacing", () => {
+  assert.deepEqual(
+    getToolLibraryTargetRect(
+      { left: 240, top: 52, width: 1200, height: 820 },
+      { left: 20, right: 24, top: 12, bottom: 20 },
+      900,
+    ),
+    { left: 260, top: 91, width: 1156, height: 761 },
+  );
+});
+
+test("exposes the approved shared-surface phase timing", () => {
+  assert.deepEqual(getToolLibraryTransitionTiming(false), {
+    total: 0.75,
+    expansionStart: 0.04,
+    expansionEnd: 0.62,
+    sourceFadeStart: 0.36,
+    sourceFadeEnd: 0.54,
+    previewFadeStart: 0.42,
+    previewFadeEnd: 0.62,
+    backgroundStart: 0.41,
+    contentHandoffStart: 0.45,
+    routeStart: 0.56,
+  });
+});
+
+test("reduced motion uses a short opacity handoff without spatial phases", () => {
+  assert.deepEqual(getToolLibraryTransitionTiming(true), {
+    total: 0.16,
+    expansionStart: null,
+    expansionEnd: null,
+    sourceFadeStart: null,
+    sourceFadeEnd: null,
+    previewFadeStart: null,
+    previewFadeEnd: null,
+    backgroundStart: null,
+    contentHandoffStart: null,
+    routeStart: 0,
+  });
+});
 
 class MemoryStorage {
   private readonly values = new Map<string, string>();
@@ -69,7 +112,7 @@ test("maps the source shell onto the destination bounds over the approved timing
     scaleY: 1,
     opacity: 1,
     borderRadius: 20,
-    duration: 0.62,
+    duration: 0.58,
     ease: "power3.inOut",
   });
 });
@@ -236,22 +279,27 @@ test("manual transition cleanup releases the lock without marking or navigating"
   assert.notEqual(start(source, router), null);
 });
 
-test("browser handoff reuses the Manage scene instead of a dark inline veil", async () => {
+test("browser handoff keeps one shared surface through the late content and background handoff", async () => {
   const { readFile } = await import("node:fs/promises");
   const source = await readFile(new URL("./tool-transition.ts", import.meta.url), "utf8");
   assert.match(source, /className = "manage-scene-background"/);
   assert.doesNotMatch(source, /background: "radial-gradient\(circle at 56%/);
-  assert.match(source, /const expansionStart = 0\.08/);
-  assert.match(source, /const backgroundStart = expansionStart \+ plan\.duration \* 0\.35/);
-  assert.match(source, /const backgroundDuration = plan\.duration \* 0\.65/);
-  assert.match(source, /timeline\.to\(veil, \{ opacity: 1, duration: backgroundDuration[\s\S]*\}, backgroundStart\)/);
-  assert.match(source, /timeline\.to\(content, \{[\s\S]*opacity: 0\.48[\s\S]*\}, 0\.22\)/);
+  assert.match(source, /getToolLibraryTransitionTiming\(plan\.opacity === 0\)/);
+  assert.match(source, /duration: timing\.expansionEnd! - timing\.expansionStart/);
+  assert.match(source, /duration: timing\.sourceFadeEnd! - timing\.sourceFadeStart!/);
+  assert.match(source, /duration: timing\.previewFadeEnd! - timing\.previewFadeStart!/);
+  assert.match(source, /duration: timing\.total - timing\.backgroundStart!/);
+  assert.match(source, /timeline\.call\(onComplete, \[\], timing\.routeStart\)/);
+  assert.doesNotMatch(source, /timeline\.to\(sourceContent,[\s\S]*\}, 0\)/);
+  assert.doesNotMatch(source, /timeline\.to\(content/);
   assert.doesNotMatch(source, /gsap\.to\(veil, \{ opacity: 1/);
-  assert.match(source, /querySelector<HTMLElement>\("\[data-dashboard-transition-content\]"\)/);
+  assert.doesNotMatch(source, /const content = root\?\.querySelector/);
+  assert.doesNotMatch(source, /\[data-dashboard-sidebar\].*(?:to|fromTo)/);
+  assert.doesNotMatch(source, /\[data-dashboard-navbar\].*(?:to|fromTo)/);
   assert.match(source, /const bounds = destination\.getBoundingClientRect\(\)/);
   assert.match(source, /const styles = window\.getComputedStyle\(destination\)/);
-  assert.match(source, /bounds\.left \+ paddingLeft/);
-  assert.match(source, /const surfaceTop = bounds\.top \+ paddingTop \+ Math\.max\(18, Math\.min\(30, window\.innerHeight \* 0\.03\)\)/);
+  assert.match(source, /return getToolLibraryTargetRect\(bounds, \{/);
+  assert.match(source, /left: paddingLeft,[\s\S]*bottom: paddingBottom,[\s\S]*window\.innerHeight\)/);
   assert.doesNotMatch(source, /const left = desktop \? 300 : 20/);
   assert.match(source, /inset: "0"/);
   assert.match(source, /zIndex: "8"/);
@@ -269,4 +317,12 @@ test("handoff registry completes retained transition cleanup only once", () => {
 
   assert.equal(cleanups, 1);
   assert.equal(handoff.hasActive(), false);
+});
+
+test("Manage takeover fades only across the remaining handoff window", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const source = await readFile(new URL("./tool-transition.ts", import.meta.url), "utf8");
+
+  assert.match(source, /const timing = getToolLibraryTransitionTiming\(reduceMotion\)/);
+  assert.match(source, /duration: reduceMotion \? timing\.total : timing\.total - timing\.routeStart/);
 });

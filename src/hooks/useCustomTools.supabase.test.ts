@@ -386,7 +386,10 @@ test("startup refresh keeps cached favorites until the first successful sync", (
   );
   const retrySyncStart = source.indexOf("const retrySync =");
   const retrySyncBody = source.slice(retrySyncStart, source.indexOf("useEffect(()", retrySyncStart));
-  assert.match(retrySyncBody, /hasAuthoritativeWorkspaceRef\.current = true;\s*applyWorkspace\(snapshot\)/);
+  assert.match(
+    retrySyncBody,
+    /hasAuthoritativeWorkspaceRef\.current = true;\s*lastAuthoritativeSyncAtRef\.current = Date\.now\(\);\s*applyWorkspace\(snapshot\)/,
+  );
 });
 
 test("same-tab recent events refresh and clear recent state without a notification loop", () => {
@@ -404,12 +407,13 @@ test("same-tab recent events refresh and clear recent state without a notificati
   assert.doesNotMatch(refreshBody, /dispatchEvent/);
 });
 
-test("returning to the dashboard refetches the authoritative Supabase snapshot", () => {
+test("returning to the dashboard refetches only when the authoritative snapshot is stale", () => {
   const source = readFileSync(new URL("./useCustomTools.ts", import.meta.url), "utf8");
   const effectStart = source.indexOf("useEffect(() =>", source.indexOf("const retrySync ="));
   const effectBody = source.slice(effectStart, source.indexOf("}, [retrySync]);", effectStart));
 
-  assert.match(effectBody, /const refreshFromServer = \(\) => \{\s*void retrySync\(\);\s*\}/);
+  assert.match(effectBody, /shouldRefreshWorkspace\(lastAuthoritativeSyncAtRef\.current, Date\.now\(\)\)/);
+  assert.match(effectBody, /void retrySync\(\)/);
   assert.match(effectBody, /addEventListener\("focus", refreshFromServer\)/);
   assert.match(effectBody, /removeEventListener\("focus", refreshFromServer\)/);
 });

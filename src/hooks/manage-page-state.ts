@@ -248,6 +248,26 @@ export function validateManageDraft(
   }
 }
 
+function normalizedValues(values: readonly string[] | undefined): string[] {
+  return (values ?? []).map((value) => value.trim().toLocaleLowerCase()).sort();
+}
+
+export function isManagePatchUnchanged(
+  tool: Tool,
+  pinned: boolean,
+  patch: ToolPatch,
+): boolean {
+  return (tool.iconKey ?? "") === (patch.iconKey ?? "")
+    && tool.accent === patch.accent
+    && tool.name === patch.name
+    && (tool.description ?? "") === (patch.description ?? "")
+    && (tool.url ?? "") === (patch.url ?? "")
+    && pinned === patch.pinned
+    && tool.favorite === patch.favorite
+    && normalizedValues(tool.tags).join("\u0000") === normalizedValues(patch.tags).join("\u0000")
+    && normalizedValues(tool.aliases).join("\u0000") === normalizedValues(patch.aliases).join("\u0000");
+}
+
 export function isManagePopoverOpen(open: boolean, disabled: boolean): boolean {
   return open && !disabled;
 }

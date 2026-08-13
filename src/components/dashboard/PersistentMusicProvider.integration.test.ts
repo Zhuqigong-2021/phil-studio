@@ -17,3 +17,14 @@ test("dashboard consumes persistent playback and lyrics state", () => {
   assert.match(provider, /showLyrics/);
   assert.match(provider, /writeLyricsPreference/);
 });
+
+test("stable playback consumers do not subscribe to transient time updates", () => {
+  const stableContext = provider.match(/type PersistentMusicContextValue = \{([\s\S]*?)\n\};/)?.[1] ?? "";
+  assert.doesNotMatch(stableContext, /currentTime/);
+  assert.doesNotMatch(stableContext, /duration/);
+  assert.match(provider, /useSyncExternalStore/);
+  assert.match(provider, /usePersistentMusicTiming/);
+  assert.match(provider, /React\.useMemo<PersistentMusicContextValue>/);
+  assert.match(dashboard, /function MusicPlayerPanel[\s\S]*?usePersistentMusicTiming\(\)/);
+  assert.doesNotMatch(dashboard, /function useMusicPlayer\(\)[\s\S]{0,900}usePersistentMusicTiming/);
+});

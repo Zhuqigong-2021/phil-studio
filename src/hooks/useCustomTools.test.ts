@@ -61,17 +61,14 @@ const toolDraft: CustomToolDraft = {
   sourceType: createdTool.sourceType ?? "external",
 };
 
-test("adds through POST, then fetches and applies the authoritative database snapshot", async () => {
+test("adds through POST and immediately applies the returned database tool without a full refresh", async () => {
   const calls: string[] = [];
-  const authoritative = { ...snapshot, tools: [createdTool], pinnedToolIds: [createdTool.id] };
   const applied: WorkspaceSnapshot[] = [];
-  let resolveFetch!: (value: WorkspaceSnapshot) => void;
-  const fetch = new Promise<WorkspaceSnapshot>((resolve) => { resolveFetch = resolve; });
 
-  const pending = addWorkspaceToolAndRefresh(
+  const result = await addWorkspaceToolAndRefresh(
     workspaceApi({
       postTool: async () => { calls.push("post"); return createdTool; },
-      fetchSnapshot: async () => { calls.push("fetch"); return fetch; },
+      fetchSnapshot: async () => { calls.push("fetch"); return snapshot; },
     }),
     toolDraft,
     true,
@@ -79,16 +76,12 @@ test("adds through POST, then fetches and applies the authoritative database sna
     (value) => applied.push(value),
   );
 
-  await Promise.resolve();
-  assert.deepEqual(calls, ["post", "fetch"]);
-  assert.deepEqual(applied, []);
-
-  resolveFetch(authoritative);
-  assert.deepEqual(await pending, { tool: createdTool, workspaceRefreshFailed: false });
-  assert.deepEqual(applied, [authoritative]);
+  assert.deepEqual(calls, ["post"]);
+  assert.deepEqual(result, { tool: createdTool, workspaceRefreshFailed: false });
+  assert.deepEqual(applied, [{ ...snapshot, tools: [createdTool], pinnedToolIds: [createdTool.id] }]);
 });
 
-test("keeps the created tool locally and resolves as successful when its refresh fails", async () => {
+test("does not depend on a second request after a tool is created", async () => {
   const applied: WorkspaceSnapshot[] = [];
   const current = { ...snapshot, categories: ["Existing"] };
 
@@ -103,7 +96,7 @@ test("keeps the created tool locally and resolves as successful when its refresh
     (value) => applied.push(value),
   );
 
-  assert.deepEqual(result, { tool: createdTool, workspaceRefreshFailed: true });
+  assert.deepEqual(result, { tool: createdTool, workspaceRefreshFailed: false });
   assert.deepEqual(applied, [{
     tools: [createdTool],
     categories: ["Existing"],
@@ -134,51 +127,50 @@ test("rejects a pre-creation POST failure without fetching or applying workspace
   assert.deepEqual(applied, []);
 });
 
-test("updates only after the server confirms and then applies a fresh snapshot", async () => {
+test("updates immediately from the confirmed PATCH response without a full snapshot", async () => {
   const calls: string[] = [];
   let resolvePatch!: () => void;
   const patch = new Promise<void>((resolve) => { resolvePatch = resolve; });
-  const next = { ...snapshot, categories: ["Work"] };
   const applied: WorkspaceSnapshot[] = [];
+  const current = { ...snapshot, tools: [createdTool] };
   const pending = updateWorkspaceToolAndRefresh(
     workspaceApi({
-      patchTool: async () => { calls.push("patch"); await patch; return undefined as never; },
-      fetchSnapshot: async () => { calls.push("fetch"); return next; },
+      patchTool: async () => { calls.push("patch"); await patch; return createdTool; },
+      fetchSnapshot: async () => { calls.push("fetch"); return snapshot; },
     }),
     "tool-1",
     { name: "Notes" },
-    () => snapshot,
+    () => current,
     (value) => applied.push(value),
   );
 
   assert.deepEqual(calls, ["patch"]);
   resolvePatch();
   assert.deepEqual(await pending, { workspaceRefreshFailed: false, workspaceSnapshotApplied: true });
-  assert.deepEqual(calls, ["patch", "fetch"]);
-  assert.deepEqual(applied, [next]);
+  assert.deepEqual(calls, ["patch"]);
+  assert.equal(applied[0].tools[0].name, createdTool.name);
 });
 
-test("deletes with the injected API then applies its fresh snapshot", async () => {
+test("deletes immediately after confirmation without a full snapshot", async () => {
   const calls: string[] = [];
-  const next = { ...snapshot, categories: ["Productivity"] };
   const applied: WorkspaceSnapshot[] = [];
 
   const result = await deleteWorkspaceToolAndRefresh(
     workspaceApi({
       deleteTool: async () => { calls.push("delete"); },
-      fetchSnapshot: async () => { calls.push("fetch"); return next; },
+      fetchSnapshot: async () => { calls.push("fetch"); return snapshot; },
     }),
     "tool-1",
     () => snapshot,
     (value) => applied.push(value),
   );
 
-  assert.deepEqual(calls, ["delete", "fetch"]);
-  assert.deepEqual(applied, [next]);
+  assert.deepEqual(calls, ["delete"]);
+  assert.deepEqual(applied[0].tools, []);
   assert.deepEqual(result, { workspaceRefreshFailed: false, workspaceSnapshotApplied: true });
 });
 
-test("keeps a successful update locally and reports only a refresh warning", async () => {
+test("keeps a successful update independent of snapshot availability", async () => {
   const before: WorkspaceSnapshot = { ...snapshot, tools: [createdTool], pinnedToolIds: [] };
   let current = before;
   const updated = { ...createdTool, name: "Updated Notion", favorite: true };
@@ -194,13 +186,13 @@ test("keeps a successful update locally and reports only a refresh warning", asy
     (value) => { current = value; },
   );
 
-  assert.deepEqual(result, { workspaceRefreshFailed: true, workspaceSnapshotApplied: false });
+  assert.deepEqual(result, { workspaceRefreshFailed: false, workspaceSnapshotApplied: true });
   assert.equal(current.tools[0].name, updated.name);
   assert.equal(current.tools[0].favorite, true);
   assert.deepEqual(current.pinnedToolIds, [createdTool.id]);
 });
 
-test("keeps a successful deletion locally and reports only a refresh warning", async () => {
+test("keeps a successful deletion independent of snapshot availability", async () => {
   let current = {
     ...snapshot,
     tools: [createdTool],
@@ -218,7 +210,7 @@ test("keeps a successful deletion locally and reports only a refresh warning", a
     (value) => { current = value; },
   );
 
-  assert.deepEqual(result, { workspaceRefreshFailed: true, workspaceSnapshotApplied: false });
+  assert.deepEqual(result, { workspaceRefreshFailed: false, workspaceSnapshotApplied: true });
   assert.deepEqual(current.tools, []);
   assert.deepEqual(current.pinnedToolIds, []);
   assert.deepEqual(current.recentTools, []);
@@ -363,6 +355,13 @@ test("adds and removes pinned IDs without duplicates or mutation", () => {
   assert.deepEqual(addPinnedToolId(original, "built-in"), ["built-in"]);
   assert.deepEqual(removePinnedToolId(["built-in", "custom"], "built-in"), ["custom"]);
   assert.deepEqual(original, ["built-in"]);
+});
+
+test("refreshes on focus only when the authoritative workspace is stale", async () => {
+  const { shouldRefreshWorkspace } = await import("./useCustomTools.ts");
+  assert.equal(shouldRefreshWorkspace(1_000, 20_000, 30_000), false);
+  assert.equal(shouldRefreshWorkspace(1_000, 31_000, 30_000), true);
+  assert.equal(shouldRefreshWorkspace(0, 1, 30_000), true);
 });
 
 test("hook preserves feature storage keys and starts deferred server synchronization", () => {

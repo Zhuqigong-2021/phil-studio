@@ -21,9 +21,12 @@ test("dashboard wires visible stat count-up and a shared active indicator", () =
 });
 
 test("dashboard entrance wires five runtime layers across desktop and mobile headers", () => {
-  // Six JSX hooks: sidebar, both mutually-exclusive header branches, hero, stats,
-  // and bottom row. The seventh occurrence is the GSAP selector itself.
-  assert.equal(source.match(/data-dashboard-enter/g)?.length, 7);
+  assert.match(source, /data-dashboard-sidebar/);
+  assert.match(source, /data-dashboard-navbar/);
+  assert.match(source, /data-dashboard-utilities/);
+  assert.match(source, /data-dashboard-stats/);
+  assert.match(source, /data-dashboard-bottom/);
+  assert.match(source, /getDashboardEntranceTimeline\(reduceMotion\)/);
 });
 
 test("panel transitions derive direction from the previous active stat", () => {

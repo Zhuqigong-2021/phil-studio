@@ -3,9 +3,11 @@
 import React from "react";
 import { createPortal, flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import gsap from "gsap";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import "./dashboard.css";
+import "@/styles/secondary.css";
 import { getLyricsProgressMotion } from "./lyrics-progress-motion";
 import svgPaths from "./svg-paths";
 import {
@@ -20,17 +22,16 @@ import {
   getStatCountTiming,
   shouldDismissDrawer,
 } from "@/lib/dashboard/motion-system";
-import WorkspaceSplashCursor from "@/components/dashboard/WorkspaceSplashCursor";
-import EnergySandVolume from "@/components/dashboard/EnergySandVolume";
 import SyncedLyrics from "@/components/dashboard/SyncedLyrics";
 import DashboardGreeting from "@/components/dashboard/DashboardGreeting";
 import CategoryProgressRow from "@/components/dashboard/CategoryProgressRow";
-import { getFavoriteRowMotion } from "@/lib/dashboard/favorites-list-motion";
-import { usePersistentMusic, type MusicPlayMode } from "@/components/dashboard/PersistentMusicProvider";
+import {
+  usePersistentMusic,
+  usePersistentMusicTiming,
+  type MusicPlayMode,
+} from "@/components/dashboard/PersistentMusicProvider";
 import { useAudioAnalyser } from "@/hooks/useAudioAnalyser";
 import { useLyricsTimeline } from "@/hooks/useLyricsTimeline";
-import MagicRings from "@/components/dashboard/MagicRings";
-import SideRays from "@/components/dashboard/SideRays";
 import AddToolModal from "@/components/dashboard/AddToolModal";
 import DatabaseToastViewport from "@/components/dashboard/DatabaseToastViewport";
 import DashboardToolTransition from "@/components/dashboard/DashboardToolTransition";
@@ -98,6 +99,12 @@ import {
 } from "@/lib/dashboard/tool-icons";
 import type { Tool } from "@/lib/dashboard/types";
 import { buildCategoryStats, matchesToolQuery, selectPinnedTools } from "@/lib/dashboard/custom-tools";
+import {
+  calculateLighthouseEdgeHit,
+  createLighthouseEdgeGeometry,
+  type LighthouseEdgeGeometry,
+} from "@/lib/dashboard/lighthouse-edge";
+import { accumulateWheelIntent } from "@/lib/dashboard/favorites-wheel-intent";
 import { signOutFromApp } from "@/lib/auth/client";
 import { recordRecentTool } from "@/lib/dashboard/recent-tools";
 import { useDailyTasks } from "@/hooks/useDailyTasks";
@@ -106,6 +113,32 @@ import { useFocusLog } from "@/hooks/useFocusLog";
 import type { FocusEntry } from "@/lib/dashboard/focus-log";
 import { useCustomTools } from "@/hooks/useCustomTools";
 
+const WorkspaceSplashCursor = dynamic(
+  () => import("@/components/dashboard/WorkspaceSplashCursor"),
+  { ssr: false },
+);
+const EnergySandVolume = dynamic(
+  () => import("@/components/dashboard/EnergySandVolume"),
+  {
+    ssr: false,
+    loading: () => <div aria-hidden="true" className="energy-sand-volume" style={{ width: "100%", height: "100%" }} />,
+  },
+);
+const MagicRings = dynamic(
+  () => import("@/components/dashboard/MagicRings"),
+  {
+    ssr: false,
+    loading: () => <div aria-hidden="true" className="magic-rings-container" />,
+  },
+);
+const SideRays = dynamic(
+  () => import("@/components/dashboard/SideRays"),
+  {
+    ssr: false,
+    loading: () => <div aria-hidden="true" className="side-rays-container" />,
+  },
+);
+
 const toolUrlById = new Map(TOOLS_RAW.map((tool) => [tool.id, tool.url]));
 
 const imgBg = "/backgrounds/dark-old-port-background-layout-final.png";
@@ -113,6 +146,7 @@ const imgAvatar = "/backgrounds/dark-old-port-avatar.png";
 
 interface DashboardToolView {
   id: string;
+  updatedAt?: string;
   icon: React.ReactNode;
   label: string;
   border: string;
@@ -215,6 +249,270 @@ function DashboardBackground() {
       <div className="dashboard-background-water-shimmer absolute inset-x-0 bottom-0 h-[48%]" />
     </div>
   );
+}
+
+const LIGHTHOUSE_BACKGROUND_WIDTH = 1815;
+const LIGHTHOUSE_BACKGROUND_HEIGHT = 867;
+const LIGHTHOUSE_SOURCE_X = 929;
+const LIGHTHOUSE_SOURCE_Y = 145;
+
+function LighthouseBeacon() {
+  const beaconRef = React.useRef<HTMLDivElement>(null);
+  const reduceMotion = Boolean(useReducedMotion());
+  const [active, setActive] = React.useState(false);
+
+  React.useEffect(() => {
+    if (reduceMotion) return;
+
+    const start = () => setActive(true);
+    const stop = () => setActive(false);
+    window.addEventListener("phil-studio:dashboard-entrance-complete", start);
+    window.addEventListener("phil-studio:tool-library-transition-start", stop);
+    return () => {
+      window.removeEventListener("phil-studio:dashboard-entrance-complete", start);
+      window.removeEventListener("phil-studio:tool-library-transition-start", stop);
+    };
+  }, [reduceMotion]);
+
+  React.useLayoutEffect(() => {
+    const beacon = beaconRef.current;
+    const scene = beacon?.parentElement;
+    if (!beacon || !scene) return;
+
+    const positionAtTowerLight = () => {
+      const { width, height } = scene.getBoundingClientRect();
+      const scale = Math.max(width / LIGHTHOUSE_BACKGROUND_WIDTH, height / LIGHTHOUSE_BACKGROUND_HEIGHT);
+      const renderedWidth = LIGHTHOUSE_BACKGROUND_WIDTH * scale;
+      const renderedHeight = LIGHTHOUSE_BACKGROUND_HEIGHT * scale;
+      const cropX = (width - renderedWidth) / 2;
+      const cropY = (height - renderedHeight) / 2;
+      beacon.style.left = `${cropX + LIGHTHOUSE_SOURCE_X * scale}px`;
+      beacon.style.top = `${cropY + LIGHTHOUSE_SOURCE_Y * scale}px`;
+    };
+
+    positionAtTowerLight();
+    const observer = new ResizeObserver(positionAtTowerLight);
+    observer.observe(scene);
+    return () => observer.disconnect();
+  }, []);
+
+  if (reduceMotion) return null;
+
+  return (
+    <div
+      ref={beaconRef}
+      data-lighthouse-beacon
+      aria-hidden="true"
+      className={`lighthouse-beacon${active ? " lighthouse-beacon--active" : ""}`}
+    >
+      <span className="lighthouse-beacon__near-field" />
+      <span className="lighthouse-beacon__beam lighthouse-beacon__beam--ambient" />
+      <span className="lighthouse-beacon__beam lighthouse-beacon__beam--core" />
+    </div>
+  );
+}
+
+function LighthouseEdgeHighlights({ rootRef }: { rootRef: React.RefObject<HTMLDivElement | null> }) {
+  const overlayRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const desktop = window.matchMedia("(min-width: 1280px)");
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (!desktop.matches || reducedMotion.matches) return;
+
+    let frame = 0;
+    let running = false;
+    let lastTime = performance.now();
+    const levels: number[] = [];
+    type HighlightCacheEntry = {
+      card: HTMLElement;
+      svg: SVGSVGElement;
+      paths: SVGPathElement[];
+      gradients: SVGRadialGradientElement[];
+      geometry: LighthouseEdgeGeometry;
+      pathLength: number;
+    };
+    let highlightCache: HighlightCacheEntry[] = [];
+    let resizeObserver: ResizeObserver | null = null;
+    let cachedBeacon: HTMLElement | null = null;
+    let cachedBeam: HTMLElement | null = null;
+
+    const refreshGeometry = () => {
+      highlightCache.forEach((entry) => {
+        const rect = entry.card.getBoundingClientRect();
+        const geometry = createLighthouseEdgeGeometry({
+          left: rect.left,
+          top: rect.top,
+          width: rect.width,
+          height: rect.height,
+        });
+        entry.geometry = geometry;
+        entry.svg.style.left = `${geometry.left}px`;
+        entry.svg.style.top = `${geometry.top}px`;
+        entry.svg.setAttribute("width", `${geometry.width}`);
+        entry.svg.setAttribute("height", `${geometry.height}`);
+        entry.svg.setAttribute("viewBox", `0 0 ${geometry.width} ${geometry.height}`);
+        entry.paths.forEach((path) => path.setAttribute("d", geometry.pathData));
+        entry.pathLength = entry.paths[0]?.getTotalLength() ?? 0;
+      });
+    };
+
+    const tick = (time: number) => {
+      if (!running) return;
+      const root = rootRef.current;
+      const overlay = overlayRef.current;
+      if (!root || !overlay || !cachedBeacon || !cachedBeam) {
+        frame = requestAnimationFrame(tick);
+        return;
+      }
+
+      const matrix = new DOMMatrixReadOnly(getComputedStyle(cachedBeam).transform);
+      const beamAngle = (Math.atan2(matrix.b, matrix.a) * 180) / Math.PI;
+      const source = cachedBeacon.getBoundingClientRect();
+      const dt = Math.min((time - lastTime) / 1000, 0.05);
+      lastTime = time;
+
+      const updates = highlightCache.map((entry, index) => {
+        // Mirrors the visibly illuminated portion of the CSS beam rather than
+        // only its narrow optical core (the conic mask fades across roughly
+        // 20 degrees in total).
+        const beamHalfAngle = 10;
+        const hitState = calculateLighthouseEdgeHit(
+          entry.geometry,
+          { x: source.left, y: source.top },
+          beamAngle,
+          beamHalfAngle,
+        );
+        const target = hitState ? 1 : 0;
+        const current = levels[index] ?? 0;
+        const response = target > current ? 10 : 4;
+        const level = current + (target - current) * (1 - Math.exp(-response * dt));
+        levels[index] = level;
+        return { entry, hitState, level };
+      });
+
+      updates.forEach(({ entry, hitState, level }) => {
+        entry.paths.forEach((path) => path.setAttribute("opacity", level.toFixed(3)));
+        if (!hitState || entry.paths.length === 0) return;
+        entry.gradients.forEach((gradient) => {
+          gradient.setAttribute("cx", `${hitState.localPoint.x}`);
+          gradient.setAttribute("cy", `${hitState.localPoint.y}`);
+          gradient.setAttribute("r", `${hitState.beamFootprint / 2}`);
+        });
+        entry.paths.forEach((path) => {
+          path.style.strokeDasharray = `${hitState.beamFootprint} ${Math.max(1, entry.pathLength - hitState.beamFootprint)}`;
+          path.style.strokeDashoffset = `${-hitState.fraction * entry.pathLength + hitState.beamFootprint / 2}`;
+        });
+      });
+      frame = requestAnimationFrame(tick);
+    };
+
+    const build = () => {
+      const root = rootRef.current;
+      const overlay = overlayRef.current;
+      const cards = root ? [...root.querySelectorAll<HTMLElement>("[data-lighthouse-edge]")] : [];
+      cachedBeacon = root?.querySelector<HTMLElement>("[data-lighthouse-beacon]") ?? null;
+      cachedBeam = cachedBeacon?.querySelector<HTMLElement>(".lighthouse-beacon__beam--core") ?? null;
+      if (overlay) {
+        overlay.replaceChildren(...cards.map((_, index) => {
+          const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+          const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+          const gradient = document.createElementNS("http://www.w3.org/2000/svg", "radialGradient");
+          const gradientId = `lighthouse-edge-gradient-${index}`;
+          gradient.id = gradientId;
+          gradient.setAttribute("gradientUnits", "userSpaceOnUse");
+          [
+            ["0%", ".32", "#a5f3fc"],
+            ["22%", ".23", "#a5f3fc"],
+            ["52%", ".085", "#a5b4fc"],
+            ["78%", ".018", "#c4b5fd"],
+            ["100%", "0", "#c4b5fd"],
+          ].forEach(([offset, opacity, color]) => {
+            const stop = document.createElementNS("http://www.w3.org/2000/svg", "stop");
+            stop.setAttribute("offset", offset);
+            stop.setAttribute("stop-color", color);
+            stop.setAttribute("stop-opacity", opacity);
+            gradient.append(stop);
+          });
+          defs.append(gradient);
+          const glow = document.createElementNS("http://www.w3.org/2000/svg", "path");
+          const halo = document.createElementNS("http://www.w3.org/2000/svg", "path");
+          const core = document.createElementNS("http://www.w3.org/2000/svg", "path");
+          svg.classList.add("lighthouse-edge-highlight");
+          glow.classList.add("lighthouse-edge-path", "lighthouse-edge-path--glow");
+          halo.classList.add("lighthouse-edge-path", "lighthouse-edge-path--halo");
+          core.classList.add("lighthouse-edge-path", "lighthouse-edge-path--core");
+          glow.setAttribute("opacity", "0");
+          halo.setAttribute("opacity", "0");
+          core.setAttribute("opacity", "0");
+          glow.setAttribute("stroke", `url(#${gradientId})`);
+          halo.setAttribute("stroke", `url(#${gradientId})`);
+          core.setAttribute("stroke", `url(#${gradientId})`);
+          svg.append(defs, glow, halo, core);
+          return svg;
+        }));
+        const svgs = [...overlay.querySelectorAll<SVGSVGElement>(".lighthouse-edge-highlight")];
+        highlightCache = cards.map((card, index) => {
+          const svg = svgs[index];
+          return {
+            card,
+            svg,
+            paths: [...svg.querySelectorAll<SVGPathElement>(".lighthouse-edge-path")],
+            gradients: [...svg.querySelectorAll<SVGRadialGradientElement>("radialGradient")],
+            geometry: createLighthouseEdgeGeometry({ left: 0, top: 0, width: 0, height: 0 }),
+            pathLength: 0,
+          };
+        });
+        refreshGeometry();
+        resizeObserver?.disconnect();
+        resizeObserver = new ResizeObserver(refreshGeometry);
+        cards.forEach((card) => resizeObserver?.observe(card));
+      }
+    };
+    const resumeFrame = () => {
+      if (!running || document.visibilityState === "hidden") return;
+      lastTime = performance.now();
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(tick);
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        cancelAnimationFrame(frame);
+        return;
+      }
+      refreshGeometry();
+      resumeFrame();
+    };
+    const start = () => {
+      build();
+      running = true;
+      lastTime = performance.now();
+      if (document.visibilityState !== "hidden") frame = requestAnimationFrame(tick);
+    };
+    const stop = () => {
+      running = false;
+      cancelAnimationFrame(frame);
+      resizeObserver?.disconnect();
+      resizeObserver = null;
+      highlightCache = [];
+      cachedBeacon = null;
+      cachedBeam = null;
+      overlayRef.current?.replaceChildren();
+    };
+    window.addEventListener("phil-studio:dashboard-entrance-complete", start);
+    window.addEventListener("phil-studio:tool-library-transition-start", stop);
+    window.addEventListener("resize", refreshGeometry);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      stop();
+      window.removeEventListener("phil-studio:dashboard-entrance-complete", start);
+      window.removeEventListener("phil-studio:tool-library-transition-start", stop);
+      window.removeEventListener("resize", refreshGeometry);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [rootRef]);
+
+  return <div ref={overlayRef} className="lighthouse-edge-overlay" aria-hidden="true" />;
 }
 
 // ─── Icon components ───────────────────────────────────────────────────────────
@@ -552,6 +850,7 @@ interface GlassPanelProps {
   highlightOpacity?: number;
   onClick?: () => void;
   panelRef?: React.Ref<HTMLDivElement>;
+  lighthouseEdge?: boolean;
 }
 
 function GlassPanel({
@@ -565,6 +864,7 @@ function GlassPanel({
   highlightOpacity = 1.0,
   onClick,
   panelRef,
+  lighthouseEdge = false,
 }: GlassPanelProps) {
   const s = highlightSpread;
   const o = highlightOpacity;
@@ -574,6 +874,7 @@ function GlassPanel({
   return (
     <div
       ref={panelRef}
+      data-lighthouse-edge={lighthouseEdge || undefined}
       className={`glass-shine-card rounded-2xl overflow-hidden ${onClick ? "cursor-pointer ui-interactive-card" : ""} ${className}`}
       onClick={onClick}
       role={onClick ? "button" : undefined}
@@ -624,6 +925,7 @@ function StatCard({
 }) {
   return (
     <GlassPanel
+      lighthouseEdge
       className="stat-card relative w-[210px] flex-shrink-0 min-[1180px]:w-auto min-[1180px]:flex-1 min-[1180px]:min-w-0 h-[11.4vh] flex items-center gap-3 px-4"
       tint="55,44,82"
       opacity={0.25}
@@ -709,6 +1011,8 @@ function ToolTile({
   bgColor,
   shadowColor,
   href,
+  layeredGlass = false,
+  lightVariant = 0,
 }: {
   id?: string;
   icon: React.ReactNode;
@@ -717,24 +1021,39 @@ function ToolTile({
   bgColor: string;
   shadowColor: string;
   href?: string;
+  layeredGlass?: boolean;
+  lightVariant?: number;
 }) {
   const Wrapper = href ? "a" : "div";
   return (
     <Wrapper
       {...(href ? { href, target: "_blank", rel: "noopener noreferrer" } : {})}
       onClick={id && href ? () => recordRecentTool(id) : undefined}
-      className="ui-tool-tile flex flex-col items-center gap-[10px] cursor-pointer group flex-shrink-0"
+      className={`ui-tool-tile flex flex-col items-center gap-[10px] cursor-pointer group flex-shrink-0 ${layeredGlass ? "all-tools-layered-glass" : ""}`}
+      data-light-variant={layeredGlass ? lightVariant : undefined}
       title={href ? label : `${label} (link coming soon)`}
     >
       <div
-        className="ui-tile-surface glass-shine-card flex items-center justify-center rounded-[12px] w-[70px] h-[66px]"
+        className="all-tools-glass-stack"
         style={{
-          background: `linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0) 55%), ${bgColor}`,
-          border: `1px solid ${borderColor}`,
-          boxShadow: `inset 0 1px 0 rgba(255,255,255,0.15), 0px 4px 14px 0px ${shadowColor}`,
-        }}
+          "--tool-glass-border": borderColor,
+          "--tool-glass-bg": bgColor,
+          "--tool-glass-shadow": shadowColor,
+        } as React.CSSProperties}
       >
-        {icon}
+        {layeredGlass && <span aria-hidden="true" className="all-tools-glass-backplate" />}
+        <span
+          className="all-tools-glass-face ui-tile-surface glass-shine-card flex items-center justify-center rounded-[12px] w-[70px] h-[66px]"
+          style={{
+            background: `linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0) 55%), ${bgColor}`,
+            border: `1px solid ${borderColor}`,
+            boxShadow: `inset 0 1px 0 rgba(255,255,255,0.15), 0px 4px 14px 0px ${shadowColor}`,
+          }}
+        >
+          {layeredGlass && <span aria-hidden="true" className="all-tools-glass-light-path" />}
+          {layeredGlass && <span aria-hidden="true" className="all-tools-glass-contact-edge" />}
+          {icon}
+        </span>
       </div>
       <p
         title={label}
@@ -775,16 +1094,8 @@ function QuickTile({
       className="ui-tool-tile flex-shrink-0 w-[72px] min-[1180px]:w-[calc((100%-48px)/4)] flex flex-col items-center gap-[8px] cursor-pointer group"
     >
       <div
-        className="ui-tile-surface glass-shine-card flex items-center justify-center rounded-[14px] w-[clamp(44px,5.5vh,64px)] h-[clamp(44px,5.5vh,64px)] mx-auto"
-        style={{
-          backdropFilter: "blur(8px) saturate(140%)",
-          WebkitBackdropFilter: "blur(8px) saturate(140%)",
-          background:
-            "linear-gradient(150deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0) 60%), rgba(38,42,54,0.55)",
-          border: "none",
-          boxShadow:
-            "inset 0 1px 0 rgba(255,255,255,0.09), inset 0 -6px 10px rgba(0,0,0,0.18), 0 calc(clamp(44px, 5.5vh, 64px) * 0.28) calc(clamp(44px, 5.5vh, 64px) * 0.4) calc(clamp(44px, 5.5vh, 64px) * -0.22) rgba(0,0,0,0.55)",
-        }}
+        data-quick-light={index % 4}
+        className="quick-access-glass ui-tile-surface flex items-center justify-center rounded-[14px] w-[clamp(44px,5.5vh,64px)] h-[clamp(44px,5.5vh,64px)] mx-auto"
       >
         {icon}
       </div>
@@ -1391,6 +1702,7 @@ function Sidebar({ activeRoute = "dashboard" }: { activeRoute?: "dashboard" | "m
   return (
     <>
       <aside
+        data-lighthouse-edge="sidebar"
         className="glass-shine-card sidebar-panel flex-1 flex flex-col m-5 mr-0 rounded-2xl min-h-0"
         style={sidebarStyle}
         onMouseEnter={() => collapsed && setHovered(true)}
@@ -1865,6 +2177,7 @@ function useToolViews(): DashboardToolView[] {
           ) : builtIn.icon,
           label: tool.name,
           href: tool.url,
+          updatedAt: tool.updatedAt,
           tool,
         };
       }
@@ -1879,6 +2192,7 @@ function useToolViews(): DashboardToolView[] {
           />
         ),
         label: tool.name,
+        updatedAt: tool.updatedAt,
         border: `rgba(${rgb},0.45)`,
         bg: `rgba(${rgb},0.07)`,
         shadow: `rgba(${rgb},0.18)`,
@@ -2326,7 +2640,7 @@ function useMusicPlayer() {
   const persistent = usePersistentMusic();
   const audioRef = persistent.audioRef;
   const {
-    currentIndex, isPlaying, playMode, currentTime, duration, volume,
+    currentIndex, isPlaying, playMode, volume,
     playAt, playNext, playPrev, togglePlay, cyclePlayMode, seek, setVolume,
   } = persistent;
   const track = TRACKS[currentIndex];
@@ -2758,6 +3072,7 @@ function HeroSection() {
   // Below 951px the greeting + side column no longer have room for Quick Access, so it drops
   // out of that column and becomes its own full-width row underneath.
   const [stackQuickAccess, setStackQuickAccess] = React.useState(false);
+  const quickAccessScrollRef = React.useRef<HTMLDivElement>(null);
   const toolViews = useToolViews();
   const workspace = useDashboardWorkspace();
   const { pinnedToolIds } = workspace;
@@ -2778,9 +3093,18 @@ function HeroSection() {
   const quickAccessTools = React.useMemo(() => {
     return selectPinnedTools(toolViews, pinnedToolIds);
   }, [pinnedToolIds, toolViews]);
+  const quickAccessOrderKey = quickAccessTools.map((tool) => tool.id).join("|");
+
+  React.useEffect(() => {
+    const scroller = quickAccessScrollRef.current;
+    if (scroller && scroller.scrollLeft > 0) {
+      scroller.scrollTo({ left: 0, behavior: "smooth" });
+    }
+  }, [quickAccessOrderKey]);
 
   const quickAccessPanel = (
     <GlassPanel
+      lighthouseEdge
       className="h-[20.6vh] flex flex-col px-5 py-4"
       tint="68,60,92"
       opacity={0.27}
@@ -2793,6 +3117,7 @@ function HeroSection() {
           the 3 gaps between them, divided by 4) — any tile past the 4th sits just off the
           edge and is only reachable by scrolling right. */}
       <div
+        ref={quickAccessScrollRef}
         className="flex gap-2 min-[1180px]:gap-[16px] flex-1 items-center overflow-x-auto [&::-webkit-scrollbar]:hidden"
         style={{ scrollbarWidth: "none" }}
       >
@@ -3079,6 +3404,7 @@ function RecentActivityPanel({
 
   return (
     <GlassPanel
+      lighthouseEdge
       className="w-[min(420px,37vw)] flex-shrink-0 flex flex-col px-5 pt-4 pb-5 overflow-hidden max-[950px]:w-full max-[950px]:min-h-[240px] max-[950px]:order-1"
       tint="44,34,64"
       opacity={0.3}
@@ -3532,8 +3858,6 @@ function MusicPlayerPanel({
   currentIndex,
   isPlaying,
   playMode,
-  currentTime,
-  duration,
   volume,
   onPlayAt,
   onPlayNext,
@@ -3557,8 +3881,6 @@ function MusicPlayerPanel({
   currentIndex: number;
   isPlaying: boolean;
   playMode: MusicPlayMode;
-  currentTime: number;
-  duration: number;
   volume: number;
   onPlayAt: (index: number) => void;
   onPlayNext: () => void;
@@ -3578,6 +3900,7 @@ function MusicPlayerPanel({
   showLyrics: boolean;
   onShowLyricsChange: React.Dispatch<React.SetStateAction<boolean>>;
 }) {
+  const { currentTime, duration } = usePersistentMusicTiming();
   const progressPct =
     duration > 0
       ? Math.min(100, Math.max(0, (currentTime / duration) * 100))
@@ -3876,7 +4199,7 @@ function MusicPlayerPanel({
 
           {/* Volume control — bottom of the fixed-width left column, level with the
               progress bar/controls group on the right. */}
-          <div className="flex items-center gap-2 w-full flex-shrink-0">
+          <div data-music-volume-controls className="flex items-center gap-2 w-full flex-shrink-0">
             <button
               type="button"
               onClick={() =>
@@ -4215,7 +4538,9 @@ function MusicPlayerPanel({
             className="flex items-center justify-between flex-shrink-0"
             style={{ position: "relative", top: 2 }}
           >
+            {!showList && (
             <button
+              data-music-play-mode
               type="button"
               onClick={onCyclePlayMode}
               aria-label="Change play mode"
@@ -4241,6 +4566,7 @@ function MusicPlayerPanel({
                 />
               )}
             </button>
+            )}
 
             {!showList && (
               <button
@@ -4385,6 +4711,7 @@ function MusicPlayerPanel({
             )}
 
             <button
+              data-music-lyrics-toggle
               type="button"
               onClick={() => onShowLyricsChange((v) => !v)}
               aria-label={showLyrics ? "Hide lyrics" : "Show lyrics"}
@@ -4399,6 +4726,7 @@ function MusicPlayerPanel({
             </button>
 
             <button
+              data-music-playlist-toggle
               type="button"
               onClick={() => setShowList((v) => !v)}
               aria-label={showList ? "Back to player" : "Show song list"}
@@ -4481,9 +4809,16 @@ function TaskCompletionPanel({
       <div className="flex items-center justify-between mb-3 flex-shrink-0">
         <p className="text-white font-semibold text-[18px]">
           Task Completion{" "}
-          <span className="text-[#8891ac] text-[13px] font-medium">
+          <motion.span
+            key={`${completedCount}-${tasks.length}`}
+            data-task-completion-count
+            initial={reduceMotion ? false : { opacity: 0.35, y: 3 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.32, ease: [0.23, 1, 0.32, 1] }}
+            className="inline-block text-[#8891ac] text-[13px] font-medium"
+          >
             ({completedCount}/{tasks.length})
-          </span>
+          </motion.span>
         </p>
         <button
           type="button"
@@ -4499,12 +4834,13 @@ function TaskCompletionPanel({
         className="h-[3px] rounded-full overflow-hidden flex-shrink-0"
         style={{ background: "rgba(255,255,255,0.08)" }}
       >
-        <div
-          className="h-full rounded-full transition-[width] duration-200"
-          style={{
-            width: `${progress}%`,
-            background: "linear-gradient(90deg, #9a70ff, #55a7ff)",
-          }}
+        <motion.div
+          data-task-progress-bar
+          className="h-full rounded-full"
+          initial={false}
+          animate={{ width: `${progress}%` }}
+          transition={reduceMotion ? { duration: 0 } : { duration: 0.58, ease: [0.23, 1, 0.32, 1] }}
+          style={{ background: "linear-gradient(90deg, #9a70ff 0%, #766cff 58%, #55a7ff 100%)" }}
         />
       </div>
 
@@ -4650,10 +4986,77 @@ function TaskCompletionPanel({
 
 function AllToolsPanel() {
   const toolViews = useToolViews();
+  const reduceMotion = Boolean(useReducedMotion());
+  const marqueeViewportRef = React.useRef<HTMLDivElement>(null);
+  const marqueeTrackRef = React.useRef<HTMLDivElement>(null);
+
+  React.useLayoutEffect(() => {
+    const viewport = marqueeViewportRef.current;
+    const track = marqueeTrackRef.current;
+    if (!viewport || !track || reduceMotion || toolViews.length < 2) return;
+
+    let tween: gsap.core.Tween | null = null;
+    let startTimer: number | null = null;
+    const start = () => {
+      if (tween) return;
+      startTimer = window.setTimeout(() => {
+        const distance = track.scrollWidth / 2;
+        if (distance <= viewport.clientWidth) return;
+        gsap.set(track, { x: -distance });
+        tween = gsap.to(track, {
+          x: 0,
+          duration: distance / 16,
+          ease: "none",
+          repeat: -1,
+        });
+      }, 400);
+    };
+    const pause = () => tween?.timeScale(0);
+    const resume = () => tween?.timeScale(1);
+    const stop = () => {
+      if (startTimer !== null) window.clearTimeout(startTimer);
+      tween?.kill();
+      tween = null;
+    };
+
+    window.addEventListener("phil-studio:dashboard-entrance-complete", start);
+    window.addEventListener("phil-studio:tool-library-transition-start", stop);
+    viewport.addEventListener("pointerenter", pause);
+    viewport.addEventListener("pointerleave", resume);
+    viewport.addEventListener("touchstart", pause, { passive: true });
+    viewport.addEventListener("touchend", resume, { passive: true });
+    viewport.addEventListener("wheel", pause, { passive: true });
+    return () => {
+      stop();
+      window.removeEventListener("phil-studio:dashboard-entrance-complete", start);
+      window.removeEventListener("phil-studio:tool-library-transition-start", stop);
+      viewport.removeEventListener("pointerenter", pause);
+      viewport.removeEventListener("pointerleave", resume);
+      viewport.removeEventListener("touchstart", pause);
+      viewport.removeEventListener("touchend", resume);
+      viewport.removeEventListener("wheel", pause);
+    };
+  }, [reduceMotion, toolViews.length]);
+
+  const renderToolTiles = (duplicate = false) => toolViews.map((t, index) => (
+    <ToolTile
+      key={`${duplicate ? "duplicate-" : ""}${t.id}`}
+      id={duplicate ? undefined : t.id}
+      icon={t.icon}
+      label={t.label}
+      borderColor={t.border}
+      bgColor={t.bg}
+      shadowColor={t.shadow}
+      href={duplicate ? undefined : t.href}
+      layeredGlass
+      lightVariant={index % 6}
+    />
+  ));
   return (
     <DashboardToolTransition>
       {({ sourceRef, startTransition }) => (
         <GlassPanel
+          lighthouseEdge
           panelRef={sourceRef}
           className="relative flex-1 min-w-0 flex flex-col px-5 py-4 overflow-hidden max-[950px]:w-full max-[950px]:min-h-[320px] max-[950px]:order-2"
           tint="30,24,50"
@@ -4667,7 +5070,10 @@ function AllToolsPanel() {
             <p className="text-white font-semibold text-[18px]">All Tools</p>
             <button
               type="button"
-              onClick={startTransition}
+              onClick={() => {
+                window.dispatchEvent(new Event("phil-studio:tool-library-transition-start"));
+                startTransition();
+              }}
               className="text-[#9a70ff] text-[14px] font-medium hover:text-[#b590ff] transition-colors"
             >
               View All
@@ -4675,22 +5081,11 @@ function AllToolsPanel() {
           </div>
           {/* Single row at >=1180px; below that it wraps into 2 rows (grid-auto-flow: column packs
               tiles column-first into 2 rows) while staying horizontally scrollable to the right. */}
-          <div
-            className="grid grid-flow-col grid-rows-2 gap-x-[31px] gap-y-0.5 min-[1180px]:grid-rows-1 min-[1180px]:items-center overflow-x-auto flex-1 [&::-webkit-scrollbar]:hidden"
-            style={{ scrollbarWidth: "none" }}
-          >
-            {toolViews.map((t) => (
-              <ToolTile
-                key={t.label}
-                id={t.id}
-                icon={t.icon}
-                label={t.label}
-                borderColor={t.border}
-                bgColor={t.bg}
-                shadowColor={t.shadow}
-                href={t.href}
-              />
-            ))}
+          <div ref={marqueeViewportRef} data-all-tools-grid className="all-tools-marquee-viewport flex-1">
+            <div ref={marqueeTrackRef} data-all-tools-marquee-track className="all-tools-marquee-track">
+              <div className="all-tools-marquee-set">{renderToolTiles()}</div>
+              <div className="all-tools-marquee-set" aria-hidden="true">{renderToolTiles(true)}</div>
+            </div>
           </div>
           </div>
           <div data-tool-library-morph-preview aria-hidden="true" className="tool-library-morph-preview">
@@ -4749,10 +5144,8 @@ function CategoriesPanel() {
           className="absolute inset-0 overflow-y-auto flex flex-col gap-[14px] px-2 [&::-webkit-scrollbar]:hidden"
           style={{
             scrollbarWidth: "none",
-            maskImage:
-              "linear-gradient(to bottom, black 88%, transparent 100%)",
-            WebkitMaskImage:
-              "linear-gradient(to bottom, black 88%, transparent 100%)",
+            maskImage: "linear-gradient(to bottom, black 88%, transparent 100%)",
+            WebkitMaskImage: "linear-gradient(to bottom, black 88%, transparent 100%)",
           }}
         >
           {categoryStats.map(({ tag, percent }, i) => (
@@ -4772,6 +5165,9 @@ function CategoriesPanel() {
 
 // ─── Favorites — click the filled star to un-favorite and remove from the list ──
 
+const FAVORITES_VISIBLE_COUNT = 4;
+const FAVORITES_GESTURE_END_MS = 520;
+
 function FavoritesPanel({
   favoriteTools,
   favoritePendingIds,
@@ -4782,6 +5178,49 @@ function FavoritesPanel({
   onToggleFavorite: (id: string) => void;
 }) {
   const reduceMotion = Boolean(useReducedMotion());
+  const favoritesWheelIntentRef = React.useRef({ direction: 0 as -1 | 0 | 1, distance: 0 });
+  const favoritesWheelGestureTimerRef = React.useRef<number | null>(null);
+  const [favoriteWindowStart, setFavoriteWindowStart] = React.useState(0);
+  const [favoriteMotionDirection, setFavoriteMotionDirection] = React.useState<1 | -1>(1);
+  const [favoritesPaused, setFavoritesPaused] = React.useState(false);
+  const visibleFavoriteTools = React.useMemo(
+    () => Array.from(
+      { length: Math.min(FAVORITES_VISIBLE_COUNT, favoriteTools.length) },
+      (_, index) => favoriteTools[(favoriteWindowStart + index) % favoriteTools.length],
+    ),
+    [favoriteTools, favoriteWindowStart],
+  );
+
+  React.useEffect(() => {
+    if (reduceMotion || favoritesPaused || favoriteTools.length <= FAVORITES_VISIBLE_COUNT) return;
+    const timer = window.setInterval(() => {
+      setFavoriteMotionDirection(1);
+      setFavoriteWindowStart((index) => (index + 1) % favoriteTools.length);
+    }, 2000);
+    return () => window.clearInterval(timer);
+  }, [favoriteTools.length, favoritesPaused, reduceMotion]);
+
+  React.useEffect(() => () => {
+    if (favoritesWheelGestureTimerRef.current !== null) window.clearTimeout(favoritesWheelGestureTimerRef.current);
+  }, []);
+
+  const handleFavoritesWheel = (event: React.WheelEvent<HTMLDivElement>) => {
+    if (favoriteTools.length <= FAVORITES_VISIBLE_COUNT) return;
+    event.preventDefault();
+    const intent = accumulateWheelIntent(favoritesWheelIntentRef.current, event.deltaY, 24);
+    favoritesWheelIntentRef.current = { direction: intent.direction, distance: intent.distance };
+
+    if (favoritesWheelGestureTimerRef.current !== null) window.clearTimeout(favoritesWheelGestureTimerRef.current);
+    favoritesWheelGestureTimerRef.current = window.setTimeout(() => {
+      favoritesWheelIntentRef.current = { direction: 0, distance: 0 };
+    }, FAVORITES_GESTURE_END_MS);
+
+    if (intent.step === 0) return;
+    setFavoriteMotionDirection(intent.step);
+    setFavoriteWindowStart((index) =>
+      (index + intent.step + favoriteTools.length) % favoriteTools.length,
+    );
+  };
 
   return (
     <GlassPanel
@@ -4800,14 +5239,21 @@ function FavoritesPanel({
       </div>
       <div className="flex-1 min-h-0 relative">
         <div
-          className="absolute inset-0 overflow-y-auto flex flex-col gap-[10px] px-2 [&::-webkit-scrollbar]:hidden"
+          data-favorites-animated-list
+          className="absolute inset-0 overflow-hidden flex flex-col gap-[10px] px-2"
           style={{
-            scrollbarWidth: "none",
             maskImage:
               "linear-gradient(to bottom, black 88%, transparent 100%)",
             WebkitMaskImage:
               "linear-gradient(to bottom, black 88%, transparent 100%)",
           }}
+          onPointerEnter={() => {
+            setFavoritesPaused(true);
+          }}
+          onPointerLeave={() => {
+            setFavoritesPaused(false);
+          }}
+          onWheel={handleFavoritesWheel}
         >
           {favoriteTools.length === 0 && (
             <div
@@ -4817,15 +5263,22 @@ function FavoritesPanel({
               No favorites yet.
             </div>
           )}
-          <AnimatePresence initial={false}>
-            {favoriteTools.map((t, index) => (
+          <AnimatePresence initial={false} mode="popLayout">
+            {visibleFavoriteTools.map((t) => (
             <motion.div
               key={t.id}
               data-favorite-row
               layout={!reduceMotion}
-              {...getFavoriteRowMotion(index, reduceMotion)}
-              whileHover={reduceMotion ? undefined : { transform: "translateX(3px)" }}
-              whileTap={reduceMotion ? undefined : { transform: "translateX(3px) scale(0.99)" }}
+              initial={reduceMotion ? false : { opacity: 0, y: 24 * favoriteMotionDirection, scale: 0.97, filter: "blur(5px)" }}
+              animate={reduceMotion ? undefined : { opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
+              exit={reduceMotion ? undefined : { opacity: 0, y: -20 * favoriteMotionDirection, scale: 0.97, filter: "blur(4px)" }}
+              transition={reduceMotion ? { duration: 0 } : {
+                layout: { duration: 0.42, ease: [0.25, 0.46, 0.45, 0.94] },
+                opacity: { duration: 0.3 },
+                y: { duration: 0.42, ease: [0.25, 0.46, 0.45, 0.94] },
+                scale: { duration: 0.38, ease: [0.25, 0.46, 0.45, 0.94] },
+                filter: { duration: 0.3 },
+              }}
               className="favorite-list-row relative flex items-center gap-3 flex-shrink-0 rounded-[9px] px-2 py-1 -mx-2"
             >
               <span data-favorite-row-glow aria-hidden="true" className="favorite-list-row-glow pointer-events-none absolute inset-0 -z-10 rounded-[9px]" />
@@ -4972,8 +5425,6 @@ function BottomRow({
             currentIndex={music.currentIndex}
             isPlaying={music.isPlaying}
             playMode={music.playMode}
-            currentTime={music.currentTime}
-            duration={music.duration}
             volume={music.volume}
             onPlayAt={music.playAt}
             onPlayNext={music.playNext}
@@ -5064,7 +5515,9 @@ function DashboardPageContent({
     if (activeRoute === "manage" || reduceMotion) return;
     const plan = getDashboardEntranceTimeline(reduceMotion);
     const context = gsap.context(() => {
-      const timeline = gsap.timeline();
+      const timeline = gsap.timeline({
+        onComplete: () => window.dispatchEvent(new Event("phil-studio:dashboard-entrance-complete")),
+      });
       timeline
         .fromTo("[data-dashboard-sidebar]", plan.sidebar.from, plan.sidebar.to, 0)
         .fromTo("[data-dashboard-navbar]", plan.navbar.from, plan.navbar.to, 0)
@@ -5083,6 +5536,7 @@ function DashboardPageContent({
       style={{ scrollbarWidth: "none" }}
     >
       <WorkspaceSplashCursor />
+      {backgroundMode === "photo" && <LighthouseEdgeHighlights rootRef={rootRef} />}
       {/* Background: sharp photo + blurred glow version behind. Below 951px the page scrolls
           and grows well past one viewport — without a cap this box (and every "inset-0" layer
           inside it) would stretch to match, forcing object-cover to zoom into a tall, narrow
@@ -5099,7 +5553,10 @@ function DashboardPageContent({
             className="manage-scene-background absolute inset-0"
           />
         ) : (
-          <DashboardBackground />
+          <>
+            <DashboardBackground />
+            <LighthouseBeacon />
+          </>
         )}
         {/* Crisp contrast lift over the clock tower / core building — mix-blend-overlay (not
             screen) so it sharpens local contrast instead of adding a flat, blurred brightness

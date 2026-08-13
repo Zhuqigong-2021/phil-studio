@@ -18,6 +18,7 @@ import {
   runManageMutation,
   validateManageDraft,
   filterToolsByCategories,
+  isManagePatchUnchanged,
   type ManagePageSize,
 } from "./manage-page-state";
 
@@ -111,6 +112,11 @@ export function useManagePageStateWithWorkspace(
       return;
     }
 
+    if (isManagePatchUnchanged(tool, pinnedToolIds.includes(id), patch)) {
+      publishDatabaseToast({ tone: "info", message: `No changes to update: ${tool.name}` });
+      return;
+    }
+
     dispatch({ type: "update/start", id });
     mutationRefreshes.current.set(id, { phase: "pending", original: tool });
     const result = await runManageMutation({
@@ -137,7 +143,7 @@ export function useManagePageStateWithWorkspace(
       mutationRefreshes.current.delete(id);
       dispatch({ type: "update/failed", id });
     }
-  }, [categories, rawTools, tableState.aliasInputs, tableState.drafts, tableState.updatingIds, updateTool]);
+  }, [categories, pinnedToolIds, rawTools, tableState.aliasInputs, tableState.drafts, tableState.updatingIds, updateTool]);
 
   const requestDelete = useCallback((id: string) => {
     dispatch({ type: "delete/request", id });

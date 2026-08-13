@@ -56,6 +56,72 @@ export interface ToolTransitionOverlay {
   remove: () => void;
 }
 
+export interface ToolLibraryTargetPaddings {
+  left: number;
+  right: number;
+  top: number;
+  bottom: number;
+}
+
+export interface ToolLibraryTransitionTiming {
+  total: number;
+  expansionStart: number | null;
+  expansionEnd: number | null;
+  sourceFadeStart: number | null;
+  sourceFadeEnd: number | null;
+  previewFadeStart: number | null;
+  previewFadeEnd: number | null;
+  backgroundStart: number | null;
+  contentHandoffStart: number | null;
+  routeStart: number;
+}
+
+export function getToolLibraryTargetRect(
+  bounds: ToolTransitionRect,
+  paddings: ToolLibraryTargetPaddings,
+  viewportHeight: number,
+): ToolTransitionRect {
+  const surfaceTop = bounds.top + paddings.top + Math.max(18, Math.min(30, viewportHeight * 0.03));
+  return {
+    left: bounds.left + paddings.left,
+    top: surfaceTop,
+    width: Math.max(1, bounds.width - paddings.left - paddings.right),
+    height: Math.max(1, bounds.top + bounds.height - paddings.bottom - surfaceTop),
+  };
+}
+
+export function getToolLibraryTransitionTiming(
+  reduceMotion: boolean,
+): ToolLibraryTransitionTiming {
+  if (reduceMotion) {
+    return {
+      total: 0.16,
+      expansionStart: null,
+      expansionEnd: null,
+      sourceFadeStart: null,
+      sourceFadeEnd: null,
+      previewFadeStart: null,
+      previewFadeEnd: null,
+      backgroundStart: null,
+      contentHandoffStart: null,
+      routeStart: 0,
+    };
+  }
+
+  return {
+    total: 0.75,
+    expansionStart: 0.04,
+    expansionEnd: 0.62,
+    sourceFadeStart: 0.36,
+    sourceFadeEnd: 0.54,
+    previewFadeStart: 0.42,
+    previewFadeEnd: 0.62,
+    backgroundStart: 0.41,
+    contentHandoffStart: 0.45,
+    routeStart: 0.56,
+  };
+}
+
 export interface ToolLibraryHandoffRegistry {
   retain: (cleanup: () => void) => void;
   complete: () => void;
@@ -139,7 +205,7 @@ export function getToolTransitionPlan(
     scaleY: 1,
     opacity: 1,
     borderRadius: 20,
-    duration: 0.62,
+    duration: 0.58,
     ease: "power3.inOut",
   };
 }
@@ -316,23 +382,19 @@ const browserTransitionStarter = createToolLibraryTransitionStarter({
     const paddingRight = Number.parseFloat(styles.paddingRight) || 0;
     const paddingTop = Number.parseFloat(styles.paddingTop) || 0;
     const paddingBottom = Number.parseFloat(styles.paddingBottom) || 0;
-    const surfaceTop = bounds.top + paddingTop + Math.max(18, Math.min(30, window.innerHeight * 0.03));
-    return {
-      left: bounds.left + paddingLeft,
-      top: surfaceTop,
-      width: Math.max(1, bounds.width - paddingLeft - paddingRight),
-      height: Math.max(1, bounds.bottom - paddingBottom - surfaceTop),
-    };
+    return getToolLibraryTargetRect(bounds, {
+      left: paddingLeft,
+      right: paddingRight,
+      top: paddingTop,
+      bottom: paddingBottom,
+    }, window.innerHeight);
   },
   cloneShell: (source, deep) => (source as HTMLElement).cloneNode(deep) as HTMLElement,
   appendOverlay: (overlay) => document.body.appendChild(overlay as HTMLElement),
   prefersReducedMotion: () => window.matchMedia("(prefers-reduced-motion: reduce)").matches,
   marker: browserHandoffMarker,
   handoff: browserHandoffRegistry,
-  prepareSurroundings: (source) => {
-    const sourceNode = source as HTMLElement;
-    const root = sourceNode.closest<HTMLElement>(".dashboard-motion-root");
-    const content = root?.querySelector<HTMLElement>("[data-dashboard-transition-content]");
+  prepareSurroundings: () => {
     const veil = document.createElement("div");
     veil.className = "manage-scene-background";
     veil.setAttribute("data-tool-library-transition-veil", "true");
@@ -347,7 +409,6 @@ const browserTransitionStarter = createToolLibraryTransitionStarter({
     return () => {
       gsap.killTweensOf(veil);
       veil.remove();
-      if (content) gsap.killTweensOf(content);
     };
   },
   animate: (overlay, plan, onComplete) => {
@@ -355,23 +416,41 @@ const browserTransitionStarter = createToolLibraryTransitionStarter({
     const sourceContent = shell.querySelector<HTMLElement>("[data-tool-library-source-content]");
     const preview = shell.querySelector<HTMLElement>("[data-tool-library-morph-preview]");
     const veil = document.querySelector<HTMLElement>("[data-tool-library-transition-veil]");
-    const content = document.querySelector<HTMLElement>("[data-dashboard-transition-content]");
-    const timeline = gsap.timeline({ onComplete });
-    const expansionStart = 0.08;
-    const backgroundStart = expansionStart + plan.duration * 0.35;
-    const backgroundDuration = plan.duration * 0.65;
+    const timing = getToolLibraryTransitionTiming(plan.opacity === 0);
+    const timeline = gsap.timeline();
     if (preview) gsap.set(preview, { autoAlpha: 0 });
-    if (sourceContent) timeline.to(sourceContent, { autoAlpha: 0, duration: 0.14 }, 0);
-    if (preview) timeline.to(preview, { autoAlpha: 1, duration: 0.22, ease: "power2.out" }, 0.06);
-    timeline.to(shell, { ...plan }, expansionStart);
-    if (content) timeline.to(content, {
-      opacity: 0.48,
-      filter: "blur(7px)",
-      scale: 0.994,
-      duration: 0.48,
-      ease: "power2.inOut",
-    }, 0.22);
-    if (veil) timeline.to(veil, { opacity: 1, duration: backgroundDuration, ease: "power2.inOut" }, backgroundStart);
+    if (timing.expansionStart === null) {
+      timeline.to(shell, { opacity: 0, duration: timing.total, ease: "power3.out" }, 0);
+      timeline.call(onComplete, [], timing.routeStart);
+      return () => timeline.kill();
+    }
+
+    timeline.to(shell, {
+      ...plan,
+      duration: timing.expansionEnd! - timing.expansionStart,
+    }, timing.expansionStart);
+    if (sourceContent) {
+      timeline.to(sourceContent, {
+        autoAlpha: 0,
+        duration: timing.sourceFadeEnd! - timing.sourceFadeStart!,
+        ease: "power3.inOut",
+      }, timing.sourceFadeStart!);
+    }
+    if (preview) {
+      timeline.to(preview, {
+        autoAlpha: 1,
+        duration: timing.previewFadeEnd! - timing.previewFadeStart!,
+        ease: "power3.out",
+      }, timing.previewFadeStart!);
+    }
+    if (veil) {
+      timeline.to(veil, {
+        opacity: 1,
+        duration: timing.total - timing.backgroundStart!,
+        ease: "power3.inOut",
+      }, timing.backgroundStart!);
+    }
+    timeline.call(onComplete, [], timing.routeStart);
     return () => timeline.kill();
   },
 });
@@ -384,6 +463,7 @@ export function startToolLibraryTransition(
 }
 
 export function completeToolLibraryHandoff(reduceMotion = false) {
+  const timing = getToolLibraryTransitionTiming(reduceMotion);
   const layers = document.querySelectorAll<HTMLElement>(
     "[data-tool-library-transition-overlay], [data-tool-library-transition-veil]",
   );
@@ -393,7 +473,7 @@ export function completeToolLibraryHandoff(reduceMotion = false) {
   }
   gsap.to(layers, {
     opacity: 0,
-    duration: reduceMotion ? 0.12 : 0.3,
+    duration: reduceMotion ? timing.total : timing.total - timing.routeStart,
     ease: "power2.out",
     onComplete: () => {
       layers.forEach((layer) => layer.remove());

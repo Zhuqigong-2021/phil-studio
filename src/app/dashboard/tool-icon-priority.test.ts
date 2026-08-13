@@ -30,17 +30,19 @@ test("custom tool catalog icons use their selected accent color", async () => {
   assert.match(customBranch, /color=\{`rgb\(\$\{rgb\}\)`\}/);
 });
 
-test("tool tiles keep their outline but use a more transparent inner tint", async () => {
+test("tool tiles use the current layered frosted-glass treatment without restoring an outline", async () => {
   const source = await readFile(pageUrl, "utf8");
   const tileSource = source.slice(
     source.indexOf("function ToolTile"),
     source.indexOf("// ───", source.indexOf("function ToolTile") + 1),
   );
 
-  assert.match(tileSource, /rgba\(255,255,255,0\.05\)/);
+  assert.match(tileSource, /all-tools-glass-stack/);
+  assert.match(tileSource, /all-tools-glass-backplate/);
+  assert.match(tileSource, /all-tools-glass-face/);
   assert.match(tileSource, /background: `[^`]*\$\{bgColor\}`/);
   assert.match(source, /bg: `rgba\(\$\{rgb\},0\.07\)`/);
-  assert.match(tileSource, /border: `1px solid \$\{borderColor\}`/);
+  assert.match(tileSource, /layeredGlass \? "all-tools-layered-glass" : ""/);
 });
 
 test("tool labels stay one line, match the icon width, and expose the full label on hover", async () => {
@@ -81,4 +83,23 @@ test("Quick Access keeps four visible slots and horizontally scrolls additional 
   const panelSource = source.slice(source.indexOf("const quickAccessPanel"), source.indexOf("return (", source.indexOf("const quickAccessPanel")));
   assert.match(panelSource, /min-\[1180px\]:gap-\[16px\]/);
   assert.match(panelSource, /overflow-x-auto/);
+});
+
+test("Quick Access tiles use neutral frosted glass with position-aware tower lighting", async () => {
+  const source = await readFile(pageUrl, "utf8");
+  const css = await readFile(new URL("./dashboard.css", import.meta.url), "utf8");
+  const quickTileSource = source.slice(
+    source.indexOf("function QuickTile"),
+    source.indexOf("// ─── Sidebar", source.indexOf("function QuickTile") + 1),
+  );
+
+  assert.match(quickTileSource, /quick-access-glass/);
+  assert.match(quickTileSource, /data-quick-light=\{index % 4\}/);
+  assert.match(css, /\.quick-access-glass/);
+  assert.match(css, /backdrop-filter:\s*blur\(/);
+  assert.match(css, /\.quick-access-glass\[data-quick-light="0"\]/);
+  assert.match(css, /\.quick-access-glass\[data-quick-light="3"\]/);
+  assert.doesNotMatch(quickTileSource, /background:\s*[^\n]*toolColorRgb/);
+  assert.doesNotMatch(css, /\.quick-access-glass > svg,[\s\S]*?drop-shadow/);
+  assert.doesNotMatch(css, /radial-gradient\(circle at var\(--quick-light-x\)/);
 });

@@ -5,6 +5,7 @@ import {
   createManageTableState,
   isManagePopoverOpen,
   manageTableReducer,
+  isManagePatchUnchanged,
   parseManageAliasInput,
   runManageMutation,
   validateManageDraft,
@@ -27,6 +28,24 @@ function tool(id: string, name = `Tool ${id}`): Tool {
     url: `https://example.com/${id}`,
   };
 }
+
+test("unchanged manage patch is detected without depending on category order", () => {
+  const original = { ...tool("a"), tags: ["Work", "Design"], aliases: ["Alpha", "Beta"] };
+  const patch = {
+    iconKey: original.iconKey,
+    accent: original.accent,
+    name: original.name,
+    description: original.description,
+    tags: ["Design", "Work"],
+    url: original.url,
+    pinned: true,
+    favorite: original.favorite,
+    aliases: ["Beta", "Alpha"],
+  };
+
+  assert.equal(isManagePatchUnchanged(original, true, patch), true);
+  assert.equal(isManagePatchUnchanged(original, true, { ...patch, description: "Changed" }), false);
+});
 
 test("changing one row draft leaves every other row unchanged", () => {
   const initial = createManageTableState([tool("a"), tool("b")], []);

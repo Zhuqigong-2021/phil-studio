@@ -808,6 +808,10 @@
 .tool-library-morph-heading { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 3px; }
 .tool-library-morph-heading div { display: flex; flex-direction: column; gap: 2px; }
 .dashboard-tool-transition-overlay { container-type: inline-size; }
+.dashboard-tool-transition-overlay [data-tool-library-source-content],
+.dashboard-tool-transition-overlay [data-tool-library-morph-preview] {
+  will-change: opacity;
+}
 .tool-library-morph-heading strong { font-size: clamp(14px, 1.35cqw, 24px); }
 .tool-library-morph-heading span { color: #929fba; font-size: clamp(8px, .7cqw, 12px); }
 .tool-library-morph-heading b { display: grid; place-items: center; width: clamp(20px, 2.2cqw, 38px); height: clamp(20px, 2.2cqw, 38px); border-radius: 9px; background: #7557e8; }
@@ -859,4 +863,221 @@
 .favorite-list-row:hover .favorite-list-row-glow { opacity: 1; }
 @media (prefers-reduced-motion: reduce) {
   .favorite-list-row-glow { transition: none; }
+}
+
+/* The Old Port tower beacon is an ambient background detail. Its anchor follows the
+   tower in the desktop cover crop; the wide feathered beams rotate on the compositor. */
+.lighthouse-beacon {
+  display: none;
+  position: absolute;
+  left: 50%;
+  top: 16%;
+  z-index: 1;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+  transform: translate3d(0, 0, 0);
+  transition: opacity 1.4s cubic-bezier(.22, 1, .36, 1);
+}
+
+@media (min-width: 1280px) {
+  .lighthouse-beacon {
+    display: block;
+  }
+}
+
+.lighthouse-beacon--active {
+  opacity: 1;
+}
+
+.lighthouse-beacon__near-field {
+  position: absolute;
+  left: 0;
+  top: -18px;
+  z-index: 2;
+  width: 132px;
+  height: 36px;
+  transform-origin: 0 50%;
+  background: radial-gradient(ellipse at 0 50%, rgba(230, 243, 255, .17) 0%, rgba(175, 212, 255, .09) 32%, rgba(139, 183, 241, .026) 70%, transparent 100%);
+  mask-image: conic-gradient(from 0deg at 0 50%, transparent 0deg 84deg, rgba(0, 0, 0, .2) 86deg, black 89deg 91deg, rgba(0, 0, 0, .2) 94deg, transparent 96deg 360deg);
+  -webkit-mask-image: conic-gradient(from 0deg at 0 50%, transparent 0deg 84deg, rgba(0, 0, 0, .2) 86deg, black 89deg 91deg, rgba(0, 0, 0, .2) 94deg, transparent 96deg 360deg);
+  filter: blur(5px);
+  opacity: .54;
+  animation: lighthouse-beacon-sweep 10.5s cubic-bezier(.42, 0, .58, 1) infinite alternate;
+  will-change: transform, opacity;
+}
+
+.lighthouse-beacon__beam {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: min(94vw, 1800px);
+  transform-origin: 0 50%;
+  will-change: transform, opacity;
+  animation: lighthouse-beacon-sweep 10.5s cubic-bezier(.42, 0, .58, 1) infinite alternate;
+  mask-image:
+    linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, .18) 2%, rgba(0, 0, 0, .82) 10%, black 24%, rgba(0, 0, 0, .72) 68%, transparent 100%),
+    conic-gradient(from 0deg at 0 50%, transparent 0deg 76deg, rgba(0, 0, 0, .08) 79deg, rgba(0, 0, 0, .5) 84deg, black 89deg 91deg, rgba(0, 0, 0, .5) 96deg, rgba(0, 0, 0, .08) 101deg, transparent 104deg 360deg);
+  -webkit-mask-image:
+    linear-gradient(90deg, transparent 0%, rgba(0, 0, 0, .18) 2%, rgba(0, 0, 0, .82) 10%, black 24%, rgba(0, 0, 0, .72) 68%, transparent 100%),
+    conic-gradient(from 0deg at 0 50%, transparent 0deg 76deg, rgba(0, 0, 0, .08) 79deg, rgba(0, 0, 0, .5) 84deg, black 89deg 91deg, rgba(0, 0, 0, .5) 96deg, rgba(0, 0, 0, .08) 101deg, transparent 104deg 360deg);
+  mask-composite: intersect;
+  -webkit-mask-composite: source-in;
+}
+
+.lighthouse-beacon__beam--ambient {
+  height: 390px;
+  margin-top: -195px;
+  background: radial-gradient(ellipse 100% 50% at 0 50%, rgba(212, 231, 255, .14) 0%, rgba(163, 201, 250, .08) 34%, rgba(126, 169, 228, .032) 68%, transparent 100%);
+  filter: blur(28px);
+  opacity: .5;
+}
+
+.lighthouse-beacon__beam--core {
+  height: 190px;
+  margin-top: -95px;
+  background: radial-gradient(ellipse 100% 50% at 0 50%, rgba(230, 243, 255, .18) 0%, rgba(179, 213, 255, .09) 32%, rgba(141, 184, 239, .028) 70%, transparent 100%);
+  filter: blur(18px);
+  opacity: .42;
+}
+
+@keyframes lighthouse-beacon-sweep {
+  0% {
+    transform: rotate(151deg) scaleX(.96);
+    opacity: .38;
+  }
+  12% {
+    opacity: .62;
+  }
+  50% {
+    opacity: .52;
+  }
+  88% {
+    opacity: .62;
+  }
+  100% {
+    transform: rotate(18deg) scaleX(1);
+    opacity: .38;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lighthouse-beacon {
+    display: none !important;
+  }
+}
+
+.lighthouse-edge-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 12;
+  display: none;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+@media (min-width: 1280px) {
+  .lighthouse-edge-overlay { display: block; }
+}
+
+.lighthouse-edge-highlight {
+  position: absolute;
+  overflow: visible;
+  will-change: left, top, width, height;
+}
+
+.lighthouse-edge-path {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  will-change: stroke-dashoffset, opacity;
+}
+
+.lighthouse-edge-path--glow {
+  stroke-width: 5;
+  filter: blur(2.8px);
+}
+
+.lighthouse-edge-path--halo {
+  stroke-width: 2.25;
+  filter: blur(1.15px);
+}
+
+.lighthouse-edge-path--core {
+  stroke-width: .48;
+  filter: blur(.22px);
+}
+
+@media (max-width: 1279px), (prefers-reduced-motion: reduce) {
+  .lighthouse-edge-overlay { display: none !important; }
+}
+
+/* Quick Access uses a neutral frosted material. The tower sits left of the
+   panel, so highlights travel from upper-left toward center while shadows
+   fall progressively farther to the lower-right across the four slots. */
+.quick-access-glass {
+  --quick-light-x: 24%;
+  --quick-light-y: 18%;
+  --quick-shadow-x: 8px;
+  --quick-shadow-y: 10px;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 0;
+  background:
+    linear-gradient(145deg, rgba(224, 231, 255, 0.09) 0%, rgba(157, 166, 201, 0.045) 42%, rgba(8, 12, 30, 0.11) 100%);
+  backdrop-filter: blur(16px) saturate(112%);
+  -webkit-backdrop-filter: blur(16px) saturate(112%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.055),
+    inset -1px -1px 0 rgba(164, 178, 222, 0.025),
+    var(--quick-shadow-x) var(--quick-shadow-y) 20px -14px rgba(1, 4, 18, 0.58);
+}
+
+.quick-access-glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  opacity: 0.34;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.82' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.16'/%3E%3C/svg%3E");
+  mix-blend-mode: soft-light;
+  pointer-events: none;
+}
+
+.quick-access-glass > svg,
+.quick-access-glass > span {
+  position: relative;
+  z-index: 1;
+  filter: none;
+}
+
+.quick-access-glass[data-quick-light="0"] {
+  --quick-light-x: 18%;
+  --quick-light-y: 18%;
+  --quick-shadow-x: 9px;
+  --quick-shadow-y: 10px;
+}
+
+.quick-access-glass[data-quick-light="1"] {
+  --quick-light-x: 25%;
+  --quick-light-y: 16%;
+  --quick-shadow-x: 8px;
+  --quick-shadow-y: 11px;
+}
+
+.quick-access-glass[data-quick-light="2"] {
+  --quick-light-x: 32%;
+  --quick-light-y: 15%;
+  --quick-shadow-x: 7px;
+  --quick-shadow-y: 11px;
+}
+
+.quick-access-glass[data-quick-light="3"] {
+  --quick-light-x: 39%;
+  --quick-light-y: 14%;
+  --quick-shadow-x: 6px;
+  --quick-shadow-y: 12px;
 }

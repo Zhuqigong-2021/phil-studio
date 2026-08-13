@@ -694,6 +694,24 @@ function SplashCursor({
       animationFrameId.current = requestAnimationFrame(updateFrame);
     }
 
+    function stopFrameLoop() {
+      if (animationFrameId.current) {
+        cancelAnimationFrame(animationFrameId.current);
+        animationFrameId.current = null;
+      }
+    }
+
+    function startFrameLoop() {
+      if (!isActive || document.hidden || animationFrameId.current) return;
+      lastUpdateTime = Date.now();
+      animationFrameId.current = requestAnimationFrame(updateFrame);
+    }
+
+    function handleVisibilityChange() {
+      if (document.hidden) stopFrameLoop();
+      else startFrameLoop();
+    }
+
     function calcDeltaTime() {
       let now = Date.now();
       let dt = (now - lastUpdateTime) / 1000;
@@ -1041,17 +1059,15 @@ function SplashCursor({
     window.addEventListener('touchmove', handleTouchMove, false);
     window.addEventListener('touchend', handleTouchEnd);
 
-    updateFrame();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    startFrameLoop();
 
     // Cleanup function
     return () => {
       isActive = false;
 
       // Cancel animation frame
-      if (animationFrameId.current) {
-        cancelAnimationFrame(animationFrameId.current);
-        animationFrameId.current = null;
-      }
+      stopFrameLoop();
 
       // Remove event listeners
       window.removeEventListener('mousedown', handleMouseDown);
@@ -1059,6 +1075,7 @@ function SplashCursor({
       window.removeEventListener('touchstart', handleTouchStart);
       window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('touchend', handleTouchEnd);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

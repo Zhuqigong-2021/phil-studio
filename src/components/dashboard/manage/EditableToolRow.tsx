@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, LoaderCircle, Search, Star, Trash2 } from "lucide-react";
+import { LoaderCircle, RefreshCcw, Search, Star, Trash2 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { isManagePopoverOpen } from "@/hooks/manage-page-state";
 import { useExclusiveManagePopover } from "@/hooks/useExclusiveManagePopover";
@@ -210,7 +210,11 @@ export default function EditableToolRow({
             disabled={updating}
             onClick={onSubmit}
           >
-            {updating ? <LoaderCircle className="database-spinner" size={16} aria-hidden="true" /> : <Check size={16} aria-hidden="true" />}
+            {updating ? (
+              <LoaderCircle className="database-spinner" size={16} aria-hidden="true" />
+            ) : (
+              <RefreshCcw data-tool-update-icon size={16} strokeWidth={1.9} aria-hidden="true" />
+            )}
           </button>
           <button
             type="button"

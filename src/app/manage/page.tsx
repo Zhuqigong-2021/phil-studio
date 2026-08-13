@@ -40,17 +40,9 @@ function ManageWorkspace() {
         const targets = root.querySelectorAll(
           ".tool-library-header, .tool-library-sync-error, .tool-library-table-scroll, .tool-library-pagination",
         );
-        gsap.fromTo(
-          targets,
-          { opacity: 0, y: reduceMotion ? 0 : 12 },
-          {
-            opacity: 1,
-            y: 0,
-            duration: reduceMotion ? 0.16 : 0.28,
-            ease: "power2.out",
-            stagger: reduceMotion ? 0 : 0.045,
-          },
-        );
+        gsap.set(root, { opacity: 1, y: 0 });
+        gsap.set(targets, { opacity: 1, y: 0 });
+        root.setAttribute("data-tool-library-handoff-mounted", "true");
         return;
       }
 
@@ -75,11 +67,11 @@ function ManageWorkspace() {
     }, root);
 
     const cancelMarkerClear = entrance.establish((clearMarker) => {
-      const timeoutId = window.setTimeout(() => {
+      const frameId = window.requestAnimationFrame(() => {
         completeToolLibraryHandoff(reduceMotion);
         clearMarker();
-      }, reduceMotion ? 20 : 120);
-      return () => window.clearTimeout(timeoutId);
+      });
+      return () => window.cancelAnimationFrame(frameId);
     });
 
     return () => {
