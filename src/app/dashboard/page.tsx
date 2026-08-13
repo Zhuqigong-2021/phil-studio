@@ -519,7 +519,13 @@ function LighthouseEdgeHighlights({ rootRef }: { rootRef: React.RefObject<HTMLDi
 
 function HomeIcon() {
   return (
-    <svg fill="none" height="20" viewBox="0 0 20 20" width="20">
+    <svg
+      fill="none"
+      height="20"
+      viewBox="0 0 20 20"
+      width="20"
+      className="block -translate-y-px"
+    >
       <path d={svgPaths.p33889400} fill="#D8D2FF" />
     </svg>
   );
@@ -1202,7 +1208,7 @@ function NavItem({
         />
       )}
       <span
-        className={`relative z-10 flex-shrink-0 ${active ? "[&>*]:text-white" : "group-hover:[&>*]:text-white"}`}
+        className={`relative z-10 flex size-5 flex-shrink-0 items-center justify-center [&>svg]:block ${active ? "[&>*]:text-white" : "group-hover:[&>*]:text-white"}`}
       >
         {icon}
       </span>
