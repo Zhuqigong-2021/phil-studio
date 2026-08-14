@@ -41,7 +41,6 @@ import type { Tool } from "../lib/dashboard/types.ts";
 
 export const SUPABASE_MIGRATED_KEY = "phil-studio:supabase-migrated:v1";
 const WORKSPACE_FOCUS_STALE_MS = 30_000;
-const WORKSPACE_RECONCILE_DELAY_MS = 800;
 
 export function shouldRefreshWorkspace(
   lastSyncAt: number,
@@ -455,7 +454,6 @@ export function useCustomTools(api: WorkspaceApi = DEFAULT_WORKSPACE_API) {
   const patchVersionsRef = useRef(new Map<string, symbol>());
   const favoritePendingRef = useRef(createFavoritePendingTracker());
   const lastAuthoritativeSyncAtRef = useRef(0);
-  const reconcileTimerRef = useRef<number | null>(null);
 
   const notify = useCallback(() => {
     window.dispatchEvent(new Event(CUSTOM_TOOLS_CHANGED_EVENT));
@@ -485,22 +483,6 @@ export function useCustomTools(api: WorkspaceApi = DEFAULT_WORKSPACE_API) {
         finish: () => setLoading(false),
       },
     );
-  }, [api, applyWorkspace]);
-
-  const scheduleReconciliation = useCallback(() => {
-    if (reconcileTimerRef.current !== null) window.clearTimeout(reconcileTimerRef.current);
-    reconcileTimerRef.current = window.setTimeout(() => {
-      reconcileTimerRef.current = null;
-      const revisionAtStart = revisionRef.current;
-      void api.fetchSnapshot().then((snapshot) => {
-        if (revisionRef.current !== revisionAtStart) return;
-        hasAuthoritativeWorkspaceRef.current = true;
-        lastAuthoritativeSyncAtRef.current = Date.now();
-        applyWorkspace(snapshot);
-      }).catch(() => {
-        // The confirmed mutation is already visible. A later focus sync retries reconciliation.
-      });
-    }, WORKSPACE_RECONCILE_DELAY_MS);
   }, [api, applyWorkspace]);
 
   const refreshTools = useCallback(async (): Promise<WorkspaceSnapshot> => {
@@ -544,7 +526,6 @@ export function useCustomTools(api: WorkspaceApi = DEFAULT_WORKSPACE_API) {
     window.addEventListener(RECENT_TOOLS_CHANGED_EVENT, refresh);
     return () => {
       window.clearTimeout(initialRead);
-      if (reconcileTimerRef.current !== null) window.clearTimeout(reconcileTimerRef.current);
       window.removeEventListener("focus", refreshFromServer);
       window.removeEventListener("storage", refresh);
       window.removeEventListener(CUSTOM_TOOLS_CHANGED_EVENT, refresh);
@@ -556,9 +537,8 @@ export function useCustomTools(api: WorkspaceApi = DEFAULT_WORKSPACE_API) {
     const category = await api.postCategory(name);
     const next = mergeCreatedCategory(workspaceRef.current, category.name);
     applyWorkspace(next);
-    scheduleReconciliation();
     return { categories: next.categories, category: category.name };
-  }, [api, applyWorkspace, scheduleReconciliation]);
+  }, [api, applyWorkspace]);
 
   const addTool = useCallback(async (
     draft: CustomToolDraft,
@@ -571,16 +551,14 @@ export function useCustomTools(api: WorkspaceApi = DEFAULT_WORKSPACE_API) {
       () => workspaceRef.current,
       applyWorkspace,
     );
-    scheduleReconciliation();
     return result;
-  }, [api, applyWorkspace, scheduleReconciliation]);
+  }, [api, applyWorkspace]);
 
   const setToolPinned = useCallback(async (id: string, pinned: boolean): Promise<void> => {
     await createOptimisticToolPatch(
       workspaceRef.current, id, { pinned }, api, applyWorkspace, () => workspaceRef.current, patchVersionsRef.current,
     );
-    scheduleReconciliation();
-  }, [api, applyWorkspace, scheduleReconciliation]);
+  }, [api, applyWorkspace]);
 
   const updateTool = useCallback(async (id: string, patch: ToolPatch): Promise<WorkspaceMutationOutcome> => {
     const result = await updateWorkspaceToolAndRefresh(
@@ -591,9 +569,8 @@ export function useCustomTools(api: WorkspaceApi = DEFAULT_WORKSPACE_API) {
       applyWorkspace,
       mutationGuardRef.current,
     );
-    if (result.workspaceSnapshotApplied) scheduleReconciliation();
     return result;
-  }, [api, applyWorkspace, scheduleReconciliation]);
+  }, [api, applyWorkspace]);
 
   const deleteTool = useCallback(async (id: string): Promise<WorkspaceMutationOutcome> => {
     const result = await deleteWorkspaceToolAndRefresh(
@@ -603,9 +580,8 @@ export function useCustomTools(api: WorkspaceApi = DEFAULT_WORKSPACE_API) {
       applyWorkspace,
       mutationGuardRef.current,
     );
-    if (result.workspaceSnapshotApplied) scheduleReconciliation();
     return result;
-  }, [api, applyWorkspace, scheduleReconciliation]);
+  }, [api, applyWorkspace]);
 
   const setToolFavorite = useCallback(async (id: string, favorite: boolean): Promise<void> => {
     const toolName = workspaceRef.current.tools.find((tool) => tool.id === id)?.name ?? "Tool";
@@ -621,13 +597,12 @@ export function useCustomTools(api: WorkspaceApi = DEFAULT_WORKSPACE_API) {
             await createOptimisticToolPatch(
               workspaceRef.current, id, { favorite }, api, applyWorkspace, () => workspaceRef.current, patchVersionsRef.current,
             );
-            scheduleReconciliation();
           },
           publish: publishFavoriteToast,
         });
       },
     });
-  }, [api, applyWorkspace, scheduleReconciliation]);
+  }, [api, applyWorkspace]);
 
   const customTools = useMemo(
     () => workspace.tools.filter((tool) => !BUILT_IN_IDS.has(tool.id)),

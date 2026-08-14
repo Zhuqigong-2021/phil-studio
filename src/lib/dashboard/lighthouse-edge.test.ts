@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   calculateLighthouseEdgeHit,
   createLighthouseEdgeGeometry,
+  createLighthouseEdgeFrameSignature,
 } from "./lighthouse-edge.ts";
 
 test("createLighthouseEdgeGeometry caches rounded path and perimeter from a measured rect", () => {
@@ -48,4 +49,23 @@ test("calculateLighthouseEdgeHit returns null when the beam misses the cached re
   });
 
   assert.equal(calculateLighthouseEdgeHit(geometry, { x: 0, y: 0 }, 180, 10), null);
+});
+
+test("serializes equal lighthouse frames to an identical DOM-write signature", () => {
+  const first = createLighthouseEdgeFrameSignature({
+    opacity: 0.6254,
+    x: 124.1234,
+    y: 88.9876,
+    footprint: 156.5555,
+    dashOffset: -72.2222,
+  });
+  const sameVisibleFrame = createLighthouseEdgeFrameSignature({
+    opacity: 0.62539,
+    x: 124.12339,
+    y: 88.98759,
+    footprint: 156.55549,
+    dashOffset: -72.22219,
+  });
+
+  assert.deepEqual(sameVisibleFrame, first);
 });

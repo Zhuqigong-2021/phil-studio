@@ -23,6 +23,10 @@ test("lighthouse edge highlights stay in an independent desktop overlay", () => 
   assert.match(page, /highlightCache/);
   assert.match(page, /cachedBeacon/);
   assert.match(page, /cachedBeam/);
+  assert.match(page, /cachedSource/);
+  assert.match(page, /frameSignature/);
+  assert.match(page, /createLighthouseEdgeFrameSignature/);
+  assert.doesNotMatch(page, /const source = cachedBeacon\.getBoundingClientRect\(\)/);
   assert.doesNotMatch(page, /const cards = \[\.\.\.root\.querySelectorAll<HTMLElement>/);
   assert.doesNotMatch(page, /const highlights = \[\.\.\.overlay\.querySelectorAll<SVGSVGElement>/);
   assert.doesNotMatch(page, /const beacon = root\?\.querySelector<HTMLElement>/);

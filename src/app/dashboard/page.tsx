@@ -102,6 +102,7 @@ import { buildCategoryStats, matchesToolQuery, selectPinnedTools } from "@/lib/d
 import {
   calculateLighthouseEdgeHit,
   createLighthouseEdgeGeometry,
+  createLighthouseEdgeFrameSignature,
   type LighthouseEdgeGeometry,
 } from "@/lib/dashboard/lighthouse-edge";
 import { accumulateWheelIntent } from "@/lib/dashboard/favorites-wheel-intent";
@@ -157,6 +158,11 @@ interface DashboardToolView {
 }
 
 const DashboardWorkspaceContext = React.createContext<ReturnType<typeof useCustomTools> | null>(null);
+type DashboardWorkspaceActions = Pick<
+  ReturnType<typeof useCustomTools>,
+  "setToolFavorite" | "favoritePendingIds"
+>;
+const DashboardWorkspaceActionsContext = React.createContext<DashboardWorkspaceActions | null>(null);
 
 export function useDashboardWorkspace() {
   const workspace = React.useContext(DashboardWorkspaceContext);
@@ -164,12 +170,24 @@ export function useDashboardWorkspace() {
   return workspace;
 }
 
+function useDashboardWorkspaceActions() {
+  const actions = React.useContext(DashboardWorkspaceActionsContext);
+  if (!actions) throw new Error("Dashboard workspace actions are unavailable.");
+  return actions;
+}
+
 function DashboardWorkspaceProvider({ children }: { children: React.ReactNode }) {
   const workspace = useCustomTools();
+  const actions = React.useMemo(() => ({
+    setToolFavorite: workspace.setToolFavorite,
+    favoritePendingIds: workspace.favoritePendingIds,
+  }), [workspace.favoritePendingIds, workspace.setToolFavorite]);
   return (
-    <DashboardWorkspaceContext.Provider value={workspace}>
-      {children}
-    </DashboardWorkspaceContext.Provider>
+    <DashboardWorkspaceActionsContext.Provider value={actions}>
+      <DashboardWorkspaceContext.Provider value={workspace}>
+        {children}
+      </DashboardWorkspaceContext.Provider>
+    </DashboardWorkspaceActionsContext.Provider>
   );
 }
 
@@ -331,11 +349,13 @@ function LighthouseEdgeHighlights({ rootRef }: { rootRef: React.RefObject<HTMLDi
       gradients: SVGRadialGradientElement[];
       geometry: LighthouseEdgeGeometry;
       pathLength: number;
+      frameSignature: ReturnType<typeof createLighthouseEdgeFrameSignature> | null;
     };
     let highlightCache: HighlightCacheEntry[] = [];
     let resizeObserver: ResizeObserver | null = null;
     let cachedBeacon: HTMLElement | null = null;
     let cachedBeam: HTMLElement | null = null;
+    let cachedSource = { x: 0, y: 0 };
 
     const refreshGeometry = () => {
       highlightCache.forEach((entry) => {
@@ -355,6 +375,10 @@ function LighthouseEdgeHighlights({ rootRef }: { rootRef: React.RefObject<HTMLDi
         entry.paths.forEach((path) => path.setAttribute("d", geometry.pathData));
         entry.pathLength = entry.paths[0]?.getTotalLength() ?? 0;
       });
+      if (cachedBeacon) {
+        const beaconRect = cachedBeacon.getBoundingClientRect();
+        cachedSource = { x: beaconRect.left, y: beaconRect.top };
+      }
     };
 
     const tick = (time: number) => {
@@ -368,7 +392,6 @@ function LighthouseEdgeHighlights({ rootRef }: { rootRef: React.RefObject<HTMLDi
 
       const matrix = new DOMMatrixReadOnly(getComputedStyle(cachedBeam).transform);
       const beamAngle = (Math.atan2(matrix.b, matrix.a) * 180) / Math.PI;
-      const source = cachedBeacon.getBoundingClientRect();
       const dt = Math.min((time - lastTime) / 1000, 0.05);
       lastTime = time;
 
@@ -379,7 +402,7 @@ function LighthouseEdgeHighlights({ rootRef }: { rootRef: React.RefObject<HTMLDi
         const beamHalfAngle = 10;
         const hitState = calculateLighthouseEdgeHit(
           entry.geometry,
-          { x: source.left, y: source.top },
+          cachedSource,
           beamAngle,
           beamHalfAngle,
         );
@@ -392,17 +415,38 @@ function LighthouseEdgeHighlights({ rootRef }: { rootRef: React.RefObject<HTMLDi
       });
 
       updates.forEach(({ entry, hitState, level }) => {
-        entry.paths.forEach((path) => path.setAttribute("opacity", level.toFixed(3)));
-        if (!hitState || entry.paths.length === 0) return;
+        const frameSignature = createLighthouseEdgeFrameSignature({
+          opacity: level,
+          x: hitState?.localPoint.x ?? 0,
+          y: hitState?.localPoint.y ?? 0,
+          footprint: hitState?.beamFootprint ?? 0,
+          dashOffset: hitState
+            ? -hitState.fraction * entry.pathLength + hitState.beamFootprint / 2
+            : 0,
+        });
+        if (entry.frameSignature?.opacity !== frameSignature.opacity) {
+          entry.paths.forEach((path) => path.setAttribute("opacity", frameSignature.opacity));
+        }
+        if (!hitState || entry.paths.length === 0) {
+          entry.frameSignature = frameSignature;
+          return;
+        }
+        if (
+          entry.frameSignature?.x === frameSignature.x &&
+          entry.frameSignature?.y === frameSignature.y &&
+          entry.frameSignature?.footprint === frameSignature.footprint &&
+          entry.frameSignature?.dashOffset === frameSignature.dashOffset
+        ) return;
         entry.gradients.forEach((gradient) => {
-          gradient.setAttribute("cx", `${hitState.localPoint.x}`);
-          gradient.setAttribute("cy", `${hitState.localPoint.y}`);
+          gradient.setAttribute("cx", frameSignature.x);
+          gradient.setAttribute("cy", frameSignature.y);
           gradient.setAttribute("r", `${hitState.beamFootprint / 2}`);
         });
         entry.paths.forEach((path) => {
           path.style.strokeDasharray = `${hitState.beamFootprint} ${Math.max(1, entry.pathLength - hitState.beamFootprint)}`;
-          path.style.strokeDashoffset = `${-hitState.fraction * entry.pathLength + hitState.beamFootprint / 2}`;
+          path.style.strokeDashoffset = frameSignature.dashOffset;
         });
+        entry.frameSignature = frameSignature;
       });
       frame = requestAnimationFrame(tick);
     };
@@ -461,6 +505,7 @@ function LighthouseEdgeHighlights({ rootRef }: { rootRef: React.RefObject<HTMLDi
             gradients: [...svg.querySelectorAll<SVGRadialGradientElement>("radialGradient")],
             geometry: createLighthouseEdgeGeometry({ left: 0, top: 0, width: 0, height: 0 }),
             pathLength: 0,
+            frameSignature: null,
           };
         });
         refreshGeometry();
@@ -2033,7 +2078,7 @@ function CommandPaletteDark({
   onClose: () => void;
   inputRef: React.RefObject<HTMLInputElement | null>;
 }) {
-  const { setToolFavorite, favoritePendingIds } = useDashboardWorkspace();
+  const { setToolFavorite, favoritePendingIds } = useDashboardWorkspaceActions();
 
   return (
     <div

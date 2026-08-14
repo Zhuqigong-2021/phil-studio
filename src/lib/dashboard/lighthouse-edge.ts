@@ -13,6 +13,24 @@ export type LighthouseEdgeGeometry = LighthouseRect & {
   pathData: string;
 };
 
+export type LighthouseEdgeFrame = {
+  opacity: number;
+  x: number;
+  y: number;
+  footprint: number;
+  dashOffset: number;
+};
+
+export function createLighthouseEdgeFrameSignature(frame: LighthouseEdgeFrame) {
+  return {
+    opacity: frame.opacity.toFixed(3),
+    x: frame.x.toFixed(3),
+    y: frame.y.toFixed(3),
+    footprint: frame.footprint.toFixed(3),
+    dashOffset: frame.dashOffset.toFixed(3),
+  };
+}
+
 function rayHit(
   rect: LighthouseRect,
   source: LighthousePoint,

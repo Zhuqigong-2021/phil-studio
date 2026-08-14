@@ -418,6 +418,15 @@ test("returning to the dashboard refetches only when the authoritative snapshot 
   assert.match(effectBody, /removeEventListener\("focus", refreshFromServer\)/);
 });
 
+test("confirmed mutation responses do not schedule a redundant full workspace fetch", () => {
+  const source = readFileSync(new URL("./useCustomTools.ts", import.meta.url), "utf8");
+
+  assert.doesNotMatch(source, /WORKSPACE_RECONCILE_DELAY_MS/);
+  assert.doesNotMatch(source, /scheduleReconciliation/);
+  assert.doesNotMatch(source, /reconcileTimerRef/);
+  assert.match(source, /addEventListener\("focus", refreshFromServer\)/);
+});
+
 test("concurrent hook startup shares one migration and snapshot request", async () => {
   const storage = new MemoryStorage();
   const migration = deferred<WorkspaceSnapshot>();
