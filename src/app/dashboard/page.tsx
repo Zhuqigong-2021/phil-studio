@@ -961,7 +961,7 @@ function StatCard({
             background:
               "linear-gradient(135deg, rgba(139,122,246,0.1), rgba(103,232,249,0.025))",
             boxShadow:
-              "inset 0 0 0 1px rgba(139, 122, 246, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 0 0 1px rgba(129, 107, 255, 0.12), 0 8px 24px rgba(79, 55, 180, 0.16)",
+              "inset 0 0 0 1px rgba(139, 122, 246, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 8px 24px rgba(79, 55, 180, 0.16)",
           }}
           transition={{ type: "spring", duration: 0.28, bounce: 0.08 }}
         />
