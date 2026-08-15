@@ -3,7 +3,6 @@
 import React from "react";
 import { createPortal, flushSync } from "react-dom";
 import { useRouter } from "next/navigation";
-import dynamic from "next/dynamic";
 import gsap from "gsap";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import "./dashboard.css";
@@ -121,32 +120,11 @@ import {
   useDashboardTools,
   useDashboardWorkspaceActions,
 } from "@/components/dashboard/DashboardWorkspaceProvider";
-
-const WorkspaceSplashCursor = dynamic(
-  () => import("@/components/dashboard/WorkspaceSplashCursor"),
-  { ssr: false },
-);
-const EnergySandVolume = dynamic(
-  () => import("@/components/dashboard/EnergySandVolume"),
-  {
-    ssr: false,
-    loading: () => <div aria-hidden="true" className="energy-sand-volume" style={{ width: "100%", height: "100%" }} />,
-  },
-);
-const MagicRings = dynamic(
-  () => import("@/components/dashboard/MagicRings"),
-  {
-    ssr: false,
-    loading: () => <div aria-hidden="true" className="magic-rings-container" />,
-  },
-);
-const SideRays = dynamic(
-  () => import("@/components/dashboard/SideRays"),
-  {
-    ssr: false,
-    loading: () => <div aria-hidden="true" className="side-rays-container" />,
-  },
-);
+import DashboardVisualRuntime, {
+  EnergySandVolume,
+  MagicRings,
+  SideRays,
+} from "@/components/dashboard/DashboardVisualRuntime";
 
 const toolUrlById = new Map(TOOLS_RAW.map((tool) => [tool.id, tool.url]));
 
@@ -5565,7 +5543,7 @@ function DashboardPageContent({
       className="dashboard-motion-root relative w-full h-screen overflow-hidden bg-[#020817] flex max-[950px]:h-auto max-[950px]:min-h-screen max-[950px]:overflow-y-auto max-[950px]:overflow-x-hidden [&::-webkit-scrollbar]:hidden"
       style={{ scrollbarWidth: "none" }}
     >
-      <WorkspaceSplashCursor />
+      <DashboardVisualRuntime />
       {backgroundMode === "photo" && <LighthouseEdgeHighlights rootRef={rootRef} />}
       {/* Background: sharp photo + blurred glow version behind. Below 951px the page scrolls
           and grows well past one viewport — without a cap this box (and every "inset-0" layer
