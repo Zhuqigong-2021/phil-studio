@@ -56,6 +56,7 @@ export function PersistentMusicProvider({ children }: { children: React.ReactNod
   const [volume, setVolumeState] = React.useState(1);
   const [showLyrics, setShowLyricsState] = React.useState(false);
   const [timingStore] = React.useState(createMusicTimingStore);
+  const nextTrackIndex = (currentIndex + 1) % TRACKS.length;
 
   // Browser-only preference hydration intentionally happens after mount so the
   // server and first client render remain identical.
@@ -141,6 +142,7 @@ export function PersistentMusicProvider({ children }: { children: React.ReactNod
       {children}
       <audio
         ref={audioRef}
+        preload="auto"
         src={TRACKS[currentIndex].src}
         onTimeUpdate={(event) => timingStore.update({
           currentTime: event.currentTarget.currentTime,
@@ -155,6 +157,11 @@ export function PersistentMusicProvider({ children }: { children: React.ReactNod
         onPause={() => setIsPlaying(false)}
         onEnded={handleEnded}
         onError={() => setIsPlaying(false)}
+      />
+      <audio
+        aria-hidden="true"
+        preload="metadata"
+        src={TRACKS[nextTrackIndex].src}
       />
       </MusicTimingContext.Provider>
     </PersistentMusicContext.Provider>

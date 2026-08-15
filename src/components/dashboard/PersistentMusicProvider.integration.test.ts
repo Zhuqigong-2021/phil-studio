@@ -28,3 +28,10 @@ test("stable playback consumers do not subscribe to transient time updates", () 
   assert.match(dashboard, /function MusicPlayerPanel[\s\S]*?usePersistentMusicTiming\(\)/);
   assert.doesNotMatch(dashboard, /function useMusicPlayer\(\)[\s\S]{0,900}usePersistentMusicTiming/);
 });
+
+test("preloads only the current track and next track metadata", () => {
+  assert.match(provider, /const nextTrackIndex = \(currentIndex \+ 1\) % TRACKS\.length/);
+  assert.match(provider, /<audio[\s\S]*?preload="auto"[\s\S]*?src=\{TRACKS\[currentIndex\]\.src\}/);
+  assert.match(provider, /<audio[\s\S]*?aria-hidden="true"[\s\S]*?preload="metadata"[\s\S]*?src=\{TRACKS\[nextTrackIndex\]\.src\}/);
+  assert.doesNotMatch(provider, /TRACKS\.map\([\s\S]*?preload/);
+});
