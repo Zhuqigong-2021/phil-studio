@@ -7,12 +7,12 @@ import { TRACKS } from "./music.ts";
 test("Sold Out track points to its lyric timeline", () => {
   const track = TRACKS.find((candidate) => candidate.title === "Sold Out");
 
-  assert.equal(track?.lyricsSlug, "Soldout");
+  assert.equal(track?.lyricsSlug, "soldout");
 });
 
 test("Sold Out lyric API parses the bracketed timeline", async () => {
-  const response = await GET(new Request("http://localhost/api/lyrics/Soldout"), {
-    params: Promise.resolve({ slug: "Soldout" }),
+  const response = await GET(new Request("http://localhost/api/lyrics/soldout"), {
+    params: Promise.resolve({ slug: "soldout" }),
   });
   const payload = (await response.json()) as {
     lines?: Array<{ time: number; text: string }>;
