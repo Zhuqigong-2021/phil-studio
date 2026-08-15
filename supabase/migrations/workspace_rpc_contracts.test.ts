@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-const snapshotSql = readFileSync(new URL("./20260815004038_add_workspace_snapshot_rpc.sql", import.meta.url), "utf8");
-const createSql = readFileSync(new URL("./20260815004040_add_atomic_workspace_create.sql", import.meta.url), "utf8");
+const snapshotSql = readFileSync(new URL("./20260815012927_add_workspace_snapshot_rpc.sql", import.meta.url), "utf8");
+const createSql = readFileSync(new URL("./20260815013031_add_atomic_workspace_create.sql", import.meta.url), "utf8");
 
 test("snapshot RPC is caller-scoped, deterministic, and always returns JSON arrays", () => {
   assert.match(snapshotSql, /get_workspace_snapshot\(\s*p_owner_email text\s*\)\s*returns jsonb/i);
