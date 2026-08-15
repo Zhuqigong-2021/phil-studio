@@ -154,6 +154,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_workspace_tool: {
+        Args: {
+          p_category_ids: string[]
+          p_owner_email: string
+          p_tool: Json
+        }
+        Returns: Database["public"]["Tables"]["tools"]["Row"]
+      }
+      get_workspace_snapshot: {
+        Args: {
+          p_owner_email: string
+        }
+        Returns: Json
+      }
       patch_workspace_tool: {
         Args: {
           p_category_ids?: string[]
