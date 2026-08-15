@@ -72,3 +72,11 @@ test("the edge overlay does not restack glass-panel children or the marquee", ()
   assert.doesNotMatch(css, /\[data-lighthouse-edge\]\s*>/);
   assert.equal(/\.all-tools-marquee-track[^}]*z-index/.test(css.replace(/\r?\n/g, " ")), false);
 });
+
+test("scrolling refreshes viewport-relative edge geometry without measuring every animation frame", () => {
+  assert.match(page, /const scheduleGeometryRefresh = \(\) =>/);
+  assert.match(page, /window\.addEventListener\("scroll", scheduleGeometryRefresh, \{ passive: true \}\)/);
+  assert.match(page, /window\.removeEventListener\("scroll", scheduleGeometryRefresh\)/);
+  assert.match(page, /cancelAnimationFrame\(geometryFrame\)/);
+  assert.doesNotMatch(page, /const tick = \(time: number\) => \{[\s\S]*?entry\.card\.getBoundingClientRect\(\)/);
+});

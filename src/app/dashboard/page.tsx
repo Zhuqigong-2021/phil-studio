@@ -291,6 +291,7 @@ function LighthouseEdgeHighlights({ rootRef }: { rootRef: React.RefObject<HTMLDi
     if (!desktop.matches || reducedMotion.matches) return;
 
     let frame = 0;
+    let geometryFrame = 0;
     let running = false;
     let lastTime = performance.now();
     const levels: number[] = [];
@@ -331,6 +332,11 @@ function LighthouseEdgeHighlights({ rootRef }: { rootRef: React.RefObject<HTMLDi
         const beaconRect = cachedBeacon.getBoundingClientRect();
         cachedSource = { x: beaconRect.left, y: beaconRect.top };
       }
+    };
+
+    const scheduleGeometryRefresh = () => {
+      cancelAnimationFrame(geometryFrame);
+      geometryFrame = requestAnimationFrame(refreshGeometry);
     };
 
     const tick = (time: number) => {
@@ -489,6 +495,7 @@ function LighthouseEdgeHighlights({ rootRef }: { rootRef: React.RefObject<HTMLDi
     const stop = () => {
       running = false;
       cancelAnimationFrame(frame);
+      cancelAnimationFrame(geometryFrame);
       resizeObserver?.disconnect();
       resizeObserver = null;
       highlightCache = [];
@@ -499,12 +506,14 @@ function LighthouseEdgeHighlights({ rootRef }: { rootRef: React.RefObject<HTMLDi
     window.addEventListener("phil-studio:dashboard-entrance-complete", start);
     window.addEventListener("phil-studio:tool-library-transition-start", stop);
     window.addEventListener("resize", refreshGeometry);
+    window.addEventListener("scroll", scheduleGeometryRefresh, { passive: true });
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
       stop();
       window.removeEventListener("phil-studio:dashboard-entrance-complete", start);
       window.removeEventListener("phil-studio:tool-library-transition-start", stop);
       window.removeEventListener("resize", refreshGeometry);
+      window.removeEventListener("scroll", scheduleGeometryRefresh);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [rootRef]);
