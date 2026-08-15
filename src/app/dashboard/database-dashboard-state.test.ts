@@ -8,12 +8,15 @@ test("dashboard uses one workspace snapshot for counts, favorites, and mutations
   const source = await readFile(pageUrl, "utf8");
 
   assert.doesNotMatch(source, /import\s+\{\s*useFavorites\s*\}/);
-  assert.match(source, /const DashboardWorkspaceContext = React\.createContext<ReturnType<typeof useCustomTools> \| null>\(null\)/);
-  assert.match(source, /export function useDashboardWorkspace\(\)/);
-  assert.match(source, /function DashboardWorkspaceProvider\(\{ children \}: \{ children: React\.ReactNode \}\)/);
+  assert.match(source, /DashboardWorkspaceProvider/);
+  assert.match(source, /useDashboardTools/);
+  assert.match(source, /useDashboardCategories/);
+  assert.match(source, /useDashboardWorkspaceActions/);
+  assert.match(source, /from "@\/components\/dashboard\/DashboardWorkspaceProvider"/);
+  assert.doesNotMatch(source, /const DashboardWorkspaceContext = React\.createContext/);
 
   const customToolCalls = source.match(/useCustomTools\(\)/g) ?? [];
-  assert.equal(customToolCalls.length, 1);
+  assert.equal(customToolCalls.length, 0);
   assert.match(source, /function DashboardPageContent\(\{/);
   assert.match(source, /<DashboardWorkspaceProvider>[\s\S]*<DashboardPageContent[\s\S]*mainContent=\{mainContent\}[\s\S]*activeRoute=\{activeRoute\}[\s\S]*backgroundMode=\{backgroundMode\}[\s\S]*<\/DashboardWorkspaceProvider>/);
 
@@ -21,6 +24,8 @@ test("dashboard uses one workspace snapshot for counts, favorites, and mutations
   assert.match(source, /if \(favoritePendingIds\.includes\(id\)\) return/);
   assert.match(source, /disabled=\{favoritePendingIds\.includes\(t\.id\)\}/);
   assert.match(source, /LoaderCircle/);
+  assert.match(source, /const tools = useDashboardTools\(\)/);
+  assert.match(source, /const categories = useDashboardCategories\(\)/);
   assert.match(source, /const categoryCount = categories\.length/);
   assert.match(source, /view\.tool\.favorite \|\| favoritePendingIds\.includes\(view\.id\)/);
   assert.match(source, /const favoriteCount = favoriteTools\.length/);

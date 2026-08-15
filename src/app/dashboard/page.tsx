@@ -112,7 +112,15 @@ import { useDailyTasks } from "@/hooks/useDailyTasks";
 import { formatTaskTime, type DailyTask } from "@/lib/dashboard/daily-tasks";
 import { useFocusLog } from "@/hooks/useFocusLog";
 import type { FocusEntry } from "@/lib/dashboard/focus-log";
-import { useCustomTools } from "@/hooks/useCustomTools";
+import {
+  DashboardWorkspaceProvider,
+  useDashboardAddToolWorkspace,
+  useDashboardCategories,
+  useDashboardPendingState,
+  useDashboardPinnedToolIds,
+  useDashboardTools,
+  useDashboardWorkspaceActions,
+} from "@/components/dashboard/DashboardWorkspaceProvider";
 
 const WorkspaceSplashCursor = dynamic(
   () => import("@/components/dashboard/WorkspaceSplashCursor"),
@@ -155,40 +163,6 @@ interface DashboardToolView {
   shadow: string;
   href?: string;
   tool: Tool;
-}
-
-const DashboardWorkspaceContext = React.createContext<ReturnType<typeof useCustomTools> | null>(null);
-type DashboardWorkspaceActions = Pick<
-  ReturnType<typeof useCustomTools>,
-  "setToolFavorite" | "favoritePendingIds"
->;
-const DashboardWorkspaceActionsContext = React.createContext<DashboardWorkspaceActions | null>(null);
-
-export function useDashboardWorkspace() {
-  const workspace = React.useContext(DashboardWorkspaceContext);
-  if (!workspace) throw new Error("Dashboard workspace is unavailable.");
-  return workspace;
-}
-
-function useDashboardWorkspaceActions() {
-  const actions = React.useContext(DashboardWorkspaceActionsContext);
-  if (!actions) throw new Error("Dashboard workspace actions are unavailable.");
-  return actions;
-}
-
-function DashboardWorkspaceProvider({ children }: { children: React.ReactNode }) {
-  const workspace = useCustomTools();
-  const actions = React.useMemo(() => ({
-    setToolFavorite: workspace.setToolFavorite,
-    favoritePendingIds: workspace.favoritePendingIds,
-  }), [workspace.favoritePendingIds, workspace.setToolFavorite]);
-  return (
-    <DashboardWorkspaceActionsContext.Provider value={actions}>
-      <DashboardWorkspaceContext.Provider value={workspace}>
-        {children}
-      </DashboardWorkspaceContext.Provider>
-    </DashboardWorkspaceActionsContext.Provider>
-  );
 }
 
 function DashboardBackground() {
@@ -2078,7 +2052,8 @@ function CommandPaletteDark({
   onClose: () => void;
   inputRef: React.RefObject<HTMLInputElement | null>;
 }) {
-  const { setToolFavorite, favoritePendingIds } = useDashboardWorkspaceActions();
+  const { setToolFavorite } = useDashboardWorkspaceActions();
+  const { favoritePendingIds } = useDashboardPendingState();
 
   return (
     <div
@@ -2209,7 +2184,7 @@ function CommandPaletteDark({
 // Search bar + ⌘K command palette — extracted so it can render either in the topbar
 // (>=951px) or as its own full-width row under the greeting in HeroSection (<951px).
 function useToolViews(): DashboardToolView[] {
-  const { tools } = useDashboardWorkspace();
+  const tools = useDashboardTools();
   return React.useMemo(() => {
     return tools.map((tool) => {
       const rgb = toolColorRgb(tool.accent);
@@ -3125,8 +3100,8 @@ function HeroSection() {
   const [stackQuickAccess, setStackQuickAccess] = React.useState(false);
   const quickAccessScrollRef = React.useRef<HTMLDivElement>(null);
   const toolViews = useToolViews();
-  const workspace = useDashboardWorkspace();
-  const { pinnedToolIds } = workspace;
+  const addToolWorkspace = useDashboardAddToolWorkspace();
+  const pinnedToolIds = useDashboardPinnedToolIds();
 
   React.useEffect(() => {
     const update = () => {
@@ -3242,7 +3217,7 @@ function HeroSection() {
             <AddToolModal
               open={addToolOpen}
               onClose={() => setAddToolOpen(false)}
-              workspace={workspace}
+              workspace={addToolWorkspace}
             />,
             document.body,
           )
@@ -5169,7 +5144,8 @@ const categoryBarColors = [
 ];
 
 function CategoriesPanel() {
-  const { tools, categories } = useDashboardWorkspace();
+  const tools = useDashboardTools();
+  const categories = useDashboardCategories();
   const categoryStats = React.useMemo(
     () => buildCategoryStats(tools, categories),
     [categories, tools],
@@ -5525,7 +5501,10 @@ function DashboardPageContent({
   const narrowNav = useBelowWidth(MOBILE_NAV_BREAKPOINT);
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const toolViews = useToolViews();
-  const { tools, categories, setToolFavorite, favoritePendingIds } = useDashboardWorkspace();
+  const tools = useDashboardTools();
+  const categories = useDashboardCategories();
+  const { setToolFavorite } = useDashboardWorkspaceActions();
+  const { favoritePendingIds } = useDashboardPendingState();
   const categoryCount = categories.length;
 
   const [activeStat, setActiveStat] = React.useState<StatKey>("recent");

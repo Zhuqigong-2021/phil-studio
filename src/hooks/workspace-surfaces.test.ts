@@ -34,8 +34,16 @@ test("recent surfaces consume the server-backed workspace snapshot", () => {
 
 test("dashboard favorite controls call the shared persistent mutation", () => {
   const source = readFileSync(new URL("../app/dashboard/page.tsx", import.meta.url), "utf8");
-  assert.match(source, /const DashboardWorkspaceContext = React\.createContext<ReturnType<typeof useCustomTools> \| null>\(null\)/);
-  assert.match(source, /const \{ tools, categories, setToolFavorite, favoritePendingIds \} = useDashboardWorkspace\(\)/);
+  const provider = readFileSync(new URL("../components/dashboard/DashboardWorkspaceProvider.tsx", import.meta.url), "utf8");
+  assert.match(provider, /export function useDashboardTools\(\)/);
+  assert.match(provider, /export function useDashboardCategories\(\)/);
+  assert.match(provider, /export function useDashboardPinnedToolIds\(\)/);
+  assert.match(provider, /export function useDashboardFavorites\(\)/);
+  assert.match(provider, /export function useDashboardPendingState\(\)/);
+  assert.match(provider, /export function useDashboardWorkspaceActions\(\)/);
+  assert.match(source, /useDashboardTools\(\)/);
+  assert.match(source, /useDashboardCategories\(\)/);
+  assert.match(source, /useDashboardWorkspaceActions\(\)/);
   assert.match(source, /void setToolFavorite\(id, !currentFavorite\)\.catch\(\(\) => undefined\)/);
   assert.match(source, /void setToolFavorite\(t\.id, !isFavorite\)\.catch\(\(\) => undefined\)/);
   assert.doesNotMatch(source, /useFavorites\(\)/);
