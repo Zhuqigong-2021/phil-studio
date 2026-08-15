@@ -1,7 +1,9 @@
 // Adapted from React Bits' Side Rays (https://reactbits.dev/backgrounds/side-rays) —
 // a WebGL shader that casts two blended light-ray beams outward from a corner.
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect } from "react";
+import { useReducedMotion } from "motion/react";
 import { Renderer, Program, Triangle, Mesh } from "ogl";
+import { useVisualRuntimeActivity } from "@/hooks/useVisualRuntimeActivity";
 import "./SideRays.css";
 
 const hexToRgb = (hex) => {
@@ -44,41 +46,15 @@ const SideRays = ({
   const animationIdRef = useRef(null);
   const meshRef = useRef(null);
   const cleanupFunctionRef = useRef(null);
-  const [isVisible, setIsVisible] = useState(false);
-  const [isPageVisible, setIsPageVisible] = useState(() =>
-    typeof document === "undefined" ? true : !document.hidden
-  );
-  const observerRef = useRef(null);
+  const reducedMotion = Boolean(useReducedMotion());
+  const runtimeActive = useVisualRuntimeActivity({
+    elementRef: containerRef,
+    reducedMotion,
+  });
 
   useEffect(() => {
-    if (!containerRef.current) return;
-
-    observerRef.current = new IntersectionObserver(
-      (entries) => {
-        const entry = entries[0];
-        setIsVisible(entry.isIntersecting);
-      },
-      { threshold: 0.1 }
-    );
-
-    observerRef.current.observe(containerRef.current);
-
-    return () => {
-      if (observerRef.current) {
-        observerRef.current.disconnect();
-        observerRef.current = null;
-      }
-    };
-  }, []);
-
-  useEffect(() => {
-    const onVisibility = () => setIsPageVisible(!document.hidden);
-    document.addEventListener("visibilitychange", onVisibility);
-    return () => document.removeEventListener("visibilitychange", onVisibility);
-  }, []);
-
-  useEffect(() => {
-    if (!isVisible || !isPageVisible || !containerRef.current) return;
+    if (!runtimeActive || !containerRef.current) return;
+    let cancelled = false;
 
     if (cleanupFunctionRef.current) {
       cleanupFunctionRef.current();
@@ -90,7 +66,7 @@ const SideRays = ({
 
       await new Promise((resolve) => setTimeout(resolve, 10));
 
-      if (!containerRef.current) return;
+      if (cancelled || !containerRef.current) return;
 
       const renderer = new Renderer({
         dpr: Math.min(window.devicePixelRatio, 2),
@@ -253,12 +229,13 @@ void main() {
     initializeWebGL();
 
     return () => {
+      cancelled = true;
       if (cleanupFunctionRef.current) {
         cleanupFunctionRef.current();
         cleanupFunctionRef.current = null;
       }
     };
-  }, [isVisible, isPageVisible, speed, rayColor1, rayColor2, intensity, spread, origin, tilt, saturation, blend, falloff, opacity]);
+  }, [runtimeActive, speed, rayColor1, rayColor2, intensity, spread, origin, tilt, saturation, blend, falloff, opacity]);
 
   useEffect(() => {
     if (!uniformsRef.current) return;
