@@ -9,6 +9,7 @@ import {
   getWorkspaceSnapshot,
   migrateLocalWorkspace,
   patchWorkspaceTool,
+  workspaceToolRpcPayload,
   WorkspaceRpcUnavailableError,
   type WorkspaceDatabasePort,
 } from "./workspace-repository.ts";
@@ -225,6 +226,13 @@ test("creates a tool through one atomic mutation without compensating delete", a
   assert.equal(port.createAtomicCalls.length, 1);
   assert.deepEqual(port.createAtomicCalls[0]?.categoryIds, ["work"]);
   assert.deepEqual(port.deletedToolIds, []);
+});
+
+test("removes owner identity from atomic create payloads", () => {
+  const payload = workspaceToolRpcPayload(toolRow({ id: "rpc-create" }));
+
+  assert.equal("owner_email" in payload, false);
+  assert.equal(payload.id, "rpc-create");
 });
 
 test("falls back only when the new RPC is unavailable during a rolling migration", async () => {

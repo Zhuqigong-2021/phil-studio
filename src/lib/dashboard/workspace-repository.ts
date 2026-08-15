@@ -63,6 +63,12 @@ export class WorkspaceRpcUnavailableError extends Error {
   }
 }
 
+export function workspaceToolRpcPayload(row: TablesInsert<"tools">): Omit<TablesInsert<"tools">, "owner_email"> {
+  const { owner_email: ownerEmail, ...payload } = row;
+  void ownerEmail;
+  return payload;
+}
+
 function isMissingRpcError(error: WorkspaceDatabaseError | null): boolean {
   return error?.code === "42883" || error?.code === "PGRST202";
 }
@@ -91,7 +97,7 @@ async function createSupabasePort(): Promise<WorkspaceDatabasePort> {
     async createToolAtomic(ownerEmail, row, categoryIds) {
       const { data, error } = await client.rpc("create_workspace_tool", {
         p_owner_email: ownerEmail,
-        p_tool: row as unknown as Json,
+        p_tool: workspaceToolRpcPayload(row) as unknown as Json,
         p_category_ids: [...categoryIds],
       });
       if (isMissingRpcError(error)) throw new WorkspaceRpcUnavailableError();
