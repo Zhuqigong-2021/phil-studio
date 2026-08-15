@@ -3129,7 +3129,7 @@ function HeroSection() {
   const quickAccessPanel = (
     <GlassPanel
       lighthouseEdge
-      className="h-[20.6vh] flex flex-col px-5 py-4"
+      className="h-[20.6vh] min-h-[156px] min-[951px]:min-h-0 flex flex-col px-5 py-4"
       tint="68,60,92"
       opacity={0.27}
       blur="13px"
