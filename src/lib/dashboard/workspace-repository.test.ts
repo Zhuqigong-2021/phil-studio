@@ -9,6 +9,7 @@ import {
   getWorkspaceSnapshot,
   migrateLocalWorkspace,
   patchWorkspaceTool,
+  WorkspaceRpcUnavailableError,
   type WorkspaceDatabasePort,
 } from "./workspace-repository.ts";
 
@@ -145,6 +146,102 @@ class MemoryPort implements WorkspaceDatabasePort {
     return this.tools[index];
   }
 }
+
+class AtomicMemoryPort extends MemoryPort {
+  snapshotAtomicCalls: string[] = [];
+  createAtomicCalls: Array<{
+    ownerEmail: string;
+    row: TablesInsert<"tools">;
+    categoryIds: readonly string[];
+  }> = [];
+
+  async getSnapshotAtomic(ownerEmail: string) {
+    this.snapshotAtomicCalls.push(ownerEmail);
+    return {
+      tools: this.tools.filter((row) => row.owner_email === ownerEmail),
+      categories: this.categories.filter((row) => row.owner_email === ownerEmail),
+      relationships: this.relationships.filter((relationship) => {
+        const tool = this.tools.find((row) => row.id === relationship.tool_id);
+        const category = this.categories.find((row) => row.id === relationship.category_id);
+        return tool?.owner_email === ownerEmail && category?.owner_email === ownerEmail;
+      }),
+    };
+  }
+
+  async createToolAtomic(ownerEmail: string, row: TablesInsert<"tools">, categoryIds: readonly string[]) {
+    this.createAtomicCalls.push({ ownerEmail, row, categoryIds });
+    const created = toolRow({ ...row, owner_email: ownerEmail, created_at: row.created_at ?? NOW, updated_at: row.updated_at ?? NOW });
+    this.tools.push(created);
+    this.relationships.push(...categoryIds.map((category_id) => ({ tool_id: created.id, category_id, created_at: NOW })));
+    return created;
+  }
+}
+
+class UnavailableAtomicPort extends MemoryPort {
+  async getSnapshotAtomic(): Promise<never> {
+    throw new WorkspaceRpcUnavailableError();
+  }
+
+  async createToolAtomic(): Promise<never> {
+    throw new WorkspaceRpcUnavailableError();
+  }
+}
+
+test("uses one atomic snapshot call and preserves the existing domain mapping", async () => {
+  const port = new AtomicMemoryPort();
+  port.tools.push(toolRow({ id: "ap", is_pinned: true, is_favorite: true }));
+  port.categories.push({ id: "work", owner_email: OWNER, name: "Work", sort_order: 0, created_at: NOW, updated_at: NOW });
+  port.relationships.push({ tool_id: "ap", category_id: "work", created_at: NOW });
+
+  const snapshot = await getWorkspaceSnapshot(OWNER, port);
+
+  assert.deepEqual(port.snapshotAtomicCalls, [OWNER]);
+  assert.equal(port.ownerQueries.length, 0);
+  assert.deepEqual(snapshot.categories, ["Work"]);
+  assert.deepEqual(snapshot.tools[0]?.tags, ["Work"]);
+  assert.deepEqual(snapshot.pinnedToolIds, ["ap"]);
+});
+
+test("maps an empty atomic workspace without issuing granular reads", async () => {
+  const port = new AtomicMemoryPort();
+
+  const snapshot = await getWorkspaceSnapshot(OWNER, port);
+
+  assert.deepEqual(port.snapshotAtomicCalls, [OWNER]);
+  assert.deepEqual(snapshot, { tools: [], categories: [], pinnedToolIds: [], recentTools: [] });
+});
+
+test("creates a tool through one atomic mutation without compensating delete", async () => {
+  const port = new AtomicMemoryPort();
+  port.categories.push({ id: "work", owner_email: OWNER, name: "Work", sort_order: 0, created_at: NOW, updated_at: NOW });
+
+  const created = await createWorkspaceTool(OWNER, {
+    name: "Atomic Tool", url: "https://example.com", description: "", iconKey: "globe",
+    accent: "blue", tags: ["Work"], aliases: [], sourceType: "external",
+  }, true, port, "atomic-tool");
+
+  assert.equal(created.id, "atomic-tool");
+  assert.deepEqual(created.tags, ["Work"]);
+  assert.equal(port.createAtomicCalls.length, 1);
+  assert.deepEqual(port.createAtomicCalls[0]?.categoryIds, ["work"]);
+  assert.deepEqual(port.deletedToolIds, []);
+});
+
+test("falls back only when the new RPC is unavailable during a rolling migration", async () => {
+  const port = new UnavailableAtomicPort();
+  port.tools.push(toolRow({ id: "ap" }));
+  port.categories.push({ id: "work", owner_email: OWNER, name: "Work", sort_order: 0, created_at: NOW, updated_at: NOW });
+
+  const snapshot = await getWorkspaceSnapshot(OWNER, port);
+  const created = await createWorkspaceTool(OWNER, {
+    name: "Fallback Tool", url: "https://example.com", description: "", iconKey: "globe",
+    accent: "blue", tags: ["Work"], aliases: [], sourceType: "external",
+  }, false, port, "fallback-tool");
+
+  assert.equal(snapshot.tools[0]?.id, "ap");
+  assert.equal(created.id, "fallback-tool");
+  assert.equal(port.tools.some((tool) => tool.id === "fallback-tool"), true);
+});
 
 test("owner-scopes every tool/category query and assembles a snapshot after all query groups succeed", async () => {
   const port = new MemoryPort();

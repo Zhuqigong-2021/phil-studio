@@ -1,4 +1,4 @@
-import type { Tables, TablesInsert, TablesUpdate } from "../supabase/database.types.ts";
+import type { Json, Tables, TablesInsert, TablesUpdate } from "../supabase/database.types.ts";
 import { addCategoryToList, createCustomTool, type CustomToolDraft } from "./custom-tools.ts";
 import { TAGS, TOOLS_RAW } from "./mock-data.ts";
 import {
@@ -15,6 +15,11 @@ import type { Tool } from "./types.ts";
 type ToolRow = Tables<"tools">;
 type CategoryRow = Tables<"categories">;
 type RelationshipRow = Tables<"tool_categories">;
+type AtomicWorkspaceRows = {
+  tools: ToolRow[];
+  categories: CategoryRow[];
+  relationships: RelationshipRow[];
+};
 
 interface UpsertOptions {
   onConflict: "id";
@@ -22,6 +27,12 @@ interface UpsertOptions {
 }
 
 export interface WorkspaceDatabasePort {
+  getSnapshotAtomic?(ownerEmail: string): Promise<AtomicWorkspaceRows>;
+  createToolAtomic?(
+    ownerEmail: string,
+    row: TablesInsert<"tools">,
+    categoryIds: readonly string[],
+  ): Promise<ToolRow>;
   listTools(ownerEmail: string): Promise<ToolRow[]>;
   listCategories(ownerEmail: string): Promise<CategoryRow[]>;
   listRelationships(toolIds: readonly string[], categoryIds: readonly string[]): Promise<RelationshipRow[]>;
@@ -43,7 +54,20 @@ export interface WorkspaceDatabasePort {
   ): Promise<ToolRow | null>;
 }
 
-function throwOnError(error: { message: string } | null): void {
+type WorkspaceDatabaseError = { message: string; code?: string };
+
+export class WorkspaceRpcUnavailableError extends Error {
+  constructor() {
+    super("Workspace RPC is not available yet.");
+    this.name = "WorkspaceRpcUnavailableError";
+  }
+}
+
+function isMissingRpcError(error: WorkspaceDatabaseError | null): boolean {
+  return error?.code === "42883" || error?.code === "PGRST202";
+}
+
+function throwOnError(error: WorkspaceDatabaseError | null): void {
   if (error) throw new Error("Workspace database operation failed.", { cause: error });
 }
 
@@ -51,6 +75,30 @@ async function createSupabasePort(): Promise<WorkspaceDatabasePort> {
   const { getSupabaseServerClient } = await import("../supabase/server.ts");
   const client = getSupabaseServerClient();
   return {
+    async getSnapshotAtomic(ownerEmail) {
+      const { data, error } = await client.rpc("get_workspace_snapshot", { p_owner_email: ownerEmail });
+      if (isMissingRpcError(error)) throw new WorkspaceRpcUnavailableError();
+      throwOnError(error);
+      if (!data || typeof data !== "object" || Array.isArray(data)) {
+        throw new Error("Workspace database operation failed.");
+      }
+      const snapshot = data as Record<string, Json | undefined>;
+      if (!Array.isArray(snapshot.tools) || !Array.isArray(snapshot.categories) || !Array.isArray(snapshot.relationships)) {
+        throw new Error("Workspace database operation failed.");
+      }
+      return snapshot as unknown as AtomicWorkspaceRows;
+    },
+    async createToolAtomic(ownerEmail, row, categoryIds) {
+      const { data, error } = await client.rpc("create_workspace_tool", {
+        p_owner_email: ownerEmail,
+        p_tool: row as unknown as Json,
+        p_category_ids: [...categoryIds],
+      });
+      if (isMissingRpcError(error)) throw new WorkspaceRpcUnavailableError();
+      throwOnError(error);
+      if (!data) throw new Error("Workspace database operation failed.");
+      return data;
+    },
     async listTools(ownerEmail) {
       const { data, error } = await client.from("tools").select("*").eq("owner_email", ownerEmail).order("sort_order");
       throwOnError(error);
@@ -183,6 +231,14 @@ async function findOrCreateCategory(database: WorkspaceDatabasePort, ownerEmail:
 async function verifyOwnedRelationships(database: WorkspaceDatabasePort, ownerEmail: string, toolId: string, categoryNames: readonly string[]): Promise<CategoryRow[]> {
   const tool = await database.findTool(ownerEmail, toolId);
   if (!tool) throw new Error("Tool was not found for this owner.");
+  return resolveOwnedCategories(database, ownerEmail, categoryNames);
+}
+
+async function resolveOwnedCategories(
+  database: WorkspaceDatabasePort,
+  ownerEmail: string,
+  categoryNames: readonly string[],
+): Promise<CategoryRow[]> {
   const categories: CategoryRow[] = [];
   for (const name of categoryNames) {
     const category = await database.findCategory(ownerEmail, name);
@@ -230,6 +286,14 @@ function snapshotFromRows(tools: ToolRow[], categories: CategoryRow[], relations
 
 export async function getWorkspaceSnapshot(ownerEmail: string, port?: WorkspaceDatabasePort): Promise<WorkspaceSnapshot> {
   const database = await resolvePort(port);
+  if (database.getSnapshotAtomic) {
+    try {
+      const { tools, categories, relationships } = await database.getSnapshotAtomic(ownerEmail);
+      return snapshotFromRows(tools, categories, relationships);
+    } catch (error) {
+      if (!(error instanceof WorkspaceRpcUnavailableError)) throw error;
+    }
+  }
   const [tools, categories] = await Promise.all([
     database.listTools(ownerEmail),
     database.listCategories(ownerEmail),
@@ -276,7 +340,21 @@ export async function createWorkspaceTool(
 ): Promise<Tool> {
   const database = await resolvePort(port);
   const tool = createCustomTool(draft, id);
-  await database.insertTool(toolInsert(ownerEmail, tool, { is_pinned: pin }));
+  const row = toolInsert(ownerEmail, tool, { is_pinned: pin });
+  if (database.createToolAtomic) {
+    const categories = await resolveOwnedCategories(database, ownerEmail, tool.tags);
+    try {
+      const created = await database.createToolAtomic(
+        ownerEmail,
+        row,
+        categories.map((category) => category.id),
+      );
+      return toolRowToTool(created, categories.map((category) => category.name));
+    } catch (error) {
+      if (!(error instanceof WorkspaceRpcUnavailableError)) throw error;
+    }
+  }
+  await database.insertTool(row);
   try {
     const categories = await verifyOwnedRelationships(database, ownerEmail, id, tool.tags);
     await database.upsertRelationships(categories.map((category) => ({ tool_id: id, category_id: category.id })));
