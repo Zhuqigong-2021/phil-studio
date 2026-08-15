@@ -38,6 +38,7 @@ import {
   type WorkspaceSnapshot,
 } from "../lib/dashboard/workspace-data.ts";
 import type { Tool } from "../lib/dashboard/types.ts";
+import { createWorkspaceReadCoordinator } from "../lib/dashboard/workspace-read-coordinator.ts";
 
 export const SUPABASE_MIGRATED_KEY = "phil-studio:supabase-migrated:v1";
 const WORKSPACE_FOCUS_STALE_MS = 30_000;
@@ -275,24 +276,18 @@ export async function synchronizeWorkspace(
   return snapshot;
 }
 
-const workspaceSyncs = new WeakMap<object, WeakMap<object, Promise<WorkspaceSnapshot>>>();
+const workspaceSyncs = new WeakMap<object, ReturnType<typeof createWorkspaceReadCoordinator<WorkspaceSnapshot>>>();
 
 export function synchronizeWorkspaceOnce(
   storage: WorkspaceStorage,
   api: WorkspaceApi,
 ): Promise<WorkspaceSnapshot> {
-  let apiSyncs = workspaceSyncs.get(storage);
-  if (!apiSyncs) {
-    apiSyncs = new WeakMap();
-    workspaceSyncs.set(storage, apiSyncs);
+  let coordinator = workspaceSyncs.get(storage);
+  if (!coordinator) {
+    coordinator = createWorkspaceReadCoordinator<WorkspaceSnapshot>();
+    workspaceSyncs.set(storage, coordinator);
   }
-  const active = apiSyncs.get(api);
-  if (active) return active;
-  const request = synchronizeWorkspace(storage, api, false).finally(() => {
-    apiSyncs?.delete(api);
-  });
-  apiSyncs.set(api, request);
-  return request;
+  return coordinator.read(api, () => synchronizeWorkspace(storage, api, false)).promise;
 }
 
 export function mergeCreatedTool(current: WorkspaceSnapshot, tool: Tool, pin: boolean): WorkspaceSnapshot {
@@ -486,19 +481,24 @@ export function useCustomTools(api: WorkspaceApi = DEFAULT_WORKSPACE_API) {
   }, [api, applyWorkspace]);
 
   const refreshTools = useCallback(async (): Promise<WorkspaceSnapshot> => {
+    const requestId = syncGuardRef.current.begin(revisionRef.current);
     setLoading(true);
     setSyncError(null);
     try {
-      return await refreshWorkspaceTools(api, (snapshot) => {
+      const snapshot = await synchronizeWorkspaceOnce(window.localStorage, api);
+      if (syncGuardRef.current.isCurrent(requestId, revisionRef.current)) {
         hasAuthoritativeWorkspaceRef.current = true;
         lastAuthoritativeSyncAtRef.current = Date.now();
         applyWorkspace(snapshot);
-      });
+      }
+      return snapshot;
     } catch (error) {
-      setSyncError("Workspace synchronization failed.");
+      if (syncGuardRef.current.isLatest(requestId)) {
+        setSyncError("Workspace synchronization failed.");
+      }
       throw error;
     } finally {
-      setLoading(false);
+      if (syncGuardRef.current.isLatest(requestId)) setLoading(false);
     }
   }, [api, applyWorkspace]);
 
