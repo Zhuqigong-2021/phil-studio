@@ -273,8 +273,49 @@ async function requestWorkspace<T>(
   }
 }
 
-export function fetchWorkspaceSnapshot(fetcher: typeof fetch = fetch): Promise<WorkspaceSnapshot> {
-  return requestWorkspace<WorkspaceSnapshot>("/api/workspace-data", { method: "GET" }, fetcher);
+export interface WorkspaceReadRetryOptions {
+  delaysMs?: readonly number[];
+  sleep?: (delayMs: number) => Promise<void>;
+  signal?: AbortSignal;
+}
+
+function shouldRetryWorkspaceRead(error: unknown): boolean {
+  return error instanceof WorkspaceSyncError
+    && (error.networkFailure || error.status === 408 || error.status === 429 || (error.status !== null && error.status >= 500));
+}
+
+function waitForWorkspaceRetry(delayMs: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(signal.reason ?? new DOMException("The operation was aborted.", "AbortError"));
+      return;
+    }
+    const timer = setTimeout(resolve, delayMs);
+    signal?.addEventListener("abort", () => {
+      clearTimeout(timer);
+      reject(signal.reason ?? new DOMException("The operation was aborted.", "AbortError"));
+    }, { once: true });
+  });
+}
+
+export async function fetchWorkspaceSnapshot(
+  fetcher: typeof fetch = fetch,
+  options: WorkspaceReadRetryOptions = {},
+): Promise<WorkspaceSnapshot> {
+  const delaysMs = options.delaysMs ?? [250, 750];
+  const sleep = options.sleep ?? ((delayMs: number) => waitForWorkspaceRetry(delayMs, options.signal));
+  for (let attempt = 0; ; attempt += 1) {
+    try {
+      return await requestWorkspace<WorkspaceSnapshot>(
+        "/api/workspace-data",
+        { method: "GET", signal: options.signal },
+        fetcher,
+      );
+    } catch (error) {
+      if (options.signal?.aborted || attempt >= delaysMs.length || !shouldRetryWorkspaceRead(error)) throw error;
+      await sleep(delaysMs[attempt]);
+    }
+  }
 }
 
 export function migrateWorkspaceSnapshot(payload: LocalMigrationPayload, fetcher: typeof fetch = fetch): Promise<WorkspaceSnapshot> {

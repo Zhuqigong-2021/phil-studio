@@ -2,6 +2,7 @@
 
 import React from "react";
 import { createPortal, flushSync } from "react-dom";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import gsap from "gsap";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
@@ -202,16 +203,23 @@ function DashboardBackground() {
   return (
     <div ref={rootRef} className="absolute inset-0 overflow-hidden">
       <div ref={blurLayerRef} className="dashboard-background-parallax-layer absolute inset-0">
-        <img
+        <Image
           alt=""
           src={imgBg}
+          fill
+          sizes="100vw"
+          unoptimized
           className="dashboard-background-blur absolute inset-0 size-full object-cover"
         />
       </div>
       <div ref={sharpLayerRef} className="dashboard-background-parallax-layer absolute inset-0">
-        <img
+        <Image
           alt=""
           src={imgBg}
+          fill
+          sizes="100vw"
+          preload
+          unoptimized
           className="dashboard-background-sharp absolute inset-0 size-full object-cover"
         />
       </div>
@@ -1960,9 +1968,12 @@ function ProfileMenu() {
         className="flex items-center gap-[10px] cursor-pointer"
         onClick={() => setMenuOpen((o) => !o)}
       >
-        <img
+        <Image
           alt="Profile"
           src={avatarSrc}
+          width={46}
+          height={46}
+          sizes="46px"
           onError={() => setProfileImageFailed(true)}
           className="size-[46px] rounded-full object-cover flex-shrink-0"
           style={{
@@ -2653,7 +2664,7 @@ function useMusicPlayer() {
   const persistent = usePersistentMusic();
   const audioRef = persistent.audioRef;
   const {
-    currentIndex, isPlaying, playMode, volume,
+    currentIndex, isPlaying,
     playAt, playNext, playPrev, togglePlay, cyclePlayMode, seek, setVolume,
   } = persistent;
   const track = TRACKS[currentIndex];
@@ -2668,7 +2679,7 @@ function useMusicPlayer() {
   };
 }
 
-function useMusicPlayerLegacy(audioRef: React.RefObject<HTMLAudioElement | null>) {
+export function useMusicPlayerLegacy(audioRef: React.RefObject<HTMLAudioElement | null>) {
   const [currentIndex, setCurrentIndex] = React.useState(0);
   const [isPlaying, setIsPlaying] = React.useState(false);
   // One button cycles through all three modes rather than separate shuffle/repeat toggles.
@@ -3855,7 +3866,7 @@ function AmbientVolumeWaveform({
       resizeObserver.disconnect();
       mediaQuery.removeEventListener("change", redrawForMotionPreference);
     };
-  }, [isPlaying]);
+  }, [audioLevelRef, isPlaying]);
 
   return (
     <canvas
@@ -4191,9 +4202,12 @@ function MusicPlayerPanel({
                 // <img> itself; the colorful ring around it comes from the border above (or
                 // the flowing overlay while playing) and rotation is driven on this
                 // container, not the <img>, so no-cover tracks still spin their icon too.
-                <img
+                <Image
                   src={track.cover}
                   alt=""
+                  width={102}
+                  height={102}
+                  sizes="102px"
                   className="size-full rounded-full object-cover box-border"
                   style={{ border: "4px solid rgba(0,0,0,0.85)" }}
                 />
@@ -4398,9 +4412,12 @@ function MusicPlayerPanel({
                         }}
                       >
                         {t.cover && (
-                          <img
+                          <Image
                             src={t.cover}
                             alt=""
+                            width={30}
+                            height={30}
+                            sizes="30px"
                             className="absolute inset-0 size-full object-cover"
                           />
                         )}

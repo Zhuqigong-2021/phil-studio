@@ -12,6 +12,7 @@ import type { Tool } from "../lib/dashboard/types.ts";
 import {
   WorkspaceSyncError,
   fetchWorkspaceSnapshot,
+  patchWorkspaceTool,
   type LocalMigrationPayload,
   type WorkspaceSnapshot,
 } from "../lib/dashboard/workspace-data.ts";
@@ -416,6 +417,44 @@ test("returning to the dashboard refetches only when the authoritative snapshot 
   assert.match(effectBody, /void retrySync\(\)/);
   assert.match(effectBody, /addEventListener\("focus", refreshFromServer\)/);
   assert.match(effectBody, /removeEventListener\("focus", refreshFromServer\)/);
+});
+
+test("workspace snapshot retries bounded transient read failures and then succeeds", async () => {
+  let calls = 0;
+  const delays: number[] = [];
+  const result = await fetchWorkspaceSnapshot(async () => {
+    calls += 1;
+    if (calls === 1) throw new TypeError("offline");
+    if (calls === 2) return new Response(null, { status: 503 });
+    return Response.json(snapshot());
+  }, {
+    delaysMs: [10, 20],
+    sleep: async (delay) => { delays.push(delay); },
+  });
+
+  assert.deepEqual(result, snapshot());
+  assert.equal(calls, 3);
+  assert.deepEqual(delays, [10, 20]);
+});
+
+test("workspace snapshot does not retry authorization or validation failures", async () => {
+  for (const status of [400, 401, 403, 404]) {
+    let calls = 0;
+    await assert.rejects(() => fetchWorkspaceSnapshot(async () => {
+      calls += 1;
+      return new Response(null, { status });
+    }, { sleep: async () => {} }));
+    assert.equal(calls, 1);
+  }
+});
+
+test("workspace writes are never automatically replayed after a transient failure", async () => {
+  let calls = 0;
+  await assert.rejects(() => patchWorkspaceTool("custom-1", { name: "Changed" }, async () => {
+    calls += 1;
+    return new Response(null, { status: 503 });
+  }));
+  assert.equal(calls, 1);
 });
 
 test("confirmed mutation responses do not schedule a redundant full workspace fetch", () => {

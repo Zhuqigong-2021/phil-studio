@@ -369,7 +369,8 @@ export default function EnergySandVolume({ bandsRef, isPlayingRef, onFallback })
     const io = new IntersectionObserver(
       ([entry]) => {
         isVisible = entry.isIntersecting;
-        isVisible ? tryStart() : tryStop();
+        if (isVisible) tryStart();
+        else tryStop();
       },
       { threshold: 0 },
     );
@@ -377,7 +378,8 @@ export default function EnergySandVolume({ bandsRef, isPlayingRef, onFallback })
 
     const onVisibility = () => {
       isPageVisible = !document.hidden;
-      isPageVisible ? tryStart() : tryStop();
+      if (isPageVisible) tryStart();
+      else tryStop();
     };
     document.addEventListener("visibilitychange", onVisibility);
 

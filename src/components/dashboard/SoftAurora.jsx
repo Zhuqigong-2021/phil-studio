@@ -311,6 +311,7 @@ export default function SoftAurora({
     colorSpeed,
     enableMouseInteraction,
     mouseInfluence,
+    audioLevelRef,
   ]);
 
   return <div ref={containerRef} className="soft-aurora-container" />;
