@@ -109,16 +109,16 @@ export function getToolLibraryTransitionTiming(
   }
 
   return {
-    total: 0.75,
-    expansionStart: 0.04,
-    expansionEnd: 0.62,
-    sourceFadeStart: 0.36,
-    sourceFadeEnd: 0.54,
-    previewFadeStart: 0.42,
-    previewFadeEnd: 0.62,
-    backgroundStart: 0.41,
-    contentHandoffStart: 0.45,
-    routeStart: 0.56,
+    total: 1.08,
+    expansionStart: 0.05,
+    expansionEnd: 0.78,
+    sourceFadeStart: 0.46,
+    sourceFadeEnd: 0.74,
+    previewFadeStart: 0.56,
+    previewFadeEnd: 0.78,
+    backgroundStart: 0.78,
+    contentHandoffStart: 0.74,
+    routeStart: 0.84,
   };
 }
 
@@ -427,7 +427,8 @@ const browserTransitionStarter = createToolLibraryTransitionStarter({
 
     timeline.to(shell, {
       ...plan,
-      duration: timing.expansionEnd! - timing.expansionStart,
+      duration: timing.expansionEnd! - timing.expansionStart!,
+      ease: "power3.inOut",
     }, timing.expansionStart);
     if (sourceContent) {
       timeline.to(sourceContent, {

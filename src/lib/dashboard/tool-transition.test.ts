@@ -27,16 +27,16 @@ test("derives the Tool Library surface from content bounds, padding, and viewpor
 
 test("exposes the approved shared-surface phase timing", () => {
   assert.deepEqual(getToolLibraryTransitionTiming(false), {
-    total: 0.75,
-    expansionStart: 0.04,
-    expansionEnd: 0.62,
-    sourceFadeStart: 0.36,
-    sourceFadeEnd: 0.54,
-    previewFadeStart: 0.42,
-    previewFadeEnd: 0.62,
-    backgroundStart: 0.41,
-    contentHandoffStart: 0.45,
-    routeStart: 0.56,
+    total: 1.08,
+    expansionStart: 0.05,
+    expansionEnd: 0.78,
+    sourceFadeStart: 0.46,
+    sourceFadeEnd: 0.74,
+    previewFadeStart: 0.56,
+    previewFadeEnd: 0.78,
+    backgroundStart: 0.78,
+    contentHandoffStart: 0.74,
+    routeStart: 0.84,
   });
 });
 
@@ -286,6 +286,7 @@ test("browser handoff keeps one shared surface through the late content and back
   assert.doesNotMatch(source, /background: "radial-gradient\(circle at 56%/);
   assert.match(source, /getToolLibraryTransitionTiming\(plan\.opacity === 0\)/);
   assert.match(source, /duration: timing\.expansionEnd! - timing\.expansionStart/);
+  assert.match(source, /duration: timing\.expansionEnd! - timing\.expansionStart![\s\S]*?ease: "power3\.inOut"/);
   assert.match(source, /duration: timing\.sourceFadeEnd! - timing\.sourceFadeStart!/);
   assert.match(source, /duration: timing\.previewFadeEnd! - timing\.previewFadeStart!/);
   assert.match(source, /duration: timing\.total - timing\.backgroundStart!/);
