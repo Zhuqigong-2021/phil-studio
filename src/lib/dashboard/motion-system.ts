@@ -64,9 +64,9 @@ export function getPanelPresenceMotion(reduced: boolean) {
           opacity: 0,
           transform: "translateY(5px) scale(0.985)",
           filter: "blur(5px)",
-          transition: { duration: 0.18, ease: MOTION_CURVES.out },
+          transition: { duration: 0.3, ease: MOTION_CURVES.out },
         },
-        transition: { duration: 0.34, ease: MOTION_CURVES.out },
+        transition: { duration: 0.62, delay: 0.06, ease: MOTION_CURVES.out },
       };
 }
 
@@ -92,7 +92,7 @@ export function getOverlayMotion(
 ) {
   const focused = variant !== "default";
   const transition = {
-    duration: reduced ? 0.14 : focused ? 0.22 : 0.18,
+    duration: reduced ? 0.14 : focused ? 0.34 : 0.18,
     ease: MOTION_CURVES.out,
   };
 
@@ -113,7 +113,7 @@ export function getOverlayMotion(
           exit: {
             opacity: 0,
             backdropFilter: "blur(0px)",
-            transition: { duration: 0.15, ease: MOTION_CURVES.out },
+            transition: { duration: 0.22, ease: MOTION_CURVES.out },
           },
           transition,
         }
@@ -157,9 +157,9 @@ export function getOverlayMotion(
           opacity: 0,
           transform: "translateY(6px) scale(0.975)",
           filter: "blur(4px)",
-          transition: { duration: 0.15, ease: MOTION_CURVES.out },
+          transition: { duration: 0.26, ease: MOTION_CURVES.out },
         },
-        transition: { duration: 0.34, ease: MOTION_CURVES.out },
+        transition: { duration: 0.64, delay: 0.07, ease: MOTION_CURVES.out },
       },
     };
   }
@@ -182,9 +182,9 @@ export function getOverlayMotion(
           opacity: 0,
           transform: "translateY(-5px) scale(0.98)",
           filter: "blur(4px)",
-          transition: { duration: 0.15, ease: MOTION_CURVES.out },
+          transition: { duration: 0.24, ease: MOTION_CURVES.out },
         },
-        transition: { duration: 0.3, ease: MOTION_CURVES.out },
+        transition: { duration: 0.58, delay: 0.06, ease: MOTION_CURVES.out },
       },
     };
   }

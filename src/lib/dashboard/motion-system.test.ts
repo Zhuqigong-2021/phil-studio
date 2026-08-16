@@ -57,9 +57,9 @@ test("stat panels transfer focus without horizontal travel", () => {
       opacity: 0,
       transform: "translateY(5px) scale(0.985)",
       filter: "blur(5px)",
-      transition: { duration: 0.18, ease: MOTION_CURVES.out },
+      transition: { duration: 0.3, ease: MOTION_CURVES.out },
     },
-    transition: { duration: 0.34, ease: MOTION_CURVES.out },
+    transition: { duration: 0.62, delay: 0.06, ease: MOTION_CURVES.out },
   });
   assert.deepEqual(getPanelPresenceMotion(true), {
     initial: { opacity: 0 },
@@ -88,9 +88,9 @@ test("Motion overlays and drawers exit faster than they enter", () => {
       exit: {
         opacity: 0,
         backdropFilter: "blur(0px)",
-        transition: { duration: 0.15, ease: MOTION_CURVES.out },
+        transition: { duration: 0.22, ease: MOTION_CURVES.out },
       },
-      transition: { duration: 0.22, ease: MOTION_CURVES.out },
+      transition: { duration: 0.34, ease: MOTION_CURVES.out },
     },
     surface: {
       initial: {
@@ -107,15 +107,20 @@ test("Motion overlays and drawers exit faster than they enter", () => {
         opacity: 0,
         transform: "translateY(6px) scale(0.975)",
         filter: "blur(4px)",
-        transition: { duration: 0.15, ease: MOTION_CURVES.out },
+        transition: { duration: 0.26, ease: MOTION_CURVES.out },
       },
-      transition: { duration: 0.34, ease: MOTION_CURVES.out },
+      transition: { duration: 0.64, delay: 0.07, ease: MOTION_CURVES.out },
     },
   });
   assert.deepEqual(getOverlayMotion(false, "search").surface.initial, {
     opacity: 0,
     transform: "translateY(-10px) scale(0.965)",
     filter: "blur(6px)",
+  });
+  assert.deepEqual(getOverlayMotion(false, "search").surface.transition, {
+    duration: 0.58,
+    delay: 0.06,
+    ease: MOTION_CURVES.out,
   });
   assert.deepEqual(
     getOverlayMotion(false, "search").backdrop,
