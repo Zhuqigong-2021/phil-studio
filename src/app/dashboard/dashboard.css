@@ -983,7 +983,8 @@
 
 .lighthouse-edge-highlight {
   position: absolute;
-  overflow: visible;
+  overflow: hidden;
+  clip-path: inset(0 round 16px);
   will-change: left, top, width, height;
 }
 

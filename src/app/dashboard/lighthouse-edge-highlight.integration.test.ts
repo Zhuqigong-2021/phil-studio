@@ -64,6 +64,9 @@ test("lighthouse edge highlights stay in an independent desktop overlay", () => 
   assert.match(css, /\.lighthouse-edge-path--glow/);
   assert.match(css, /\.lighthouse-edge-path--halo/);
   assert.match(css, /\.lighthouse-edge-path--core/);
+  assert.match(css, /\.lighthouse-edge-highlight\s*\{[^}]*overflow: hidden/);
+  assert.match(css, /\.lighthouse-edge-highlight\s*\{[^}]*clip-path: inset\(0 round 16px\)/);
+  assert.doesNotMatch(css, /\.lighthouse-edge-highlight\s*\{[^}]*overflow: visible/);
   assert.match(css, /pointer-events: none/);
   assert.match(css, /@media \(max-width: 1279px\)/);
 });
@@ -79,4 +82,13 @@ test("scrolling refreshes viewport-relative edge geometry without measuring ever
   assert.match(page, /window\.removeEventListener\("scroll", scheduleGeometryRefresh\)/);
   assert.match(page, /cancelAnimationFrame\(geometryFrame\)/);
   assert.doesNotMatch(page, /const tick = \(time: number\) => \{[\s\S]*?entry\.card\.getBoundingClientRect\(\)/);
+});
+
+test("stat panel changes rebuild edge targets and track geometry only while the layout settles", () => {
+  assert.match(page, /new MutationObserver\(scheduleBuild\)/);
+  assert.match(page, /mutationObserver\.observe\(dashboardContent, \{ childList: true, subtree: true \}\)/);
+  assert.match(page, /const trackGeometryFor = \(durationMs: number\) =>/);
+  assert.match(page, /geometryTrackingUntil = performance\.now\(\) \+ durationMs/);
+  assert.match(page, /trackGeometryFor\(800\)/);
+  assert.match(page, /cancelAnimationFrame\(geometryTrackingFrame\)/);
 });

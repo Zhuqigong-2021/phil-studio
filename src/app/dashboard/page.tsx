@@ -300,6 +300,9 @@ function LighthouseEdgeHighlights({ rootRef }: { rootRef: React.RefObject<HTMLDi
 
     let frame = 0;
     let geometryFrame = 0;
+    let buildFrame = 0;
+    let geometryTrackingFrame = 0;
+    let geometryTrackingUntil = 0;
     let running = false;
     let lastTime = performance.now();
     const levels: number[] = [];
@@ -345,6 +348,18 @@ function LighthouseEdgeHighlights({ rootRef }: { rootRef: React.RefObject<HTMLDi
     const scheduleGeometryRefresh = () => {
       cancelAnimationFrame(geometryFrame);
       geometryFrame = requestAnimationFrame(refreshGeometry);
+    };
+
+    const trackGeometryFor = (durationMs: number) => {
+      geometryTrackingUntil = performance.now() + durationMs;
+      cancelAnimationFrame(geometryTrackingFrame);
+      const track = (time: number) => {
+        refreshGeometry();
+        if (time < geometryTrackingUntil) {
+          geometryTrackingFrame = requestAnimationFrame(track);
+        }
+      };
+      geometryTrackingFrame = requestAnimationFrame(track);
     };
 
     const tick = (time: number) => {
@@ -480,6 +495,13 @@ function LighthouseEdgeHighlights({ rootRef }: { rootRef: React.RefObject<HTMLDi
         cards.forEach((card) => resizeObserver?.observe(card));
       }
     };
+    const scheduleBuild = () => {
+      cancelAnimationFrame(buildFrame);
+      buildFrame = requestAnimationFrame(() => {
+        build();
+        trackGeometryFor(800);
+      });
+    };
     const resumeFrame = () => {
       if (!running || document.visibilityState === "hidden") return;
       lastTime = performance.now();
@@ -504,6 +526,8 @@ function LighthouseEdgeHighlights({ rootRef }: { rootRef: React.RefObject<HTMLDi
       running = false;
       cancelAnimationFrame(frame);
       cancelAnimationFrame(geometryFrame);
+      cancelAnimationFrame(buildFrame);
+      cancelAnimationFrame(geometryTrackingFrame);
       resizeObserver?.disconnect();
       resizeObserver = null;
       highlightCache = [];
@@ -511,12 +535,20 @@ function LighthouseEdgeHighlights({ rootRef }: { rootRef: React.RefObject<HTMLDi
       cachedBeam = null;
       overlayRef.current?.replaceChildren();
     };
+    const dashboardContent = rootRef.current?.querySelector<HTMLElement>(
+      "[data-dashboard-transition-content]",
+    );
+    const mutationObserver = new MutationObserver(scheduleBuild);
+    if (dashboardContent) {
+      mutationObserver.observe(dashboardContent, { childList: true, subtree: true });
+    }
     window.addEventListener("phil-studio:dashboard-entrance-complete", start);
     window.addEventListener("phil-studio:tool-library-transition-start", stop);
     window.addEventListener("resize", refreshGeometry);
     window.addEventListener("scroll", scheduleGeometryRefresh, { passive: true });
     document.addEventListener("visibilitychange", handleVisibilityChange);
     return () => {
+      mutationObserver.disconnect();
       stop();
       window.removeEventListener("phil-studio:dashboard-entrance-complete", start);
       window.removeEventListener("phil-studio:tool-library-transition-start", stop);
@@ -961,7 +993,7 @@ function StatCard({
             background:
               "linear-gradient(135deg, rgba(139,122,246,0.1), rgba(103,232,249,0.025))",
             boxShadow:
-              "inset 0 0 0 1px rgba(139, 122, 246, 0.48), inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 8px 24px rgba(79, 55, 180, 0.16)",
+              "inset 0 1px 0 rgba(255, 255, 255, 0.12), 0 8px 24px rgba(79, 55, 180, 0.16)",
           }}
           transition={{ type: "spring", duration: 0.28, bounce: 0.08 }}
         />
@@ -5418,13 +5450,17 @@ function BottomRow({
     >
       <AllToolsPanel />
 
-      <div className="relative w-[min(420px,37vw)] flex-shrink-0 min-h-0 max-[950px]:w-full max-[950px]:min-h-[240px] max-[950px]:order-1">
+      <div
+        className={`grid grid-cols-[minmax(0,1fr)] grid-rows-[minmax(0,1fr)] flex-shrink-0 min-w-0 min-h-0 max-[950px]:!w-full max-[950px]:min-h-[240px] max-[950px]:order-1 ${
+          active === "music" ? "w-[min(460px,40vw)]" : "w-[min(420px,37vw)]"
+        }`}
+      >
         <AnimatePresence initial={false} mode="sync">
           <motion.div
             key={active}
             data-active-stat-panel
             {...panelMotion}
-            className="absolute inset-0 flex [&>*]:h-full [&>*]:w-full"
+            className="col-start-1 row-start-1 flex min-w-0 min-h-0 [&>*]:h-full [&>*]:w-full"
           >
             {active === "completion" ? (
               <TaskCompletionPanel

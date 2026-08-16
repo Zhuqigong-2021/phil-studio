@@ -52,17 +52,20 @@ export function getPanelPresenceMotion(reduced: boolean) {
     : {
         initial: {
           opacity: 0,
-          transform: "translateY(10px) scale(0.975)",
+          y: 10,
+          scale: 0.975,
           filter: "blur(7px)",
         },
         animate: {
           opacity: 1,
-          transform: "translateY(0px) scale(1)",
+          y: 0,
+          scale: 1,
           filter: "blur(0px)",
         },
         exit: {
           opacity: 0,
-          transform: "translateY(5px) scale(0.985)",
+          y: 5,
+          scale: 0.985,
           filter: "blur(5px)",
           transition: { duration: 0.3, ease: MOTION_CURVES.out },
         },
