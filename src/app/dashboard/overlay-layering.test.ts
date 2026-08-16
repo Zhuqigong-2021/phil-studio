@@ -26,6 +26,9 @@ test("command palette is portaled above every transformed dashboard layer", () =
   );
   assert.match(source, /className="dashboard-motion-root dashboard-overlay-backdrop fixed inset-0 z-\[100\]/);
   assert.match(source, /zIndex: 120/);
+  assert.match(source, /getOverlayMotion\(Boolean\(useReducedMotion\(\)\), "search"\)/);
+  assert.match(source, /<motion\.div[\s\S]*?\.\.\.overlayMotion\.backdrop/);
+  assert.match(source, /data-search-palette-surface[\s\S]*?\.\.\.overlayMotion\.surface/);
 });
 
 test("sidebar items and their active layer share explicit rounded corners", () => {

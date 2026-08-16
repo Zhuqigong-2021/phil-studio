@@ -29,9 +29,12 @@ test("dashboard entrance wires five runtime layers across desktop and mobile hea
   assert.match(source, /getDashboardEntranceTimeline\(reduceMotion\)/);
 });
 
-test("panel transitions derive direction from the previous active stat", () => {
-  assert.match(source, /previousActiveRef/);
-  assert.match(source, /getPanelMotion\(reduceMotion, direction\)/);
+test("stat panels use an overlapping focus-transfer presence handoff", () => {
+  assert.match(source, /getPanelPresenceMotion\(reduceMotion\)/);
+  assert.match(source, /<AnimatePresence initial=\{false\} mode="sync">/);
+  assert.match(source, /data-active-stat-panel/);
+  assert.doesNotMatch(source, /previousActiveRef/);
+  assert.doesNotMatch(source, /getPanelMotion\(reduceMotion, direction\)/);
 });
 
 test("existing interactive surfaces wire the remaining refinement hooks", () => {

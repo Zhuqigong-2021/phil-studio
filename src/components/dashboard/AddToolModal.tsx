@@ -93,7 +93,7 @@ function AddToolForm({
   const ADD_TOOL_SECONDARY_BORDER = "1px solid rgba(129, 140, 248, 0.34)";
   const ADD_TOOL_SECONDARY_TEXT = "#e0e7ff";
   const reduceMotion = Boolean(useReducedMotion());
-  const overlayMotion = getOverlayMotion(reduceMotion);
+  const overlayMotion = getOverlayMotion(reduceMotion, "modal");
   const popoverMotion = getPopoverMotion(reduceMotion);
   const listItemMotion = getListItemMotion(reduceMotion);
   const [form, setForm] = useReducer(addToolFormReducer, undefined, createEmptyAddToolForm);
@@ -186,6 +186,7 @@ function AddToolForm({
       style={{ background: "rgba(2,6,23,0.6)", padding: "8vh 16px" }}
     >
       <motion.div
+        data-add-tool-modal-surface
         {...overlayMotion.surface}
         onClick={(event) => event.stopPropagation()}
         className="glass-shine-card rounded-2xl overflow-hidden flex flex-col"

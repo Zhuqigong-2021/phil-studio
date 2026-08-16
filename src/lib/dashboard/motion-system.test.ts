@@ -8,6 +8,7 @@ import {
   getDrawerMotion,
   getListItemMotion,
   getOverlayMotion,
+  getPanelPresenceMotion,
   getPanelMotion,
   getPopoverMotion,
   getQuickAccessItemMotion,
@@ -40,6 +41,34 @@ test("GSAP dashboard entrance is perceptible while reduced motion removes travel
   assert.deepEqual(getPanelMotion(false, -1).from, { autoAlpha: 0, x: -14 });
 });
 
+test("stat panels transfer focus without horizontal travel", () => {
+  assert.deepEqual(getPanelPresenceMotion(false), {
+    initial: {
+      opacity: 0,
+      transform: "translateY(10px) scale(0.975)",
+      filter: "blur(7px)",
+    },
+    animate: {
+      opacity: 1,
+      transform: "translateY(0px) scale(1)",
+      filter: "blur(0px)",
+    },
+    exit: {
+      opacity: 0,
+      transform: "translateY(5px) scale(0.985)",
+      filter: "blur(5px)",
+      transition: { duration: 0.18, ease: MOTION_CURVES.out },
+    },
+    transition: { duration: 0.34, ease: MOTION_CURVES.out },
+  });
+  assert.deepEqual(getPanelPresenceMotion(true), {
+    initial: { opacity: 0 },
+    animate: { opacity: 1 },
+    exit: { opacity: 0 },
+    transition: { duration: 0.14, ease: MOTION_CURVES.out },
+  });
+});
+
 test("stat count-up preserves integer and percent formatting", () => {
   assert.deepEqual(getStatCountMotion("23"), { end: 23, suffix: "" });
   assert.deepEqual(getStatCountMotion("75%"), { end: 75, suffix: "%" });
@@ -52,26 +81,51 @@ test("initial stat count waits for the stats row entrance while later updates st
 });
 
 test("Motion overlays and drawers exit faster than they enter", () => {
-  assert.deepEqual(getOverlayMotion(false), {
+  assert.deepEqual(getOverlayMotion(false, "modal"), {
     backdrop: {
-      initial: { opacity: 0 },
-      animate: { opacity: 1 },
+      initial: { opacity: 0, backdropFilter: "blur(0px)" },
+      animate: { opacity: 1, backdropFilter: "blur(8px)" },
       exit: {
         opacity: 0,
+        backdropFilter: "blur(0px)",
         transition: { duration: 0.15, ease: MOTION_CURVES.out },
       },
-      transition: { duration: 0.18, ease: MOTION_CURVES.out },
+      transition: { duration: 0.22, ease: MOTION_CURVES.out },
     },
     surface: {
-      initial: { opacity: 0, transform: "translateY(8px) scale(0.97)" },
-      animate: { opacity: 1, transform: "translateY(0px) scale(1)" },
+      initial: {
+        opacity: 0,
+        transform: "translateY(14px) scale(0.94)",
+        filter: "blur(6px)",
+      },
+      animate: {
+        opacity: 1,
+        transform: "translateY(0px) scale(1)",
+        filter: "blur(0px)",
+      },
       exit: {
         opacity: 0,
-        transform: "translateY(4px) scale(0.985)",
+        transform: "translateY(6px) scale(0.975)",
+        filter: "blur(4px)",
         transition: { duration: 0.15, ease: MOTION_CURVES.out },
       },
-      transition: { type: "spring", duration: 0.28, bounce: 0.05 },
+      transition: { duration: 0.34, ease: MOTION_CURVES.out },
     },
+  });
+  assert.deepEqual(getOverlayMotion(false, "search").surface.initial, {
+    opacity: 0,
+    transform: "translateY(-10px) scale(0.965)",
+    filter: "blur(6px)",
+  });
+  assert.deepEqual(
+    getOverlayMotion(false, "search").backdrop,
+    getOverlayMotion(false, "modal").backdrop,
+  );
+  assert.deepEqual(getOverlayMotion(true, "search").surface, {
+    initial: { opacity: 0 },
+    animate: { opacity: 1 },
+    exit: { opacity: 0 },
+    transition: { duration: 0.14, ease: MOTION_CURVES.out },
   });
   const drawerMotion = getDrawerMotion(false);
   assert.equal(drawerMotion.transition.duration, 0.26);

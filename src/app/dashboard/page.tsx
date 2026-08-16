@@ -15,7 +15,7 @@ import {
   getDrawerMotion,
   getListItemMotion,
   getOverlayMotion,
-  getPanelMotion,
+  getPanelPresenceMotion,
   getPopoverMotion,
   getQuickAccessItemMotion,
   getStatCountMotion,
@@ -2052,9 +2052,11 @@ function CommandPaletteDark({
 }) {
   const { setToolFavorite } = useDashboardWorkspaceActions();
   const { favoritePendingIds } = useDashboardPendingState();
+  const overlayMotion = getOverlayMotion(Boolean(useReducedMotion()), "search");
 
   return (
-    <div
+    <motion.div
+      {...overlayMotion.backdrop}
       onClick={onClose}
       className="dashboard-motion-root dashboard-overlay-backdrop fixed inset-0 z-[100] flex items-start justify-center"
       style={{
@@ -2063,7 +2065,9 @@ function CommandPaletteDark({
         zIndex: 120,
       }}
     >
-      <div
+      <motion.div
+        data-search-palette-surface
+        {...overlayMotion.surface}
         onClick={(e) => e.stopPropagation()}
         className="glass-shine-card rounded-2xl overflow-hidden flex flex-col"
         style={{
@@ -2174,8 +2178,8 @@ function CommandPaletteDark({
             </div>
           )}
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
@@ -5404,27 +5408,8 @@ function BottomRow({
   onCancelFocusSession: () => void;
   music: ReturnType<typeof useMusicPlayer>;
 }) {
-  const panelHostRef = React.useRef<HTMLDivElement>(null);
-  const previousActiveRef = React.useRef(active);
   const reduceMotion = Boolean(useReducedMotion());
-
-  React.useLayoutEffect(() => {
-    const panel = panelHostRef.current?.firstElementChild;
-    if (!panel) return;
-
-    const statOrder: StatKey[] = ["recent", "categories", "favorites", "music", "completion"];
-    const direction =
-      statOrder.indexOf(active) >= statOrder.indexOf(previousActiveRef.current)
-        ? 1
-        : -1;
-    const values = getPanelMotion(reduceMotion, direction);
-    const context = gsap.context(() => {
-      gsap.fromTo(panel, values.from, values.to);
-    }, panelHostRef);
-    previousActiveRef.current = active;
-
-    return () => context.revert();
-  }, [active, reduceMotion]);
+  const panelMotion = getPanelPresenceMotion(reduceMotion);
 
   return (
     <section
@@ -5433,57 +5418,66 @@ function BottomRow({
     >
       <AllToolsPanel />
 
-      <div key={active} ref={panelHostRef} className="contents">
-        {active === "completion" ? (
-          <TaskCompletionPanel
-            tasks={tasks}
-            addTask={addTask}
-            toggleTask={toggleTask}
-            updateTask={updateTask}
-            deleteTask={deleteTask}
-          />
-        ) : active === "categories" ? (
-          <CategoriesPanel />
-        ) : active === "favorites" ? (
-          <FavoritesPanel
-            favoriteTools={favoriteTools}
-            favoritePendingIds={favoritePendingIds}
-            onToggleFavorite={onToggleFavorite}
-          />
-        ) : active === "music" ? (
-          <MusicPlayerPanel
-            track={music.track}
-            currentIndex={music.currentIndex}
-            isPlaying={music.isPlaying}
-            playMode={music.playMode}
-            volume={music.volume}
-            onPlayAt={music.playAt}
-            onPlayNext={music.playNext}
-            onPlayPrev={music.playPrev}
-            onTogglePlay={music.togglePlay}
-            onCyclePlayMode={music.cyclePlayMode}
-            onVolumeChange={music.setVolume}
-            onSeek={music.seek}
-            audioLevelRef={music.audioLevelRef}
-            bassRef={music.bassRef}
-            midRef={music.midRef}
-            trebleRef={music.trebleRef}
-            energyRef={music.energyRef}
-            loudnessRef={music.loudnessRef}
-            beatPulseRef={music.beatPulseRef}
-            bandsRef={music.bandsRef}
-            showLyrics={music.showLyrics}
-            onShowLyricsChange={music.setShowLyrics}
-          />
-        ) : (
-          <RecentActivityPanel
-            entries={focusEntries}
-            session={focusSession}
-            remainingMs={focusRemainingMs}
-            onOpenSettings={onOpenFocusSettings}
-            onCancelSession={onCancelFocusSession}
-          />
-        )}
+      <div className="relative w-[min(420px,37vw)] flex-shrink-0 min-h-0 max-[950px]:w-full max-[950px]:min-h-[240px] max-[950px]:order-1">
+        <AnimatePresence initial={false} mode="sync">
+          <motion.div
+            key={active}
+            data-active-stat-panel
+            {...panelMotion}
+            className="absolute inset-0 flex [&>*]:h-full [&>*]:w-full"
+          >
+            {active === "completion" ? (
+              <TaskCompletionPanel
+                tasks={tasks}
+                addTask={addTask}
+                toggleTask={toggleTask}
+                updateTask={updateTask}
+                deleteTask={deleteTask}
+              />
+            ) : active === "categories" ? (
+              <CategoriesPanel />
+            ) : active === "favorites" ? (
+              <FavoritesPanel
+                favoriteTools={favoriteTools}
+                favoritePendingIds={favoritePendingIds}
+                onToggleFavorite={onToggleFavorite}
+              />
+            ) : active === "music" ? (
+              <MusicPlayerPanel
+                track={music.track}
+                currentIndex={music.currentIndex}
+                isPlaying={music.isPlaying}
+                playMode={music.playMode}
+                volume={music.volume}
+                onPlayAt={music.playAt}
+                onPlayNext={music.playNext}
+                onPlayPrev={music.playPrev}
+                onTogglePlay={music.togglePlay}
+                onCyclePlayMode={music.cyclePlayMode}
+                onVolumeChange={music.setVolume}
+                onSeek={music.seek}
+                audioLevelRef={music.audioLevelRef}
+                bassRef={music.bassRef}
+                midRef={music.midRef}
+                trebleRef={music.trebleRef}
+                energyRef={music.energyRef}
+                loudnessRef={music.loudnessRef}
+                beatPulseRef={music.beatPulseRef}
+                bandsRef={music.bandsRef}
+                showLyrics={music.showLyrics}
+                onShowLyricsChange={music.setShowLyrics}
+              />
+            ) : (
+              <RecentActivityPanel
+                entries={focusEntries}
+                session={focusSession}
+                remainingMs={focusRemainingMs}
+                onOpenSettings={onOpenFocusSettings}
+                onCancelSession={onCancelFocusSession}
+              />
+            )}
+          </motion.div>
+        </AnimatePresence>
       </div>
     </section>
   );
