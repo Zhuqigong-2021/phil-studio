@@ -7,5 +7,7 @@ export const config = {
     "/favs/:path*",
     "/recent/:path*",
     "/manage/:path*",
+    "/music/:path*",
+    "/api/lyrics/:path*",
   ],
 };
