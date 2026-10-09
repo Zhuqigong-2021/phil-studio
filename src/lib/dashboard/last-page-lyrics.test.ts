@@ -10,10 +10,17 @@ test("最后一页 is available with its local audio and lyric timeline", async 
 
   assert.equal(track?.artist, "江语晨");
   assert.equal(track?.src, encodeURI("/music/最后一页-江语晨.mp3"));
+  assert.equal(track?.cover, encodeURI("/music/covers/最后一页.png"));
   assert.equal(track?.lyricsSlug, "最后一页");
   assert.equal(
     existsSync(
       new URL("../../../public/music/最后一页-江语晨.mp3", import.meta.url),
+    ),
+    true,
+  );
+  assert.equal(
+    existsSync(
+      new URL("../../../public/music/covers/最后一页.png", import.meta.url),
     ),
     true,
   );
