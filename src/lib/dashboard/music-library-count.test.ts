@@ -9,8 +9,8 @@ const pageSource = readFileSync(
   "utf8",
 );
 
-test("music library currently contains twenty-one tracks", () => {
-  assert.equal(TRACKS.length, 21);
+test("music library currently contains twenty-two tracks", () => {
+  assert.equal(TRACKS.length, 22);
 });
 
 test("Favorite Music displays the live track count instead of a hardcoded value", () => {

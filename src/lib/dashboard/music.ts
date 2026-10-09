@@ -37,6 +37,7 @@ const RAW_TRACKS: { file: string; title: string; artist: string; cover?: string;
   { file: "黄种人.mp3", title: "黄种人", artist: "谢霆锋", cover: "/music/covers/黄种人.png", lyricsSlug: "黄种人" },
   { file: "七里香.mp3", title: "七里香", artist: "周杰伦", cover: "/music/covers/七里香.png", lyricsSlug: "七里香" },
   { file: "黑色毛衣.mp3", title: "黑色毛衣", artist: "周杰伦", cover: "/music/covers/黑色毛衣.png", lyricsSlug: "黑色毛衣" },
+  { file: "最后一页-江语晨.mp3", title: "最后一页", artist: "江语晨", lyricsSlug: "最后一页" },
 ];
 
 export const TRACKS: Track[] = RAW_TRACKS.map((t, i) => ({
