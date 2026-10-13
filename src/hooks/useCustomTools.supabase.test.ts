@@ -8,6 +8,7 @@ import { CUSTOM_CATEGORIES_KEY, CUSTOM_TOOLS_KEY, PINNED_TOOLS_KEY } from "../li
 import { FAVORITES_STORAGE_KEY } from "../lib/dashboard/favorites.ts";
 import { RECENT_TOOLS_STORAGE_KEY } from "../lib/dashboard/recent-tools.ts";
 import { TOOLS_RAW } from "../lib/dashboard/mock-data.ts";
+import { DEFAULT_WORKSPACE_SNAPSHOT } from "../lib/dashboard/default-workspace-snapshot.ts";
 import type { Tool } from "../lib/dashboard/types.ts";
 import {
   WorkspaceSyncError,
@@ -18,6 +19,7 @@ import {
 } from "../lib/dashboard/workspace-data.ts";
 import {
   SUPABASE_MIGRATED_KEY,
+  WORKSPACE_SNAPSHOT_KEY,
   createOptimisticToolPatch,
   synchronizeWorkspaceOnce,
   createSyncGuard,
@@ -135,6 +137,45 @@ test("workspace cache round-trip preserves multiple custom tools with named and 
       .map((tool) => [tool.id, tool.accent]),
     [[namedTool.id, "teal"], [colorTool.id, "#22D3EE"]],
   );
+});
+
+test("failed reload preserves the entire last successful database snapshot including edited and deleted built-ins", async () => {
+  const storage = new MemoryStorage();
+  const edited = { ...TOOLS_RAW[0], name: "Updated portfolio", url: "https://example.com/new", favorite: false };
+  const saved: WorkspaceSnapshot = {
+    tools: [edited, serverTool], categories: ["Research"],
+    pinnedToolIds: [edited.id], recentTools: [{ id: edited.id, openedAt: 123 }],
+  };
+  storage.setItem(SUPABASE_MIGRATED_KEY, "true");
+  await synchronizeWorkspace(storage, api({ fetchSnapshot: async () => saved }));
+  await assert.rejects(synchronizeWorkspace(storage, api({ fetchSnapshot: async () => { throw new Error("Offline"); } })));
+  assert.deepEqual(readCachedWorkspace(storage), saved);
+});
+
+test("a successfully cached empty database stays empty on reload", () => {
+  const storage = new MemoryStorage();
+  const empty = { tools: [], categories: [], pinnedToolIds: [], recentTools: [] };
+  writeWorkspaceCache(storage, empty);
+  assert.deepEqual(readCachedWorkspace(storage), empty);
+});
+
+test("a new browser or damaged cache falls back to the exported database snapshot", () => {
+  const storage = new MemoryStorage();
+  assert.deepEqual(readCachedWorkspace(storage), DEFAULT_WORKSPACE_SNAPSHOT);
+  for (const damaged of ["{", "null", '{"tools":[null]}']) {
+    storage.setItem(WORKSPACE_SNAPSHOT_KEY, damaged);
+    assert.deepEqual(readCachedWorkspace(storage), DEFAULT_WORKSPACE_SNAPSHOT);
+  }
+});
+
+test("blocked browser storage still displays the bundled snapshot and does not reject cache writes", () => {
+  const storage = {
+    getItem() { throw new Error("Storage blocked"); },
+    setItem() { throw new Error("Storage blocked"); },
+    removeItem() {},
+  };
+  assert.deepEqual(readCachedWorkspace(storage), DEFAULT_WORKSPACE_SNAPSHOT);
+  assert.doesNotThrow(() => writeWorkspaceCache(storage, snapshot()));
 });
 
 test("authoritative workspace ignores a stale favorite cache and rewrites it", async () => {

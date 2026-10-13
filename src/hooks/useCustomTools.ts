@@ -19,6 +19,7 @@ import {
   runFavoriteMutationWithToast,
 } from "../lib/dashboard/favorite-toast.ts";
 import { TAGS, TOOLS_RAW } from "../lib/dashboard/mock-data.ts";
+import { DEFAULT_WORKSPACE_SNAPSHOT } from "../lib/dashboard/default-workspace-snapshot.ts";
 import {
   parseStoredRecentTools,
   RECENT_TOOLS_CHANGED_EVENT,
@@ -41,6 +42,7 @@ import type { Tool } from "../lib/dashboard/types.ts";
 import { createWorkspaceReadCoordinator } from "../lib/dashboard/workspace-read-coordinator.ts";
 
 export const SUPABASE_MIGRATED_KEY = "phil-studio:supabase-migrated:v1";
+export const WORKSPACE_SNAPSHOT_KEY = "phil-studio:workspace-snapshot:v1";
 const WORKSPACE_FOCUS_STALE_MS = 30_000;
 
 export function shouldRefreshWorkspace(
@@ -233,32 +235,61 @@ export function readCachedWorkspace(
   storage: WorkspaceStorage,
   authoritative?: WorkspaceSnapshot,
 ): WorkspaceSnapshot {
-  const favoriteOverrides = parseFavoriteOverrides(storage.getItem(FAVORITES_STORAGE_KEY));
-  const sourceTools = authoritative?.tools
-    ?? [...TOOLS_RAW, ...parseStoredTools(storage.getItem(CUSTOM_TOOLS_KEY))];
-  const tools = sourceTools
-    .map((tool) => {
-      const cachedFavorite = authoritative ? undefined : favoriteOverrides[tool.id];
-      return { ...tool, favorite: cachedFavorite ?? tool.favorite };
-    });
-  return {
-    tools,
-    categories: mergeCategories(TAGS, parseStoredCategories(storage.getItem(CUSTOM_CATEGORIES_KEY))),
-    pinnedToolIds: parseStoredToolIds(storage.getItem(PINNED_TOOLS_KEY)),
-    recentTools: parseStoredRecentTools(storage.getItem(RECENT_TOOLS_STORAGE_KEY)),
-  };
+  try {
+    if (authoritative) {
+      return { ...authoritative, recentTools: parseStoredRecentTools(storage.getItem(RECENT_TOOLS_STORAGE_KEY)) };
+    }
+    const raw = storage.getItem(WORKSPACE_SNAPSHOT_KEY);
+    if (raw) {
+      try {
+        const cached = JSON.parse(raw) as WorkspaceSnapshot;
+        if (cached && Array.isArray(cached.tools)
+          && cached.tools.every((tool) => tool && typeof tool.id === "string" && typeof tool.name === "string"
+            && typeof tool.mono === "string" && typeof tool.accent === "string" && typeof tool.favorite === "boolean"
+            && Array.isArray(tool.tags) && tool.tags.every((tag) => typeof tag === "string"))
+          && Array.isArray(cached.categories) && cached.categories.every((name) => typeof name === "string")
+          && Array.isArray(cached.pinnedToolIds) && cached.pinnedToolIds.every((id) => typeof id === "string")
+          && Array.isArray(cached.recentTools)
+          && cached.recentTools.every((entry) => entry && typeof entry.id === "string" && Number.isFinite(entry.openedAt))) {
+          return { ...cached, recentTools: parseStoredRecentTools(storage.getItem(RECENT_TOOLS_STORAGE_KEY) ?? JSON.stringify(cached.recentTools)) };
+        }
+      } catch { /* Fall back to the bundled snapshot when the cache is damaged. */ }
+    }
+    const favoriteOverrides = parseFavoriteOverrides(storage.getItem(FAVORITES_STORAGE_KEY));
+    const defaultIds = new Set(DEFAULT_WORKSPACE_SNAPSHOT.tools.map((tool) => tool.id));
+    const sourceTools = [...DEFAULT_WORKSPACE_SNAPSHOT.tools,
+      ...parseStoredTools(storage.getItem(CUSTOM_TOOLS_KEY)).filter((tool) => !defaultIds.has(tool.id))];
+    const tools = sourceTools
+      .map((tool) => {
+        const cachedFavorite = favoriteOverrides[tool.id];
+        return { ...tool, favorite: cachedFavorite ?? tool.favorite };
+      });
+    return {
+      tools,
+      categories: mergeCategories(DEFAULT_WORKSPACE_SNAPSHOT.categories, parseStoredCategories(storage.getItem(CUSTOM_CATEGORIES_KEY))),
+      pinnedToolIds: parseStoredToolIds(storage.getItem(PINNED_TOOLS_KEY) ?? JSON.stringify(DEFAULT_WORKSPACE_SNAPSHOT.pinnedToolIds)),
+      recentTools: parseStoredRecentTools(storage.getItem(RECENT_TOOLS_STORAGE_KEY) ?? JSON.stringify(DEFAULT_WORKSPACE_SNAPSHOT.recentTools)),
+    };
+  } catch {
+    return structuredClone(DEFAULT_WORKSPACE_SNAPSHOT);
+  }
 }
 
 export function writeWorkspaceCache(storage: WorkspaceStorage, snapshot: WorkspaceSnapshot): void {
-  storage.setItem(CUSTOM_TOOLS_KEY, JSON.stringify(snapshot.tools.filter((tool) => !BUILT_IN_IDS.has(tool.id))));
-  storage.setItem(CUSTOM_CATEGORIES_KEY, JSON.stringify(
-    snapshot.categories.filter((category) => !DEFAULT_CATEGORY_KEYS.has(category.toLocaleLowerCase())),
-  ));
-  storage.setItem(PINNED_TOOLS_KEY, JSON.stringify(snapshot.pinnedToolIds));
-  storage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(
-    Object.fromEntries(snapshot.tools.map((tool) => [tool.id, tool.favorite])),
-  ));
-  storage.setItem(RECENT_TOOLS_STORAGE_KEY, JSON.stringify(snapshot.recentTools));
+  try {
+    storage.setItem(WORKSPACE_SNAPSHOT_KEY, JSON.stringify(snapshot));
+    storage.setItem(CUSTOM_TOOLS_KEY, JSON.stringify(snapshot.tools.filter((tool) => !BUILT_IN_IDS.has(tool.id))));
+    storage.setItem(CUSTOM_CATEGORIES_KEY, JSON.stringify(
+      snapshot.categories.filter((category) => !DEFAULT_CATEGORY_KEYS.has(category.toLocaleLowerCase())),
+    ));
+    storage.setItem(PINNED_TOOLS_KEY, JSON.stringify(snapshot.pinnedToolIds));
+    storage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify(
+      Object.fromEntries(snapshot.tools.map((tool) => [tool.id, tool.favorite])),
+    ));
+    storage.setItem(RECENT_TOOLS_STORAGE_KEY, JSON.stringify(snapshot.recentTools));
+  } catch {
+    // A blocked or full browser cache must not prevent a successful database read.
+  }
 }
 
 export async function synchronizeWorkspace(
@@ -429,12 +460,7 @@ export async function createOptimisticToolPatch(
   }
 }
 
-const EMPTY_WORKSPACE: WorkspaceSnapshot = {
-  tools: TOOLS_RAW,
-  categories: [...TAGS],
-  pinnedToolIds: [],
-  recentTools: [],
-};
+const EMPTY_WORKSPACE: WorkspaceSnapshot = DEFAULT_WORKSPACE_SNAPSHOT;
 
 export function useCustomTools(api: WorkspaceApi = DEFAULT_WORKSPACE_API) {
   const [workspace, setWorkspace] = useState<WorkspaceSnapshot>(EMPTY_WORKSPACE);
